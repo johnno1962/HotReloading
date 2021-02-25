@@ -1,0 +1,94 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!--
+ This file is part of Canviz. See http://www.canviz.org/
+ $Id: new.html.in 256 2009-01-08 11:14:07Z ryandesign.com $
+ -->
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <meta name="MSSmartTagsPreventParsing" content="true" />
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link rel="stylesheet" type="text/css" href="canviz-0.1/canviz.css" />
+        <title>Xprobe Object Graph</title>
+        <script type="text/javascript" src="canviz-0.1/prototype/prototype.js"></script>
+        <script type="text/javascript" src="canviz-0.1/path/path.js"></script>
+        <script type="text/javascript" src="canviz-0.1/canviz.js"></script>
+        <script>
+            var canviz;
+            document.observe('dom:loaded', function() {
+                 canviz = new Canviz('canviz', '/tmp/canviz.gv?flush='+Math.random());
+            });
+            function sendClient(selector,pathID) {
+                prompt(selector,pathID)
+            }
+            function set_graph_scale(select) {
+                canviz.setScale(select.value);
+                canviz.draw();
+                window.scrollTo(0,0);
+            }
+            function click_node(node) {
+                sendClient( "open:", node );
+            }
+            function startEdge() {
+                var ctxScale = canviz.scale * canviz.dpi / 72;
+                canviz.ctx.save();
+                canviz.ctx.translate(canviz.padding, canviz.padding);
+                canviz.ctx.scale(ctxScale, ctxScale);
+            }
+            function colorEdge(eid,color) {
+                if ( edgePaths[eid] ) {
+                    color = canviz.parseHexColor(color).canvasColor;
+                    canviz.ctx.strokeStyle = color;
+                    canviz.drawPath(canviz.ctx,edgePaths[eid],false,'solid');
+                    canviz.ctx.fillStyle = color;
+                    canviz.drawPath(canviz.ctx,edgeHeads[eid],true,'solid');
+                }
+            }
+            function stopEdge() {
+                canviz.ctx.restore();
+            }
+            window.onscroll = function() {
+                $('menus').style.left = document.body.scrollLeft+"px";
+            }
+        </script>
+    </head>
+    <body>
+        <div id="menus" style="position: relative;">
+            &nbsp; Graph Type:
+
+            <select name="graph_type" id="graph_type" onchange="sendClient('regraph:',this.value)">
+                <option value="0" selected>Normal Filtering</option>
+                <option value="0">Re-sweep Graph</option>
+                <option value="16">Simplify Graph</option>
+                <option value="1">No Array Limit</option>
+                <option value="3">Show Interlinks</option>
+                <option value="7">Draw "kit" objects</option>
+                <option value="15">Draw All Objects</option>
+            </select>
+
+            Scale Image:
+
+            <select name="graph_scale" id="graph_scale" onchange="set_graph_scale(this)">
+                <option value="1" selected>100%</option>
+                <option value="0.75">75%</option>
+                <option value="0.5">50%</option>
+                <option value="0.35">35%</option>
+                <option value="0.25">25%</option>
+                <option value="0.15">15%</option>
+                <option value="0.1">10%</option>
+                <option value="0.05">5%</option>
+            </select>
+
+            Animate Messages: <input type=checkbox onchange="sendClient('animate:',this.checked?1:0)">
+
+            You may need to scroll to the right to view objects ...
+        </div>
+
+        <div id="debug_output" style="display:none"></div>
+
+        <div class="graph">
+            <div id="canviz"></div>
+        </div>
+
+    </body>
+</html>

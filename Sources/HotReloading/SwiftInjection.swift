@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#2 $
+//  $Id: //depot/ResidentEval/InjectionBundle/SwiftInjection.swift#121 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -443,7 +443,7 @@ public class SwiftInjection: NSObject {
                 found = true
             }
         }
-        
+
         if !found {
             print("\(prefix)Do you have the right project selected?")
         }
@@ -566,7 +566,8 @@ extension NSObject {
         let object = "@".utf16.first!
         while cls != nil && cls != NSObject.self && cls != NSURL.self {
             let className = NSStringFromClass(cls!)
-            if className.hasPrefix("_") || className.hasPrefix("NS") {
+            if className.hasPrefix("_") || className.hasPrefix("NS") ||
+                className.hasPrefix("WK") {
                 return
             }
             #if os(OSX)

@@ -1,0 +1,172 @@
+<html><head><style>
+
+body { background: white; }
+body, table { font: 10pt Arial; }
+
+span.letStyle { color: #A90D91; }
+span.typeStyle { color: green; }
+span.classStyle { color: blue; }
+
+span.protoStyle { }
+span.propsStyle { }
+span.methodStyle { }
+
+form { margin: 0px }
+
+td.indent { width: 15px; }
+td.drilldown { border: 1px outset white; background-color:rgba(200,200,200,0.4); border-radius: 10px; padding: 10px; padding-top: 7px; box-shadow: 5px 5px 5px #888888; }
+
+.kitclass { display: none; }
+.kitclass > span > a:link { color: grey; }
+
+</style>
+<link rel="stylesheet" href="CodeMirror/lib/codemirror.css">
+<link rel="stylesheet" href="CodeMirror/addon/fold/foldgutter.css">
+<link rel="stylesheet" href="CodeMirror/addon/dialog/dialog.css">
+<link rel="stylesheet" href="CodeMirror/addon/hint/show-hint.css">
+<link rel="stylesheet" href="CodeMirror/theme/monokai.css">
+<script src="CodeMirror/lib/codemirror.js"></script>
+<script src="CodeMirror/addon/hint/show-hint.js"></script>
+<script src="CodeMirror/addon/search/searchcursor.js"></script>
+<script src="CodeMirror/addon/search/search.js"></script>
+<script src="CodeMirror/addon/dialog/dialog.js"></script>
+<script src="CodeMirror/addon/edit/matchbrackets.js"></script>
+<script src="CodeMirror/addon/edit/closebrackets.js"></script>
+<script src="CodeMirror/addon/comment/comment.js"></script>
+<script src="CodeMirror/addon/wrap/hardwrap.js"></script>
+<script src="CodeMirror/addon/fold/foldcode.js"></script>
+<script src="CodeMirror/addon/fold/brace-fold.js"></script>
+<script src="CodeMirror/mode/javascript/javascript.js"></script>
+<script src="CodeMirror/keymap/sublime.js"></script>
+<style type="text/css">
+.CodeMirror {border-top: 1px solid #eee; border-bottom: 1px solid #eee; line-height: 1.3; height: 200px}
+.CodeMirror-linenumbers { padding: 0 8px; }
+</style>
+<script>
+
+function $(id) {
+    if ( arguments.length == 0 )
+        return $("sweepDisplay");
+    var element = document.getElementById(id);
+    if ( !element ) {
+        element = document.createElement("div");
+        $().appendChild(element);
+        element.innerHTML = "<span id='"+id+"'></span>";
+        setTimeout(function(){
+          window.scrollTo( 0, element.offsetTop );
+        },100);
+        return element.children[0];
+    }
+    return element;
+}
+
+function sendClient(selector,pathID) {
+    prompt(selector,pathID)
+}
+
+function kitswitch(checkbox) {
+    var divs = document.getElementsByTagName("DIV");
+    for ( var i=0 ; i<divs.length ; i++ )
+        if ( divs[i].className == "kitclass" )
+            divs[i].style.display = checkbox.checked ? "none" : "block";
+}
+
+function methodFilter(filter) {
+    var methods = filter.parentElement.getElementsByTagName("div");
+    var regexp = new RegExp(filter.value, "i");
+
+    for ( var i=0 ; i<methods.length ; i++  ) {
+        var sel = methods[i].getAttribute("sel");
+        methods[i].style.display = sel.match(regexp) ? "block" : "none";
+    }
+}
+
+function lookupSym(span) {
+    !span.title && sendClient("lookup:", span.getAttribute("id"))
+}
+
+var editors = {};
+
+function evalForm(parent,pathID,className,isSwift) {
+    var codeByClass = {};
+    var cks = document.cookie.split( /;\s*/ );
+    for ( var i=0 ; i<cks.length ; i++ ) {
+        var ck = cks[i].match( /^([^=]+)=(.*)$/ );
+        if ( ck && ck[1] )
+            codeByClass[ck[1]] = decodeURI(ck[2].replace("%3B",";"));
+    }
+
+    var code = codeByClass[className] || (isSwift ? 'xprint(self)\n' : 'XLog(@"%@",self);\n');
+    parent.outerHTML = "<form onsubmit=\"evalCode("+pathID+",'"+className+"',"+isSwift+"); return false;\">"+
+        "<br><div id=EDITOR"+pathID+"></div>"+
+        "<img id=BUSY"+pathID+" src='tiny_red.gif' hidden=true><input type=submit value=Eval>"+
+        "<button onclick='$(\"OUTPUT"+pathID+"\").innerHTML = \"\"; "+
+        "return false;'>Clear</button> <span style='color:orange;'>"+
+        "Auto-Complete on Property Names is Shift-Space</span> "+
+        "<button onclick='prompt(\"params:\"); return false;'>Params</button> "+
+        "<button onclick='prompt(\"source:\",\""+className+"\"); return false;' "+
+        "id=SOURCE"+pathID+(prompt("known:",className)?"":" disabled=true")+">"+
+        "Source</button></form><div id=OUTPUT"+pathID+"></div>";
+    editors[pathID] = CodeMirror($("EDITOR"+pathID), {
+                   value: code,
+                   lineNumbers: true,
+                   mode: "javascript",
+                   keyMap: "sublime",
+                   autoCloseBrackets: true,
+                   extraKeys: {"Shift-Space": "autocomplete"},
+                   matchBrackets: true,
+                   showCursorWhenSelecting: true,
+                   theme: "monokai"
+                   });
+
+    sendClient("complete:", pathID);
+}
+
+var dt = new Date();
+dt.setTime(dt.getTime()+90.*24*60*60*1000);
+
+function evalCode(pathID,className,isSwift,code) {
+    var code = encodeURI(editors[pathID].getValue()).replace(";","%3B");
+    document.cookie = className+"="+code+"; expires="+dt.toGMTString()+";";
+    sendClient("eval:",pathID+"^"+className+"^"+isSwift+"^"+code);
+    $("BUSY"+pathID).hidden = false;
+}
+
+var properties= [];
+
+(function(mod) {
+ if (typeof exports == "object" && typeof module == "object") // CommonJS
+    mod(require("../../lib/codemirror"));
+ else if (typeof define == "function" && define.amd) // AMD
+    define(["../../lib/codemirror"], mod);
+ else // Plain browser env
+    mod(CodeMirror);
+ })(function(CodeMirror) {
+    var Pos = CodeMirror.Pos;
+
+    function scriptHint(editor, getToken, options) {
+        // Find the token at the cursor
+        var cur = editor.getCursor(), token = getToken(editor, cur), tprop = token;
+        var filtered = [];
+        for ( var i=0 ; i<properties.length ; i++ )
+            if ( properties[i].search(token.string) >= 0 )
+                filtered.push( properties[i] );
+        return {list: filtered,
+            from: Pos(cur.line, token.string=="."?token.end:token.start),
+            to: Pos(cur.line, token.end)};
+    }
+
+    function javascriptHint(editor, options) {
+        return scriptHint(editor,
+                      function (e, cur) {return e.getTokenAt(cur);},
+                      options);
+    };
+    CodeMirror.registerHelper("hint", "javascript", javascriptHint);
+});
+
+</script></head><body><div id=sweepDisplay>
+<h3>Xprobe Object Viewer</h3>
+
+If you are seeing this screen you need to perform an object search using by entering a class name<br>
+pattern into the search field or calling [Xprobe search:@"pattern"] after your app has connected.
+</div>

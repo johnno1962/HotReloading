@@ -10,6 +10,7 @@ let package = Package(
     products: [
         .library(name: "HotReloading", targets: ["HotReloading"]),
         .library(name: "HotReloadingGuts", targets: ["HotReloadingGuts"]),
+        .library(name: "injectiondGuts", targets: ["injectiondGuts"]),
         .executable(name: "injectiond", targets: ["injectiond"]),
     ],
     dependencies: [
@@ -21,6 +22,7 @@ let package = Package(
     targets: [
         .target(name: "HotReloading", dependencies: ["HotReloadingGuts", "SwiftTrace"]),
         .target(name: "HotReloadingGuts", dependencies: []),
-        .target(name: "injectiond", dependencies: ["HotReloadingGuts", "SwiftRegex"]),
+        .target(name: "injectiondGuts", dependencies: []),
+        .target(name: "injectiond", dependencies: ["HotReloadingGuts", "injectiondGuts", "SwiftRegex"]),
     ]
 )

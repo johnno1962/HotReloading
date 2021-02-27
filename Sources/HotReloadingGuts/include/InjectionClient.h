@@ -9,18 +9,32 @@
 #import "SimpleSocket.h"
 #import "UserDefaults.h"
 #import "SignerService.h"
-#define INJECTION_SALT 2122172543
+#import <mach-o/dyld.h>
 #ifndef __IPHONE_OS_VERSION_MIN_REQUIRED
 #import <AppKit/NSWorkspace.h>
 #import <libproc.h>
 #endif
 
-@interface NSObject(RunXCTestCase)
+#import "Xprobe.h"
+//#import "Xtrace.h"
+
+#define INJECTION_SALT 2122172543
+extern NSString *INJECTION_KEY;
+
+@interface Cobblers
+@property BOOL vaccineEnabled;
++ (Cobblers *)sharedInstance;
+- (void)vaccine:object;
++ (void)flash:vc;
+- (void)rebuildWithStoryboard:(NSString *)changed error:(NSError **)err;
+@end
+
+@interface NSObject(HotReloading)
 + (void)runXCTestCase:(Class)aTestCase;
++ (BOOL)injectUI:(NSString *)changed;
 @end
 
 #define INJECTION_ADDRESS @":8899"
-#define INJECTION_KEY @"bvijkijyhbtrbrebzjbbzcfbbvvq"
 #define FRAMEWORK_DELIMITER @","
 #define CALLORDER_DELIMITER @"---"
 

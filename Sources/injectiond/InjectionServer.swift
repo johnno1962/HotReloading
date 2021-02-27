@@ -5,17 +5,19 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#2 $
+//  $Id: //depot/ResidentEval/InjectionIII/InjectionServer.swift#77 $
 //
+
+import Cocoa
+#if SWIFT_PACKAGE
+import HotReloadingGuts
+#endif
 
 let commandQueue = DispatchQueue(label: "InjectionCommand")
 let compileQueue = DispatchQueue(label: "InjectionCompile")
 
 var projectInjected = [String: [String: TimeInterval]]()
 let MIN_INJECTION_INTERVAL = 1.0
-
-import Foundation
-import HotReloadingGuts
 
 public class InjectionServer: SimpleSocket {
     var fileChangeHandler: ((_ changed: NSArray, _ ideProcPath:String) -> Void)!
@@ -27,20 +29,19 @@ public class InjectionServer: SimpleSocket {
     override public class func error(_ message: String) -> Int32 {
         let saveno = errno
         DispatchQueue.main.sync {
-            NSLog(message, strerror(saveno))
-//            let alert: NSAlert = NSAlert()
-//            alert.messageText = "Injection Error"
-//            alert.informativeText = String(format:message, strerror(saveno))
-//            alert.alertStyle = NSAlert.Style.warning
-//            alert.addButton(withTitle: "OK")
-//            _ = alert.runModal()
+            let alert: NSAlert = NSAlert()
+            alert.messageText = "Injection Error"
+            alert.informativeText = String(format:message, strerror(saveno))
+            alert.alertStyle = NSAlert.Style.warning
+            alert.addButton(withTitle: "OK")
+            _ = alert.runModal()
         }
         return -1
     }
 
     func sendCommand(_ command: InjectionCommand, with string: String?) {
-        commandQueue.async {
-            _ = self.writeCommand(command.rawValue, with: string)
+        commandQueue.sync {
+            _ = writeCommand(command.rawValue, with: string)
         }
     }
 
@@ -48,9 +49,9 @@ public class InjectionServer: SimpleSocket {
         var candiateProjectFile = appDelegate.selectedProject
 
         if candiateProjectFile == nil {
-//            DispatchQueue.main.sync {
-//                appDelegate.openProject(self)
-//            }
+            DispatchQueue.main.sync {
+                appDelegate.openProject(self)
+            }
             candiateProjectFile = appDelegate.selectedProject
         }
         guard let projectFile = candiateProjectFile else {
@@ -61,7 +62,7 @@ public class InjectionServer: SimpleSocket {
 
         // tell client app the inferred project being watched
         if readInt() != INJECTION_SALT || readString() != INJECTION_KEY {
-            sendCommand(.invalid, with: nil)
+            write(InjectionCommand.invalid.rawValue)
             return
         }
 
@@ -186,12 +187,12 @@ public class InjectionServer: SimpleSocket {
         // start up file watchers to write generated tmpfile path to client app
         setProject(projectFile)
 
-//        DispatchQueue.main.sync {
-//            appDelegate.updateTraceInclude(nil)
-//            appDelegate.updateTraceExclude(nil)
-//            appDelegate.toggleFeedback(nil)
-//            appDelegate.toggleLookup(nil)
-//        }
+        DispatchQueue.main.sync {
+            appDelegate.updateTraceInclude(nil)
+            appDelegate.updateTraceExclude(nil)
+            appDelegate.toggleFeedback(nil)
+            appDelegate.toggleLookup(nil)
+        }
 
         // read status requests from client app
         commandLoop:
@@ -213,29 +214,31 @@ public class InjectionServer: SimpleSocket {
                 appDelegate.setMenuIcon("InjectionOK")
                 if appDelegate.frontItem.state == .on {
                     print(executable)
-//                    let appToOrderFront: URL
-//                    if executable.contains("/MacOS/") {
-//                        appToOrderFront = URL(fileURLWithPath: executable)
-//                            .deletingLastPathComponent()
-//                            .deletingLastPathComponent()
-//                            .deletingLastPathComponent()
-//                    } else {
-//                        appToOrderFront = URL(fileURLWithPath: builder.xcodeDev)
-//                            .appendingPathComponent("Applications/Simulator.app")
-//                    }
-//                    NSWorkspace.shared.open(appToOrderFront)
+                    let appToOrderFront: URL
+                    if executable.contains("/MacOS/") {
+                        appToOrderFront = URL(fileURLWithPath: executable)
+                            .deletingLastPathComponent()
+                            .deletingLastPathComponent()
+                            .deletingLastPathComponent()
+                    } else {
+                        appToOrderFront = URL(fileURLWithPath: builder.xcodeDev)
+                            .appendingPathComponent("Applications/Simulator.app")
+                    }
+                    NSWorkspace.shared.open(appToOrderFront)
                 }
                 break
             case .pause:
                 pause = NSDate.timeIntervalSinceReferenceDate + Double(readString() ?? "0.0")!
                 break
             case .sign:
-//                if !appDelegate.isSandboxed && xprobePlugin == nil {
-//                    sendCommand(.signed, with: "0")
-//                    break
-//                }
+                #if !SWIFT_PACKAGE
+                if !appDelegate.isSandboxed && xprobePlugin == nil {
+                    sendCommand(.signed, with: "0")
+                    break
+                }
                 sendCommand(.signed, with: builder
                                 .signer!(readString() ?? "") ? "1": "0")
+                #endif
                 break
             case .callOrderList:
                 if let calls = readString()?
@@ -265,15 +268,17 @@ public class InjectionServer: SimpleSocket {
         appDelegate.setMenuIcon("InjectionBusy")
         if appDelegate.isSandboxed ||
             source.hasSuffix(".storyboard") || source.hasSuffix(".xib") {
+            #if SWIFT_PACKAGE
+            try? source.write(toFile: "/tmp/injecting_storyboard.txt",
+                              atomically: false, encoding: .utf8)
+            #endif
             sendCommand(.inject, with: source)
         } else {
             compileQueue.async {
-                do {
-                    let dylib = try self.builder.rebuildClass(oldClass: nil,
-                                           classNameOrFile: source, extra: nil)
+                if let dylib = try? self.builder.rebuildClass(oldClass: nil,
+                                       classNameOrFile: source, extra: nil) {
                     self.sendCommand(.load, with: dylib)
-                } catch {
-                    self.sendCommand(.log, with:"Build error: \(error)")
+                } else {
                     appDelegate.setMenuIcon("InjectionError")
                 }
             }

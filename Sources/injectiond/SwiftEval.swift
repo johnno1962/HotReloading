@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#2 $
+//  $Id: //depot/ResidentEval/InjectionBundle/SwiftEval.swift#167 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -16,7 +16,11 @@
 #if arch(x86_64) || arch(i386) || arch(arm64) // simulator/macOS only
 import Foundation
 
+#if SWIFT_PACKAGE
 let prefix = "🔥 "
+#else
+let prefix = "💉 "
+#endif
 
 private func debug(_ str: String) {
 //    print(str)
@@ -141,7 +145,7 @@ fileprivate extension StringProtocol {
     }
 }
 
-@objc
+@objc(SwiftEval)
 public class SwiftEval: NSObject {
 
     static var instance = SwiftEval()
@@ -852,7 +856,7 @@ public class SwiftEval: NSObject {
     }
     #endif
 
-    #if DEBUG
+    #if DEBUG && !SWIFT_PACKAGE
     deinit {
         NSLog("\(self).deinit()")
     }

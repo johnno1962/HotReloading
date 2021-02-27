@@ -16,3 +16,4 @@ static NSString *const UserDefaultsUpdateCheck = @"nextUpdateCheck";
 static NSString *const UserDefaultsOrderFront = @"orderFront";
 static NSString *const UserDefaultsFeedback = @"feedback";
 static NSString *const UserDefaultsLookup = @"typeLookup";
+static NSString *const UserDefaultsRemote = @"appRemote";

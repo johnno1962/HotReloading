@@ -101,7 +101,7 @@ public class HotReloading: SimpleSocket {
                     writeCommand(InjectionResponse.complete.rawValue, with: nil)
                 }
             case .invalid:
-                print("\(prefix)Invalid INJECTION_SALT")
+                print("\(prefix)⚠️ Server has rejected your connection. Are you running start_daemon.sh from the right directory? ⚠️")
             case .quietInclude:
                 SwiftTrace.traceFilterInclude = readString()
             case .include:

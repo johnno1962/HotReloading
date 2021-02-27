@@ -15,7 +15,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/johnno1962/SwiftTrace",
-                 .upToNextMajor(from: "7.0.0")),
+                 .upToNextMajor(from: "7.0.1")),
         .package(url: "https://github.com/johnno1962/SwiftRegex5",
                  .upToNextMajor(from: "5.2.1")),
     ],

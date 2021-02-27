@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/ResidentEval/InjectionIII/InjectionServer.swift#77 $
+//  $Id: //depot/ResidentEval/InjectionIII/InjectionServer.swift#81 $
 //
 
 import Cocoa
@@ -302,17 +302,21 @@ public class InjectionServer: SimpleSocket {
         guard fileChangeHandler != nil else { return }
 
         builder?.projectFile = projectFile
-//        let projectName = URL(fileURLWithPath: projectFile)
-//            .deletingPathExtension().lastPathComponent
-//        let derivedLogs = String(format:
-//            "%@/Library/Developer/Xcode/DerivedData/%@-%@/Logs/Build",
-//                                 NSHomeDirectory(), projectName
-//                                    .replacingOccurrences(of: #"[\s]+"#, with:"_",
-//                                                   options: .regularExpression),
-//            XcodeHash.hashString(forPath: projectFile))
-//        if FileManager.default.fileExists(atPath: derivedLogs) {
-//            builder?.derivedLogs = derivedLogs
-//        }
+        #if !SWIFT_PACKAGE
+        let projectName = URL(fileURLWithPath: projectFile)
+            .deletingPathExtension().lastPathComponent
+        let derivedLogs = String(format:
+            "%@/Library/Developer/Xcode/DerivedData/%@-%@/Logs/Build",
+                                 NSHomeDirectory(), projectName
+                                    .replacingOccurrences(of: #"[\s]+"#, with:"_",
+                                                   options: .regularExpression),
+            XcodeHash.hashString(forPath: projectFile))
+        #else
+        let derivedLogs = appDelegate.derivedLogs ?? "No derived logs"
+        #endif
+        if FileManager.default.fileExists(atPath: derivedLogs) {
+            builder?.derivedLogs = derivedLogs
+        }
 
         sendCommand(.vaccineSettingChanged,
                     with:appDelegate.vaccineConfiguration())

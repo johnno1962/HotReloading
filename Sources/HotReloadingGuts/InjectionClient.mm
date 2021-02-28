@@ -1,3 +1,14 @@
+//
+//  InjectionClient.mm
+//  HotReloading
+//
+//  Created by John Holdsworth on 02/24/2021.
+//  Copyright © 2021 John Holdsworth. All rights reserved.
+//
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/InjectionClient.mm#2 $
+//
+//  Server daemon side of HotReloading simulating InjectionIII.app.
+//
 
 #import "InjectionClient.h"
 #import <XCTest/XCTest.h>
@@ -42,6 +53,25 @@ NSString *INJECTION_KEY = @__FILE__;
     [suite0 addTest:suite];
     [suite0 performTest:tr];
 }
+@end
+
+@implementation Xprobe(Seeding)
+#ifdef __IPHONE_OS_VERSION_MIN_REQUIRED
++ (NSArray *)xprobeSeeds {
+    UIApplication *app = [UIApplication sharedApplication];
+    NSMutableArray *seeds = [[app windows] mutableCopy];
+    [seeds insertObject:app atIndex:0];
+    return seeds;
+}
+#else
++ (NSArray *)xprobeSeeds {
+    NSApplication *app = [NSApplication sharedApplication];
+    NSMutableArray *seeds = [[app windows] mutableCopy];
+    if ( app.delegate )
+        [seeds insertObject:app.delegate atIndex:0];
+    return seeds;
+}
+#endif
 @end
 
 #ifdef __IPHONE_OS_VERSION_MIN_REQUIRED
@@ -169,22 +199,3 @@ static struct {
 }
 @end
 #endif
-
-@implementation Xprobe(Seeding)
-#ifdef __IPHONE_OS_VERSION_MIN_REQUIRED
-+ (NSArray *)xprobeSeeds {
-    UIApplication *app = [UIApplication sharedApplication];
-    NSMutableArray *seeds = [[app windows] mutableCopy];
-    [seeds insertObject:app atIndex:0];
-    return seeds;
-}
-#else
-+ (NSArray *)xprobeSeeds {
-    NSApplication *app = [NSApplication sharedApplication];
-    NSMutableArray *seeds = [[app windows] mutableCopy];
-    if ( app.delegate )
-        [seeds insertObject:app.delegate atIndex:0];
-    return seeds;
-}
-#endif
-@end

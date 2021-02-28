@@ -1134,9 +1134,9 @@ static OSSpinLock edgeLock;
 
     [html appendFormat:@" <a href=\\'#\\' onclick=\\'sendClient(\"close:\",\"%d\"); return false;\\'>close</a>", pathID];
 
-    Class injectionLoader = NSClassFromString(@"BundleInjection");
+    Class injectionLoader = NSClassFromString(@"HotReloading");
     if ( [injectionLoader respondsToSelector:@selector(connectedAddress)] ) {
-        BOOL injectionConnected = TRUE || [injectionLoader connectedAddress] != NULL;
+        BOOL injectionConnected = [injectionLoader connectedAddress] != NULL;
 
         Class myClass = [self class];
         [html appendFormat:@"<br/><span><button onclick=\"evalForm(this.parentElement,%d,\\'%@\\',%d);"

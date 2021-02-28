@@ -5,12 +5,12 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/ResidentEval/InjectionIII/InjectionServer.swift#84 $
+//  $Id: //depot/ResidentEval/InjectionIII/InjectionServer.swift#87 $
 //
 
 import Cocoa
 #if SWIFT_PACKAGE
-import HotReloadingGuts
+import injectiondGuts
 #endif
 
 let commandQueue = DispatchQueue(label: "InjectionCommand")
@@ -233,15 +233,12 @@ public class InjectionServer: SimpleSocket {
                 pause = NSDate.timeIntervalSinceReferenceDate + Double(readString() ?? "0.0")!
                 break
             case .sign:
-                #if !SWIFT_PACKAGE
                 if !appDelegate.isSandboxed && xprobePlugin == nil {
                     sendCommand(.signed, with: "0")
                     break
                 }
                 sendCommand(.signed, with: builder
                                 .signer!(readString() ?? "") ? "1": "0")
-                #endif
-                break
             case .callOrderList:
                 if let calls = readString()?
                     .components(separatedBy: CALLORDER_DELIMITER) {

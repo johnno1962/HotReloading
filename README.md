@@ -25,7 +25,7 @@ To work on the hot reloading code, clone this repo and drag its
 directory into your project in Xcode and it will take the place of
 the Swift Package when you build your app.
 
-### Acknowledgements
+### Thanks to...
 
 This project includes code for video capture adapted from
 [acj/TimeLapseBuilder-Swift](https://github.com/acj/TimeLapseBuilder-Swift)
@@ -47,4 +47,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2021/02/27 $
+$Date: 2021/02/28 $

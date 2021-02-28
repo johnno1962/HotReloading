@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/HotReloading.swift#8 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/HotReloading.swift#10 $
 //
 //  Client app side of HotReloading started by +load
 //  method in HotReloadingGuts/InjectionClient.mm
@@ -19,10 +19,14 @@ import HotReloadingGuts
 @objc(HotReloading)
 public class HotReloading: SimpleSocket {
 
+    @objc class func connectedAddress() -> String {
+        return "127.0.0.1"
+    }
+
     public override func runInBackground() {
         let builder = SwiftInjectionEval.sharedInstance()
         builder.tmpDir = NSTemporaryDirectory()
-        
+
         write(INJECTION_SALT)
         write(INJECTION_KEY)
 
@@ -64,6 +68,12 @@ public class HotReloading: SimpleSocket {
             frameworkPaths = imageMap;
         }
 
+        builder.signer = { dylib -> Bool in
+            self.writeCommand(InjectionResponse.sign.rawValue, with: dylib)
+            return self.readInt() == InjectionCommand.signed.rawValue &&
+                self.readString() == "1"
+        }
+
         while let command = InjectionCommand(rawValue: readInt()),
               command != .EOF {
             switch command {
@@ -83,23 +93,21 @@ public class HotReloading: SimpleSocket {
             case .ideProcPath:
                 builder.lastIdeProcPath = readString() ?? ""
             case .load:
-                if let changed = self.readString() {
-                    DispatchQueue.main.sync {
-                        do {
-                            try SwiftInjection.inject(tmpfile: changed)
-                        } catch {
-                            print(error)
-                        }
+                guard let changed = self.readString() else { break }
+                DispatchQueue.main.sync {
+                    do {
+                        try SwiftInjection.inject(tmpfile: changed)
+                    } catch {
+                        print(error)
                     }
-                    writeCommand(InjectionResponse.complete.rawValue, with: nil)
                 }
+                writeCommand(InjectionResponse.complete.rawValue, with: nil)
             case .inject:
-                if let changed = readString() {
-                    DispatchQueue.main.sync {
-                        _ = NSObject.injectUI(changed)
-                    }
-                    writeCommand(InjectionResponse.complete.rawValue, with: nil)
+                guard let changed = readString() else { break }
+                DispatchQueue.main.sync {
+                    _ = NSObject.injectUI(changed)
                 }
+                writeCommand(InjectionResponse.complete.rawValue, with: nil)
             case .invalid:
                 print("\(prefix)⚠️ Server has rejected your connection. Are you running start_daemon.sh from the right directory? ⚠️")
             case .quietInclude:
@@ -110,7 +118,6 @@ public class HotReloading: SimpleSocket {
             case .exclude:
                 SwiftTrace.traceFilterExclude = readString()
                 filteringChanged()
-                _ = readString()
             case .feedback:
                 SwiftInjection.traceInjection = readString() == "1"
             case .lookup:
@@ -119,6 +126,7 @@ public class HotReloading: SimpleSocket {
                     print("\(prefix)Discovery of target app's types switched \(SwiftTrace.typeLookup ? "on" : "off")");
                 }
             case .xprobe:
+                _ = readString()
                 Xprobe.connect(to: nil, retainObjects:true)
                 Xprobe.search("")
             case .trace:
@@ -195,19 +203,20 @@ public class HotReloading: SimpleSocket {
                 writeCommand(InjectionResponse.callOrderList.rawValue,
                              with:SwiftInjection.callOrder().joined(separator: CALLORDER_DELIMITER))
                 needsTracing()
+            case .signed:
+                write(readString() ?? "0")
             case .eval:
                 let parts = readString()?.components(separatedBy:"^")
-                print(parts)
                 DispatchQueue.main.sync {
                     if let parts = parts,
                        let pathID = Int(parts[0]) {
-                        writeCommand(InjectionResponse.pause.rawValue, with:"5")
+                        self.writeCommand(InjectionResponse.pause.rawValue, with:"5")
                         if let object = (xprobePaths[pathID] as? XprobePath)?
                             .object() as? NSObject, object.responds(to: Selector(("swiftEvalWithCode:"))),
-                           let code = (parts[3] as NSString).removingPercentEncoding {
-                            _ = object.swiftEval(code: code)
+                           let code = (parts[3] as NSString).removingPercentEncoding,
+                           object.swiftEval(code: code) {
                         } else {
-                            print("\(prefix)Xprobe: Eval only works on NSObject subclasses")
+                            print("\(prefix)Xprobe: Eval only works on NSObject subclasses where the source file has the same name as the class and is in your project.")
                         }
                         Xprobe.write("$('BUSY\(pathID)').hidden = true; ")
                     }

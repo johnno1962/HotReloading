@@ -1,31 +1,33 @@
 //
-//  InjectionClient.mm
-//  HotReloading
+//  ClientBoot.mm
+//  InjectionIII
 //
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/InjectionClient.mm#2 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#10 $
 //
-//  Server daemon side of HotReloading simulating InjectionIII.app.
+//  Initiate connection to server side of InjectionIII/HotReloading.
 //
 
 #import "InjectionClient.h"
 #import <XCTest/XCTest.h>
 #import <objc/runtime.h>
 
+#ifndef INJECTION_III_APP
 NSString *INJECTION_KEY = @__FILE__;
+#endif
 
-@interface ClientBoot: NSObject
+#if defined(DEBUG) || defined(INJECTION_III_APP)
+@interface BundleInjection: NSObject
 @end
-
-@implementation ClientBoot
+@implementation BundleInjection
 
 + (void)load {
-    if (Class clientClass = objc_getClass("HotReloading"))
-        for (int i = 0, retrys = 5; i<retrys; i++) {
-            if (InjectionClient *client = [clientClass
-                                           connectTo:INJECTION_ADDRESS]) {
+    if (Class clientClass = objc_getClass("InjectionClient"))
+        for (int i=0, retrys=3; i<retrys; i++) {
+            if (SimpleSocket *client = [clientClass
+                                        connectTo:@INJECTION_ADDRESS]) {
                 [client run];
                 return;
             }
@@ -33,17 +35,24 @@ NSString *INJECTION_KEY = @__FILE__;
                 sleep(1);
         }
 
-    printf("🔥 ⚠️ HotReloading loaded but could not connect. Is injectiond running? ⚠️\n"
-           "🔥 Have you added the following \"Run Script\" build phase to your project?\n"
+#ifdef INJECTION_III_APP
+    printf(APP_PREFIX"Injection loaded but could not connect. Is InjectionIII.app running?\n");
+#else
+    printf(APP_PREFIX"⚠️ HotReloading loaded but could not connect. Is injectiond running? ⚠️\n"
+           APP_PREFIX"Have you added the following \"Run Script\" build phase to your project?\n"
            "$SYMROOT/../../SourcePackages/checkouts/HotReloading/start_daemon.sh\n");
+#endif
 #ifndef __IPHONE_OS_VERSION_MIN_REQUIRED
-    printf("🔥 ⚠️ For a macOS app you need to turn off the sandbox to connect. ⚠️\n");
+    printf(APP_PREFIX"⚠️ For a macOS app you need to turn off the sandbox to connect. ⚠️\n");
 #endif
 }
 
++ (const char *)connectedAddress {
+    return "127.0.0.1";
+}
 @end
 
-@implementation NSObject(RunXCTestCase)
+@implementation NSObject (RunXCTestCase)
 + (void)runXCTestCase:(Class)aTestCase {
     Class _XCTestSuite = objc_getClass("XCTestSuite");
     XCTestSuite *suite0 = [_XCTestSuite testSuiteWithName: @"InjectedTest"];
@@ -56,30 +65,23 @@ NSString *INJECTION_KEY = @__FILE__;
 @end
 
 @implementation Xprobe(Seeding)
-#ifdef __IPHONE_OS_VERSION_MIN_REQUIRED
 + (NSArray *)xprobeSeeds {
+    #ifdef __IPHONE_OS_VERSION_MIN_REQUIRED
     UIApplication *app = [UIApplication sharedApplication];
     NSMutableArray *seeds = [[app windows] mutableCopy];
     [seeds insertObject:app atIndex:0];
-    return seeds;
-}
-#else
-+ (NSArray *)xprobeSeeds {
+    #else
     NSApplication *app = [NSApplication sharedApplication];
     NSMutableArray *seeds = [[app windows] mutableCopy];
     if ( app.delegate )
         [seeds insertObject:app.delegate atIndex:0];
+    #endif
     return seeds;
 }
-#endif
 @end
+#endif
 
 #ifdef __IPHONE_OS_VERSION_MIN_REQUIRED
-@interface NSObject (Remapped)
-+ (void)addMappingFromIdentifier:(NSString *)identifier toObject:(id)object forCoder:(id)coder;
-+ (id)mappedObjectForCoder:(id)decoder withIdentifier:(NSString *)identifier;
-@end
-
 @interface UIViewController (StoryboardInjection)
 - (void)_loadViewFromNibNamed:(NSString *)a0 bundle:(NSBundle *)a1;
 @end
@@ -99,6 +101,11 @@ NSString *INJECTION_KEY = @__FILE__;
 }
 @end
 
+@interface NSObject (Remapped)
++ (void)addMappingFromIdentifier:(NSString *)identifier toObject:(id)object forCoder:(id)coder;
++ (id)mappedObjectForCoder:(id)decoder withIdentifier:(NSString *)identifier;
+@end
+
 @implementation NSObject (Remapper)
 
 static struct {
@@ -110,7 +117,7 @@ static struct {
 + (BOOL)injectUI:(NSString *)changed {
     static NSMutableDictionary *allOrder;
     static dispatch_once_t once;
-    printf("🔥 Waiting for rebuild of %s\n", changed.UTF8String);
+    printf(APP_PREFIX"Waiting for rebuild of %s\n", changed.UTF8String);
 
     dispatch_once(&once, ^{
         Class proxyClass = objc_getClass("UIProxyObject");

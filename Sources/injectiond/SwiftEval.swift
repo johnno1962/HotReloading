@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/ResidentEval/InjectionBundle/SwiftEval.swift#169 $
+//  $Id: //depot/ResidentEval/InjectionBundle/SwiftEval.swift#171 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -15,11 +15,8 @@
 
 #if arch(x86_64) || arch(i386) || arch(arm64) // simulator/macOS only
 import Foundation
-
 #if SWIFT_PACKAGE
-let prefix = "🔥 "
-#else
-let prefix = "💉 "
+import HotReloadingGuts
 #endif
 
 private func debug(_ str: String) {
@@ -185,7 +182,7 @@ public class SwiftEval: NSObject {
     /// Error handler
     @objc public var evalError = {
         (_ message: String) -> Error in
-        print("\(prefix)*** \(message) ***")
+        print("\(APP_PREFIX)*** \(message) ***")
         return NSError(domain: "SwiftEval", code: -1, userInfo: [NSLocalizedDescriptionKey: message])
     }
 
@@ -346,8 +343,8 @@ public class SwiftEval: NSObject {
                 let escaped = normalised.escaping("' ${}()&*~")
                 if filepath != escaped {
                     print("""
-                            \(prefix)Mapped: \(filepath)
-                            \(prefix)... to: \(escaped)
+                            \(APP_PREFIX)Mapped: \(filepath)
+                            \(APP_PREFIX)... to: \(escaped)
                             """)
                     compileCommand = compileCommand
                         .replacingOccurrences(of: filepath, with: escaped,
@@ -397,7 +394,7 @@ public class SwiftEval: NSObject {
                 (cd "\(projectDir.escaping("$"))" && \(compileCommand) -o \"\(tmpfile).o\" >\"\(logfile)\" 2>&1)
                 """) else {
             compileByClass.removeValue(forKey: classNameOrFile)
-            throw evalError("Re-compilation failed (see: \(commandFile)\n\(try! String(contentsOfFile: logfile))")
+            throw evalError("Re-compilation failed (see: \(commandFile)\n\((try? String(contentsOfFile: logfile)) ?? "Cannot read log file '\(logfile)'")")
         }
 
         compileByClass[classNameOrFile] = (compileCommand, sourceFile)
@@ -485,15 +482,15 @@ public class SwiftEval: NSObject {
 
         _ = loadXCTest
 
-        print("\(prefix)Loading .dylib ...")
+        print("\(APP_PREFIX)Loading .dylib ...")
         // load patched .dylib into process with new version of class
         guard let dl = dlopen("\(tmpfile).dylib", RTLD_NOW) else {
             let error = String(cString: dlerror())
             if error.contains("___llvm_profile_runtime") {
-                print("\(prefix)Loading .dylib has failed, try turning off collection of test coverage in your scheme")
+                print("\(APP_PREFIX)Loading .dylib has failed, try turning off collection of test coverage in your scheme")
             } else if error.contains("Symbol not found:") {
                 print("""
-                    \(prefix)Loading .dylib has failed, This may be because Swift \
+                    \(APP_PREFIX)Loading .dylib has failed, This may be because Swift \
                     code being injected refers to a function with a default \
                     argument. Consult the section in the README at \
                     https://github.com/johnno1962/InjectionIII about \
@@ -502,7 +499,7 @@ public class SwiftEval: NSObject {
             }
             throw evalError("dlopen() error: \(error)")
         }
-        print("\(prefix)Loaded .dylib - Ignore any duplicate class warning ^")
+        print("\(APP_PREFIX)Loaded .dylib - Ignore any duplicate class warning ^")
 
         if oldClass != nil {
             // find patched version of class using symbol for existing

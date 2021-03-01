@@ -23,7 +23,7 @@ cwdbuff.withUnsafeMutableBufferPointer {
     symlink("\(clone)/Contents", ".build/debug/Contents")
 }
 
-// launch like a normal Cocoa app
+// launch as a normal Cocoa app
 var argv = CommandLine.arguments.map { $0.withCString { strdup($0) } }
 
 argv.withUnsafeMutableBufferPointer {

@@ -1,13 +1,13 @@
 //
-//  HotReloading.swift
+//  InjectionClient.h
 //  InjectionBundle
 //
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#8 $
+//  $Id: //depot/ResidentEval/InjectionBundle/InjectionClient.h#25 $
 //
-//  Server daemon side of HotReloading simulating InjectionIII.app.
+//  Shared definitions between server and client.
 //
 
 #import "SimpleSocket.h"
@@ -19,14 +19,24 @@
 #endif
 
 #import "Xprobe.h"
-//#import "Xtrace.h"
 
+#ifdef INJECTION_III_APP
+#define INJECTION_ADDRESS ":8898"
+#import "/tmp/InjectionSalt.h"
+#define INJECTION_KEY @"bvijkijyhbtrbrebzjbbzcfbbvvq"
+#define APP_NAME "InjectionIII"
+#define APP_PREFIX "💉 "
+#else
+#define INJECTION_ADDRESS ":8899"
 #define INJECTION_SALT 2122172543
 extern NSString *INJECTION_KEY;
+#define APP_NAME "HotReloading"
+#define APP_PREFIX "🔥 "
+#endif
 
-@interface Cobblers
+@interface InjectionClientLegacy
 @property BOOL vaccineEnabled;
-+ (Cobblers *)sharedInstance;
++ (InjectionClientLegacy *)sharedInstance;
 - (void)vaccine:object;
 + (void)flash:vc;
 - (void)rebuildWithStoryboard:(NSString *)changed error:(NSError **)err;
@@ -37,13 +47,8 @@ extern NSString *INJECTION_KEY;
 + (BOOL)injectUI:(NSString *)changed;
 @end
 
-#define INJECTION_ADDRESS @":8899"
 #define FRAMEWORK_DELIMITER @","
 #define CALLORDER_DELIMITER @"---"
-
-@interface InjectionClient : SimpleSocket
-
-@end
 
 typedef NS_ENUM(int, InjectionCommand) {
     // commands to Bundle
@@ -91,4 +96,3 @@ typedef NS_ENUM(int, InjectionResponse) {
 
     InjectionExit = ~0
 };
-

@@ -1,23 +1,45 @@
 //
-//  HotReloading.swift
-//  HotReloading
+//  InjectionClient.swift
+//  InjectionIII
 //
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/HotReloading.swift#10 $
+//  $Id: //depot/ResidentEval/InjectionBundle/InjectionClient.swift#5 $
 //
 //  Client app side of HotReloading started by +load
-//  method in HotReloadingGuts/InjectionClient.mm
+//  method in HotReloadingGuts/ClientBoot.mm
 //
 
 import Foundation
 import SwiftTrace
+#if SWIFT_PACKAGE
 import SwiftTraceGuts
 import HotReloadingGuts
+#endif
 
-@objc(HotReloading)
-public class HotReloading: SimpleSocket {
+extension Xprobe {
+    #if os(macOS)
+    @objc class func xprobeSeeds() -> NSArray {
+        let app = NSApplication.shared
+        var seeds: [Any] = app.windows
+        if let delegate = app.delegate {
+            seeds.insert(delegate, at:0)
+        }
+        return seeds as NSArray
+    }
+    #else
+    @objc class func xprobeSeeds() -> NSArray {
+        let app = UIApplication.shared
+        var seeds: [Any] = app.windows
+        seeds.insert(app, at:0)
+        return seeds as NSArray
+    }
+    #endif
+}
+
+@objc(InjectionClient)
+public class InjectionClient: SimpleSocket {
 
     @objc class func connectedAddress() -> String {
         return "127.0.0.1"
@@ -26,7 +48,7 @@ public class HotReloading: SimpleSocket {
     public override func runInBackground() {
         let builder = SwiftInjectionEval.sharedInstance()
         builder.tmpDir = NSTemporaryDirectory()
-
+        
         write(INJECTION_SALT)
         write(INJECTION_KEY)
 
@@ -42,7 +64,6 @@ public class HotReloading: SimpleSocket {
         if (!isPlugin) {
             var frameworks = [String]()
             var sysFrameworks = [String]()
-            var imageMap = [String: String]()
             let bundleFrameworks = frameworksPath
 
             for i in stride(from: _dyld_image_count()-1, through: 0, by: -1) {
@@ -52,7 +73,7 @@ public class HotReloading: SimpleSocket {
                 }
                 let imagePath = String(cString: imageName)
                 let frameworkName = URL(fileURLWithPath: imagePath).lastPathComponent
-                imageMap[frameworkName] = imagePath
+                frameworkPaths[frameworkName] = imagePath
                 if String(cString: imageName).hasPrefix(bundleFrameworks) {
                     frameworks.append(frameworkName)
                 } else {
@@ -65,13 +86,22 @@ public class HotReloading: SimpleSocket {
             write(sysFrameworks.joined(separator: FRAMEWORK_DELIMITER))
             write(SwiftInjection.packageNames()
                     .joined(separator: FRAMEWORK_DELIMITER))
-            frameworkPaths = imageMap;
         }
+
+        processCommands(builder: builder, frameworkPaths)
+
+        print("\(APP_PREFIX)\(APP_NAME) disconnected.")
+    }
+
+    func processCommands(builder: SwiftEval, _ frameworkPaths: [String: String]) {
+        var codesignStatusPipe = [Int32](repeating: 0, count: 2)
+        pipe(&codesignStatusPipe)
+        let reader = SimpleSocket(socket: codesignStatusPipe[0])
+        let writer = SimpleSocket(socket: codesignStatusPipe[1])
 
         builder.signer = { dylib -> Bool in
             self.writeCommand(InjectionResponse.sign.rawValue, with: dylib)
-            return self.readInt() == InjectionCommand.signed.rawValue &&
-                self.readString() == "1"
+            return reader.readString() == "1"
         }
 
         while let command = InjectionCommand(rawValue: readInt()),
@@ -85,31 +115,15 @@ public class HotReloading: SimpleSocket {
             case .connected:
                 builder.projectFile = readString() ?? "Missing project"
                 builder.derivedLogs = nil;
-                print("\(prefix)HotReloading connected \(builder.projectFile!)")
+                print("\(APP_PREFIX)\(APP_NAME) connected \(builder.projectFile!)")
             case .watching:
-                print("\(prefix)Watching \(readString() ?? "Missing directory")")
+                print("\(APP_PREFIX)Watching files under \(readString() ?? "Missing directory")")
             case .log:
-                print(prefix+(readString() ?? "Missing log message"))
+                print(APP_PREFIX+(readString() ?? "Missing log message"))
             case .ideProcPath:
                 builder.lastIdeProcPath = readString() ?? ""
-            case .load:
-                guard let changed = self.readString() else { break }
-                DispatchQueue.main.sync {
-                    do {
-                        try SwiftInjection.inject(tmpfile: changed)
-                    } catch {
-                        print(error)
-                    }
-                }
-                writeCommand(InjectionResponse.complete.rawValue, with: nil)
-            case .inject:
-                guard let changed = readString() else { break }
-                DispatchQueue.main.sync {
-                    _ = NSObject.injectUI(changed)
-                }
-                writeCommand(InjectionResponse.complete.rawValue, with: nil)
             case .invalid:
-                print("\(prefix)⚠️ Server has rejected your connection. Are you running start_daemon.sh from the right directory? ⚠️")
+                print("\(APP_PREFIX)⚠️ Server has rejected your connection. Are you running start_daemon.sh from the right directory? ⚠️")
             case .quietInclude:
                 SwiftTrace.traceFilterInclude = readString()
             case .include:
@@ -123,45 +137,41 @@ public class HotReloading: SimpleSocket {
             case .lookup:
                 SwiftTrace.typeLookup = readString() == "1"
                 if SwiftTrace.swiftTracing {
-                    print("\(prefix)Discovery of target app's types switched \(SwiftTrace.typeLookup ? "on" : "off")");
+                    print("\(APP_PREFIX)Discovery of target app's types switched \(SwiftTrace.typeLookup ? "on" : "off")");
                 }
-            case .xprobe:
-                _ = readString()
-                Xprobe.connect(to: nil, retainObjects:true)
-                Xprobe.search("")
             case .trace:
                 SwiftTrace.traceMainBundleMethods()
-                print("\(prefix)Added trace to non-final methods of classes in app bundle")
+                print("\(APP_PREFIX)Added trace to non-final methods of classes in app bundle")
             case .untrace:
                 SwiftTrace.removeAllTraces()
             case .traceUI:
                 SwiftTrace.traceMainBundleMethods()
                 SwiftTrace.traceMainBundle()
-                print("\(prefix)Added trace to methods in main bundle\n")
+                print("\(APP_PREFIX)Added trace to methods in main bundle\n")
             case .traceUIKit:
                 DispatchQueue.main.sync {
                     let OSView: AnyClass = (objc_getClass("UIView") ??
                         objc_getClass("NSView")) as! AnyClass
-                    print("\(prefix)Adding trace to the framework containg \(OSView), this will take a while...")
+                    print("\(APP_PREFIX)Adding trace to the framework containg \(OSView), this will take a while...")
                     SwiftTrace.traceBundle(containing: OSView)
-                    print("\(prefix)Completed adding trace.")
+                    print("\(APP_PREFIX)Completed adding trace.")
                 }
             case .traceSwiftUI:
                 if let AnyText = swiftUIBundlePath() {
-                    print("\(prefix)Adding trace to SwiftUI calls.")
+                    print("\(APP_PREFIX)Adding trace to SwiftUI calls.")
                     SwiftTrace.interposeMethods(inBundlePath:AnyText, packageName:nil)
                     filteringChanged()
                 } else {
-                    print("\(prefix)Your app doesn't seem to use SwiftUI.")
+                    print("\(APP_PREFIX)Your app doesn't seem to use SwiftUI.")
                 }
             case .traceFramework:
                 let frameworkName = readString() ?? "Misssing framework"
                 if let frameworkPath = frameworkPaths[frameworkName] {
-                    print("\(prefix)Tracing %s\n", frameworkPath)
+                    print("\(APP_PREFIX)Tracing %s\n", frameworkPath)
                     SwiftTrace.interposeMethods(inBundlePath:frameworkPath, packageName:nil)
                     SwiftTrace.trace(bundlePath:frameworkPath)
                 } else {
-                    print("\(prefix)Tracing package \(frameworkName)")
+                    print("\(APP_PREFIX)Tracing package \(frameworkName)")
                     let mainBundlePath = Bundle.main.executablePath ?? "Missing"
                     SwiftTrace.interposeMethods(inBundlePath:mainBundlePath,
                                                 packageName:frameworkName)
@@ -170,22 +180,22 @@ public class HotReloading: SimpleSocket {
             case .uninterpose:
                 SwiftTrace.revertInterposes()
                 SwiftTrace.removeAllTraces()
-                print("\(prefix)Removed all traces (and injections).")
+                print("\(APP_PREFIX)Removed all traces (and injections).")
                 break;
             case .stats:
                 let top = 200;
                 print("""
 
-                    \(prefix)Sorted top \(top) elapsed time/invocations by method
-                    \(prefix)=================================================
+                    \(APP_PREFIX)Sorted top \(top) elapsed time/invocations by method
+                    \(APP_PREFIX)=================================================
                     """)
                 SwiftInjection.dumpStats(top:top)
                 needsTracing()
             case .callOrder:
                 print("""
 
-                    \(prefix)Function names in the order they were first called:
-                    \(prefix)===================================================
+                    \(APP_PREFIX)Function names in the order they were first called:
+                    \(APP_PREFIX)===================================================
                     """)
                 for signature in SwiftInjection.callOrder() {
                     print(signature)
@@ -193,9 +203,9 @@ public class HotReloading: SimpleSocket {
                 needsTracing()
             case .fileOrder:
                 print("""
-                    \(prefix)Source files in the order they were first referenced:
-                    \(prefix)=====================================================
-                    \(prefix)(Order the source files should be compiled in target)
+                    \(APP_PREFIX)Source files in the order they were first referenced:
+                    \(APP_PREFIX)=====================================================
+                    \(APP_PREFIX)(Order the source files should be compiled in target)
                     """)
                 SwiftInjection.fileOrder()
                 needsTracing()
@@ -204,34 +214,58 @@ public class HotReloading: SimpleSocket {
                              with:SwiftInjection.callOrder().joined(separator: CALLORDER_DELIMITER))
                 needsTracing()
             case .signed:
-                write(readString() ?? "0")
-            case .eval:
-                let parts = readString()?.components(separatedBy:"^")
-                DispatchQueue.main.sync {
-                    if let parts = parts,
-                       let pathID = Int(parts[0]) {
-                        self.writeCommand(InjectionResponse.pause.rawValue, with:"5")
-                        if let object = (xprobePaths[pathID] as? XprobePath)?
-                            .object() as? NSObject, object.responds(to: Selector(("swiftEvalWithCode:"))),
-                           let code = (parts[3] as NSString).removingPercentEncoding,
-                           object.swiftEval(code: code) {
-                        } else {
-                            print("\(prefix)Xprobe: Eval only works on NSObject subclasses where the source file has the same name as the class and is in your project.")
-                        }
-                        Xprobe.write("$('BUSY\(pathID)').hidden = true; ")
-                    }
-                }
+                writer.write(readString() ?? "0")
             default:
-                print("\(prefix)Unimplemented command: \(command.rawValue)")
+                processOnMainThread(command: command, builder: builder)
             }
         }
+    }
 
-        print("\(prefix)HotReloading disconnected.")
+    func processOnMainThread(command: InjectionCommand, builder: SwiftEval) {
+        guard let changed = self.readString() else { return }
+        DispatchQueue.main.async {
+            var err: String?
+            switch command {
+            case .load:
+                do {
+                    try SwiftInjection.inject(tmpfile: changed)
+                } catch {
+                    err = error.localizedDescription
+                }
+            case .inject:
+                if changed.hasSuffix("storyboard") || changed.hasSuffix("xib") {
+                    if !NSObject.injectUI(changed) {
+                        err = "Interface injection failed"
+                    }
+                } else {
+                    SwiftInjection.inject(oldClass:nil, classNameOrFile:changed)
+                }
+            case .xprobe:
+                Xprobe.connect(to: nil, retainObjects:true)
+                Xprobe.search("")
+            case .eval:
+                let parts = changed.components(separatedBy:"^")
+                guard let pathID = Int(parts[0]) else { break }
+                self.writeCommand(InjectionResponse.pause.rawValue, with:"5")
+                if let object = (xprobePaths[pathID] as? XprobePath)?
+                    .object() as? NSObject, object.responds(to: Selector(("swiftEvalWithCode:"))),
+                   let code = (parts[3] as NSString).removingPercentEncoding,
+                   object.swiftEval(code: code) {
+                } else {
+                    print("\(APP_PREFIX)Xprobe: Eval only works on NSObject subclasses where the source file has the same name as the class and is in your project.")
+                }
+                Xprobe.write("$('BUSY\(pathID)').hidden = true; ")
+            default:
+                print("\(APP_PREFIX)Unimplemented command: \(command.rawValue)")
+            }
+            let response: InjectionResponse = err != nil ? .error : .complete
+            self.writeCommand(response.rawValue, with: err)
+        }
     }
 
     func needsTracing() {
-        if SwiftTrace.swiftTracing {
-            print("\(prefix)⚠️ You need to have traced something to gather stats.")
+        if !SwiftTrace.swiftTracing {
+            print("\(APP_PREFIX)⚠️ You need to have traced something to gather stats.")
         }
     }
 
@@ -240,13 +274,13 @@ public class HotReloading: SimpleSocket {
             let exclude = SwiftTrace.traceFilterExclude
             if let include = SwiftTrace.traceFilterInclude {
                 print(String(format: exclude != nil ?
-                   "\(prefix)Filtering trace to include methods matching '%@' but not '%@'." :
-                   "\(prefix)Filtering trace to include methods matching '%@'.",
+                   "\(APP_PREFIX)Filtering trace to include methods matching '%@' but not '%@'." :
+                   "\(APP_PREFIX)Filtering trace to include methods matching '%@'.",
                    include, exclude != nil ? exclude! : ""))
             } else {
                 print(String(format: exclude != nil ?
-                   "\(prefix)Filtering trace to exclude methods matching '%@'." :
-                   "\(prefix)Not filtering trace (Menu Item: 'Set Filters')",
+                   "\(APP_PREFIX)Filtering trace to exclude methods matching '%@'." :
+                   "\(APP_PREFIX)Not filtering trace (Menu Item: 'Set Filters')",
                    exclude != nil ? exclude! : ""))
             }
         }

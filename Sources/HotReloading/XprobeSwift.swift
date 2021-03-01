@@ -7,8 +7,10 @@
 //
 
 import Foundation
+#if SWIFT_PACKAGE
 import HotReloadingGuts
 import SwiftTrace
+#endif
 
 @_silgen_name("swift_EnumCaseName")
 func _getEnumCaseName<T>(_ value: T) -> UnsafePointer<CChar>?

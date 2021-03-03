@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/ResidentEval/InjectionIII/AppDelegate.swift#109 $
+//  $Id: //depot/ResidentEval/InjectionIII/AppDelegate.swift#112 $
 //
 
 import Cocoa
@@ -134,6 +134,8 @@ class AppDelegate : NSObject, NSApplicationDelegate {
 
         NSDocumentController.shared.noteNewRecentDocumentURL(projectURL)
         selectedProject = projectURL.path
+        appDelegate.watchedDirectories
+            .insert(projectURL.deletingLastPathComponent().path)
         for dir in arguments {
             appDelegate.watchedDirectories.insert(dir)
         }

@@ -5,14 +5,20 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
+//  $Id: //depot/ResidentEval/signer/SignerService.m#13 $
+//
 
 #import "SignerService.h"
 
-#ifndef __IPHONE_OS_VERSION_MIN_REQUIRED
 @implementation SignerService
 
 + (BOOL)codesignDylib:(NSString *)dylib identity:(NSString *)identity {
     static NSString *adhocSign = @"-";
+    char *envIdentity = getenv("CODE_SIGN_IDENTITY");
+    if (envIdentity) {
+        identity = [NSString stringWithUTF8String:envIdentity];
+        NSLog(@"Using CODE_SIGN_IDENTITY: %@", identity);
+    }
     NSString *command = [NSString stringWithFormat:@""
                          "(export CODESIGN_ALLOCATE=/Applications/Xcode.app"
                          "/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/codesign_allocate; "
@@ -35,4 +41,3 @@
 }
 
 @end
-#endif

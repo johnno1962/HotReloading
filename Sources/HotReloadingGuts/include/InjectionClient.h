@@ -3,9 +3,9 @@
 //  InjectionBundle
 //
 //  Created by John Holdsworth on 06/11/2017.
-//  Copyright © 2021 John Holdsworth. All rights reserved.
+//  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/ResidentEval/InjectionBundle/InjectionClient.h#27 $
+//  $Id: //depot/ResidentEval/InjectionBundle/InjectionClient.h#29 $
 //
 //  Shared definitions between server and client.
 //
@@ -22,7 +22,7 @@
 
 #ifdef INJECTION_III_APP
 #define INJECTION_ADDRESS ":8898"
-#import "/tmp/InjectionSalt.h"
+#import "/tmp/InjectionIIISalt.h"
 #define INJECTION_KEY @"bvijkijyhbtrbrebzjbbzcfbbvvq"
 #define APP_NAME "InjectionIII"
 #define APP_PREFIX "💉 "

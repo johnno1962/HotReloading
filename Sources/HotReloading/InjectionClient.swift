@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/ResidentEval/InjectionBundle/InjectionClient.swift#8 $
+//  $Id: //depot/ResidentEval/InjectionBundle/InjectionClient.swift#14 $
 //
 //  Client app side of HotReloading started by +load
 //  method in HotReloadingGuts/ClientBoot.mm
@@ -24,7 +24,7 @@ public class InjectionClient: SimpleSocket {
     public override func runInBackground() {
         let builder = SwiftInjectionEval.sharedInstance()
         builder.tmpDir = NSTemporaryDirectory()
-
+        
         write(INJECTION_SALT)
         write(INJECTION_KEY)
 
@@ -40,17 +40,16 @@ public class InjectionClient: SimpleSocket {
         if (!isPlugin) {
             var frameworks = [String]()
             var sysFrameworks = [String]()
-            let bundleFrameworks = frameworksPath
 
             for i in stride(from: _dyld_image_count()-1, through: 0, by: -1) {
-                let imageName = _dyld_get_image_name(i)!
-                if strstr(imageName, ".framework/") == nil {
+                guard let imageName = _dyld_get_image_name(i),
+                    strstr(imageName, ".framework/") != nil else {
                     continue
                 }
                 let imagePath = String(cString: imageName)
                 let frameworkName = URL(fileURLWithPath: imagePath).lastPathComponent
                 frameworkPaths[frameworkName] = imagePath
-                if String(cString: imageName).hasPrefix(bundleFrameworks) {
+                if imagePath.hasPrefix(frameworksPath) {
                     frameworks.append(frameworkName)
                 } else {
                     sysFrameworks.append(frameworkName)
@@ -58,18 +57,12 @@ public class InjectionClient: SimpleSocket {
             }
 
             writeCommand(InjectionResponse.frameworkList.rawValue, with:
-                            frameworks.joined(separator: FRAMEWORK_DELIMITER))
+                frameworks.joined(separator: FRAMEWORK_DELIMITER))
             write(sysFrameworks.joined(separator: FRAMEWORK_DELIMITER))
             write(SwiftInjection.packageNames()
-                    .joined(separator: FRAMEWORK_DELIMITER))
+                .joined(separator: FRAMEWORK_DELIMITER))
         }
 
-        processCommands(builder: builder, frameworkPaths)
-
-        print("\(APP_PREFIX)\(APP_NAME) disconnected.")
-    }
-
-    func processCommands(builder: SwiftEval, _ frameworkPaths: [String: String]) {
         var codesignStatusPipe = [Int32](repeating: 0, count: 2)
         pipe(&codesignStatusPipe)
         let reader = SimpleSocket(socket: codesignStatusPipe[0])
@@ -89,20 +82,22 @@ public class InjectionClient: SimpleSocket {
                 let frameworkName = readString() ?? "Misssing framework"
                 if let frameworkPath = frameworkPaths[frameworkName] {
                     print("\(APP_PREFIX)Tracing %s\n", frameworkPath)
-                    SwiftTrace.interposeMethods(inBundlePath:frameworkPath,
-                                                packageName:nil)
+                    SwiftTrace.interposeMethods(inBundlePath: frameworkPath,
+                                                packageName: nil)
                     SwiftTrace.trace(bundlePath:frameworkPath)
                 } else {
                     print("\(APP_PREFIX)Tracing package \(frameworkName)")
                     let mainBundlePath = Bundle.main.executablePath ?? "Missing"
-                    SwiftTrace.interposeMethods(inBundlePath:mainBundlePath,
-                                                packageName:frameworkName)
+                    SwiftTrace.interposeMethods(inBundlePath: mainBundlePath,
+                                                packageName: frameworkName)
                 }
                 filteringChanged()
             default:
                 process(command: command, builder: builder)
             }
         }
+
+        print("\(APP_PREFIX)\(APP_NAME) disconnected.")
     }
 
     func process(command: InjectionCommand, builder: SwiftEval) {
@@ -115,7 +110,7 @@ public class InjectionClient: SimpleSocket {
         case .connected:
             builder.projectFile = readString() ?? "Missing project"
             builder.derivedLogs = nil;
-            print("\(APP_PREFIX)\(APP_NAME) connected \(builder.projectFile!)")
+            print("\(APP_PREFIX)\(APP_NAME) connected \(builder.projectFile ?? "Missing Project")")
         case .watching:
             print("\(APP_PREFIX)Watching files under \(readString() ?? "Missing directory")")
         case .log:
@@ -123,7 +118,7 @@ public class InjectionClient: SimpleSocket {
         case .ideProcPath:
             builder.lastIdeProcPath = readString() ?? ""
         case .invalid:
-            print("\(APP_PREFIX)⚠️ Server has rejected your connection. Are you running start_daemon.sh from the right directory? ⚠️")
+            print("\(APP_PREFIX)⚠️ Server has rejected your connection. Are you running InjectionIII.app or start_daemon.sh from the right directory? ⚠️")
         case .quietInclude:
             SwiftTrace.traceFilterInclude = readString()
         case .include:
@@ -207,7 +202,7 @@ public class InjectionClient: SimpleSocket {
 
     func processOnMainThread(command: InjectionCommand, builder: SwiftEval) {
         guard let changed = self.readString() else {
-            print("\(APP_PREFIX)⚠️ Could not read change file?")
+            print("\(APP_PREFIX)⚠️ Could not read changed filename?")
             return
         }
         DispatchQueue.main.async {

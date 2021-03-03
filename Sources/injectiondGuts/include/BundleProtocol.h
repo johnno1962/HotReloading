@@ -8,6 +8,7 @@
 
 #ifndef InjectionPlugin_BundleProtocol_h
 #define InjectionPlugin_BundleProtocol_h
+#import <Foundation/Foundation.h>
 
 #define INSTATUS_SERVICE @"injectionStatus"
 

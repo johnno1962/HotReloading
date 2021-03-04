@@ -7,7 +7,9 @@
 //
 
 import Foundation
+#if SWIFT_PACKAGE
 import HotReloadingGuts
+#endif
 
 let INJECTABLE_PATTERN = "[^~]\\.(mm?|swift|storyboard|xib)$"
 

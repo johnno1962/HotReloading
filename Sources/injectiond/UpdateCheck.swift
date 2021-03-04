@@ -5,11 +5,13 @@
 //  Created by John Holdsworth on 17/09/2020.
 //  Copyright © 2020 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/ResidentEval/InjectionIII/UpdateCheck.swift#8 $
+//  $Id: //depot/HotReloading/Sources/injectiond/UpdateCheck.swift#2 $
 //
 
 import Cocoa
+#if SWIFT_PACKAGE
 import HotReloadingGuts
+#endif
 
 extension AppDelegate {
 

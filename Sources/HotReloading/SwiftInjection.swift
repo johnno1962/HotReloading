@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#7 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#8 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -310,6 +310,8 @@ public class SwiftInjection: NSObject {
         #endif
     }
 
+    static var sweepWarned = false
+
     public class func performSweep(oldClasses: [AnyClass]) {
         var injectedClasses = [AnyClass]()
         let injectedSEL = #selector(SwiftInjected.injected)
@@ -321,13 +323,16 @@ public class SwiftInjection: NSObject {
             }
             if class_getInstanceMethod(cls, injectedSEL) != nil {
                 injectedClasses.append(cls)
-                print("""
-                    \(APP_PREFIX)As class \(cls) has an @objc injected() method, \
-                    InjectionIII will perform a "sweep" of all live \
-                    instances to determine which objects to message. \
-                    If this fails, subscribe to the notification \
-                    "INJECTION_BUNDLE_NOTIFICATION" instead.
-                    """)
+                if !sweepWarned {
+                    print("""
+                        \(APP_PREFIX)As class \(cls) has an @objc injected() method, \
+                        \(APP_NAME) will perform a "sweep" of live \
+                        instances to determine which objects to message. \
+                        If this fails, subscribe to the notification \
+                        "INJECTION_BUNDLE_NOTIFICATION" instead.
+                        """)
+                    sweepWarned = true
+                }
                 let kvoName = "NSKVONotifying_" + NSStringFromClass(cls)
                 if let kvoCls = NSClassFromString(kvoName) {
                     injectedClasses.append(kvoCls)

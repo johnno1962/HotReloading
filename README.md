@@ -12,7 +12,9 @@ To use, add this repo as a Swift Package to your project and add
 the following `"Run Script"`  `"Build Phase`":
 
 ```
-$SYMROOT/../../SourcePackages/checkouts/HotReloading/start_daemon.sh
+if [ -d $SYMROOT/../../SourcePackages ]; then
+    $SYMROOT/../../SourcePackages/checkouts/HotReloading/start_daemon.sh
+fi
 ```
 
 You should see a message that the app has connected and which
@@ -53,4 +55,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2021/03/02 $
+$Date: 2021/03/06 $

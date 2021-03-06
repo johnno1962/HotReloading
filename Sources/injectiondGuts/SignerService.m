@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiondGuts/SignerService.m#5 $
+//  $Id: //depot/HotReloading/Sources/injectiondGuts/SignerService.m#6 $
 //
 
 #import "SignerService.h"
@@ -14,12 +14,12 @@
 
 + (BOOL)codesignDylib:(NSString *)dylib identity:(NSString *)identity {
     static NSString *adhocSign = @"-";
-    const char *envIdentity = getenv("CODE_SIGN_IDENTITY");
+    const char *envIdentity = getenv("EXPANDED_CODE_SIGN_IDENTITY") ?: getenv("CODE_SIGN_IDENTITY");
     const char *toolchainDir = getenv("TOOLCHAIN_DIR") ?:
         "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain";
     if (envIdentity) {
         identity = [NSString stringWithUTF8String:envIdentity];
-        NSLog(@"Using CODE_SIGN_IDENTITY: %@", identity);
+        NSLog(@"Signing identity: %@", identity);
     }
     NSString *command = [NSString stringWithFormat:@""
                          "(export CODESIGN_ALLOCATE=\"%s/usr/bin/codesign_allocate\"; "

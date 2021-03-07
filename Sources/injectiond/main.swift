@@ -11,9 +11,15 @@
 //
 
 import Cocoa
+import injectiondGuts
 
 let projectFile = CommandLine.arguments[1]
 AppDelegate.ensureInterposable(project: projectFile)
+
+if let product = getenv("PRODUCT_NAME"),
+   let linkFile = getenv("LINK_FILE_LIST") {
+    unhide_symbols(product, linkFile);
+}
 
 // launch as a normal Cocoa app
 var argv = CommandLine.arguments.map { $0.withCString { strdup($0) } }

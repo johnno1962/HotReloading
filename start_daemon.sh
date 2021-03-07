@@ -16,6 +16,11 @@ DERIVED_LOGS="$(dirname $(dirname $SYMROOT))/Logs/Build"
 
 LAST_LOG=`ls -t $DERIVED_LOGS/*.xcactivitylog | head -n 1`
 
+if [ "$CONFIGURATION" = "Debug" ]; then
+    export NORMAL_ARCH_FILE="$OBJECT_FILE_DIR_normal/$ARCHS/$PRODUCT_NAME"
+    export LINK_FILE_LIST="$NORMAL_ARCH_FILE.LinkFileList"
+fi
+
 # kill any existing daemon process
 kill -9 `ps auxww | grep debug/injectiond | grep -v grep | awk '{ print $2 }'`
 

@@ -5,12 +5,13 @@
 //  Created by User on 20/10/2020.
 //  Copyright © 2020 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#4 $
+//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#7 $
 //
 
 import Cocoa
 import SwiftRegex
 #if SWIFT_PACKAGE
+import HotReloadingGuts
 import injectiondGuts
 #endif
 
@@ -282,10 +283,14 @@ extension AppDelegate {
 
     func prepareSwiftUI(projectRoot: URL) {
         do {
+            guard let enumerator = FileManager.default
+                    .enumerator(atPath: projectRoot.path) else {
+                return
+            }
             let alert = NSAlert()
             alert.addButton(withTitle: "Go ahead")
             alert.addButton(withTitle: "Cancel")
-            alert.messageText = "About to patch SwiftUI files in the currently selected project: \(projectRoot.path) for injection. This should have also added -Xlinker -interposable to your project setting's \"Other Linker Flags\"."
+            alert.messageText = "About to patch SwiftUI files in the source directory: \(projectRoot.path) for injection. This should have also added -Xlinker -interposable to your project setting's \"Other Linker Flags\"."
             switch alert.runModal() {
             case .alertSecondButtonReturn:
                 return
@@ -293,7 +298,7 @@ extension AppDelegate {
                 break
             }
 
-            for file in FileManager.default.enumerator(atPath: projectRoot.path)! {
+            for file in enumerator {
                 guard let file = file as? String, file.hasSuffix(".swift"),
                       !file.hasPrefix("Packages") else {
                     continue
@@ -319,10 +324,13 @@ extension AppDelegate {
 
                 if patched.contains("class AppDelegate") ||
                     patched.contains("@main") && !patched.contains("InjectionIII") {
-                    patched += """
+                    #if SWIFT_PACKAGE
+                    let loadInjection = """
+                            // HotReloading loads itself.
 
-                        #if DEBUG
-                        private var loadInjection: () = {
+                        """
+                    #else
+                    let loadInjection = """
                             #if os(macOS)
                             let bundleName = "macOSInjection.bundle"
                             #elseif os(tvOS)
@@ -333,9 +341,20 @@ extension AppDelegate {
                             let bundleName = "maciOSInjection.bundle"
                             #endif
                             Bundle(path: "/Applications/InjectionIII.app/Contents/Resources/"+bundleName)!.load()
-                        }()
 
+                        """
+                    #endif
+
+                    patched += """
+
+                        // This code can be found in the Swift package:
+                        // https://github.com/johnno1962/HotSwiftUI
+
+                        #if DEBUG
                         import Combine
+
+                        private var loadInjection: () = {
+                        \(loadInjection)}()
 
                         public let injectionObserver = InjectionObserver()
 

@@ -1,5 +1,8 @@
 // swift-tools-version:5.0
 // The swift-tools-version declares the minimum version of Swift required to build this package.
+//
+//  $Id: //depot/HotReloading/Package.swift#5 $
+//
 
 import PackageDescription
 import Foundation
@@ -15,7 +18,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/johnno1962/SwiftTrace",
-                 .upToNextMajor(from: "7.0.1")),
+                 .branch("return-as-any")),
         .package(url: "https://github.com/johnno1962/SwiftRegex5",
                  .upToNextMajor(from: "5.2.1")),
     ],

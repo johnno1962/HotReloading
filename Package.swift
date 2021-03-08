@@ -11,7 +11,7 @@ let package = Package(
     name: "HotReloading",
     platforms: [.macOS("10.12"), .iOS("10.0"), .tvOS("10.0")],
     products: [
-        .library(name: "HotReloading", targets: ["HotReloading"]),
+        .library(name: "HotReloading", type: .dynamic, targets: ["HotReloading"]),
         .library(name: "HotReloadingGuts", targets: ["HotReloadingGuts"]),
         .library(name: "injectiondGuts", targets: ["injectiondGuts"]),
         .executable(name: "injectiond", targets: ["injectiond"]),

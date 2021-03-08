@@ -14,6 +14,8 @@ the following `"Run Script"`  `"Build Phase`":
 ```
 if [ -d $SYMROOT/../../SourcePackages ]; then
     $SYMROOT/../../SourcePackages/checkouts/HotReloading/start_daemon.sh
+elif [ -d "$SYMROOT"/../../../../../SourcePackages ]; then
+    "$SYMROOT"/../../../../../SourcePackages/checkouts/HotReloading/fix_previews.sh
 fi
 ```
 
@@ -55,4 +57,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2021/03/06 $
+$Date: 2021/03/08 $

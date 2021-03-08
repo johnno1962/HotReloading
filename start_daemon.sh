@@ -2,10 +2,15 @@
 #
 # Start up daemon process to rebuild changed sources
 #
-# $Id: //depot/HotReloading/start_daemon.sh#12 $
+# $Id: //depot/HotReloading/start_daemon.sh#19 $
 #
 
 cd "$(dirname $0)"
+
+if [ "$CONFIGURATION" = "Release" ]; then
+    echo "error: You shouldn't be shipping HotReloading in your app!"
+    exit 1
+fi
 
 if [ -f "/tmp/injecting_storyboard.txt" ]; then
     rm /tmp/injecting_storyboard.txt
@@ -16,10 +21,8 @@ DERIVED_LOGS="$(dirname $(dirname $SYMROOT))/Logs/Build"
 
 LAST_LOG=`ls -t $DERIVED_LOGS/*.xcactivitylog | head -n 1`
 
-if [ "$CONFIGURATION" = "Debug" ]; then
-    export NORMAL_ARCH_FILE="$OBJECT_FILE_DIR_normal/$ARCHS/$PRODUCT_NAME"
-    export LINK_FILE_LIST="$NORMAL_ARCH_FILE.LinkFileList"
-fi
+export NORMAL_ARCH_FILE="$OBJECT_FILE_DIR_normal/$ARCHS/$PRODUCT_NAME"
+export LINK_FILE_LIST="$NORMAL_ARCH_FILE.LinkFileList"
 
 # kill any existing daemon process
 kill -9 `ps auxww | grep .build/debug/injectiond | grep -v grep | awk '{ print $2 }'`

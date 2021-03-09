@@ -5,7 +5,7 @@
 //  Created by User on 20/10/2020.
 //  Copyright © 2020 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#7 $
+//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#10 $
 //
 
 import Cocoa
@@ -322,8 +322,9 @@ extension AppDelegate {
 
                     """
 
-                if patched.contains("class AppDelegate") ||
-                    patched.contains("@main") && !patched.contains("InjectionIII") {
+                if (patched.contains("class AppDelegate") ||
+                    patched.contains("@main")) &&
+                    !patched.contains("InjectionObserver") {
                     #if SWIFT_PACKAGE
                     let loadInjection = """
                             // HotReloading loads itself.
@@ -372,21 +373,22 @@ extension AppDelegate {
                             }
                         }
 
-                        extension View {
-                            public func eraseToAnyView() -> some View {
-                                _ = loadInjection
+                        extension SwiftUI.View {
+                            public func eraseToAnyView() -> some SwiftUI.View {
                                 return AnyView(self)
                             }
-                            public func onInjection(bumpState: @escaping () -> ()) -> some View {
+                            public func onInjection(bumpState: @escaping () -> ()) -> some SwiftUI.View {
                                 return self
                                     .onReceive(injectionObserver.publisher, perform: bumpState)
                                     .eraseToAnyView()
                             }
                         }
                         #else
-                        extension View {
-                            public func eraseToAnyView() -> some View { return self }
-                            public func onInjection(bumpState: @escaping () -> ()) -> some View {
+                        extension SwiftUI.View {
+                            @inline(__always)
+                            public func eraseToAnyView() -> some SwiftUI.View { return self }
+                            @inline(__always)
+                            public func onInjection(bumpState: @escaping () -> ()) -> some SwiftUI.View {
                                 return self
                             }
                         }

@@ -5,7 +5,7 @@
 //  Created by User on 20/10/2020.
 //  Copyright © 2020 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#7 $
+//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#9 $
 //
 
 import Cocoa
@@ -322,8 +322,9 @@ extension AppDelegate {
 
                     """
 
-                if patched.contains("class AppDelegate") ||
-                    patched.contains("@main") && !patched.contains("InjectionIII") {
+                if (patched.contains("class AppDelegate") ||
+                    patched.contains("@main")) &&
+                    !patched.contains("InjectionObserver") {
                     #if SWIFT_PACKAGE
                     let loadInjection = """
                             // HotReloading loads itself.

@@ -23,9 +23,10 @@ extern "C" {
     #import "Unhide.h"
 }
 
+std::map<std::string,int> seen;
+
 int unhide_symbols(const char *framework, const char *linkFileList) {
     @autoreleasepool {
-        std::map<std::string,int> seen;
 
         FILE *linkFiles = fopen(linkFileList, "r");
         if (!linkFiles) {

@@ -8,7 +8,10 @@ available as a Swift Package. i.e.:
 Then you can do this...
 ![Icon](http://johnholdsworth.com/HotReloading.png)
 
-To use, add this repo as a Swift Package to your project and add
+To try out an example project that is already set-up, clone this fork of
+[SwiftUI-Kit](https://github.com/johnno1962/SwiftUI-Kit).
+
+To use on your project, add this repo as a Swift Package to your project and add
 the following `"Run Script"`  `"Build Phase`":
 
 ```
@@ -57,4 +60,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2021/03/08 $
+$Date: 2021/03/10 $

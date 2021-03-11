@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#14 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#16 $
 //
 
 import Cocoa
@@ -227,6 +227,9 @@ public class InjectionServer: SimpleSocket {
                             .deletingLastPathComponent()
                             .deletingLastPathComponent()
                             .deletingLastPathComponent()
+                    } else if executable.contains("/Wrapper/") {
+                        appToOrderFront = URL(fileURLWithPath: executable)
+                            .deletingLastPathComponent()
                     } else {
                         appToOrderFront = URL(fileURLWithPath: builder.xcodeDev)
                             .appendingPathComponent("Applications/Simulator.app")
@@ -343,11 +346,8 @@ public class InjectionServer: SimpleSocket {
                 options: .skipsHiddenFiles,
                 errorHandler: {
                     (url: URL, error: Error) -> Bool in
-                    if error !=  nil {
-                        NSLog("[Error] \(error) (\(url))")
-                         return false
-                     }
-                     return true
+                    NSLog("[Error] \(error) (\(url))")
+                    return false
         }) {
             for fileURL in enumerator {
                 var filename: AnyObject?

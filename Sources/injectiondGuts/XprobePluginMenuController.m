@@ -235,7 +235,7 @@ static id lastKeyWindow;
     [dotConsole writeString:prompt];
     [dotConsole writeString:defaultText];
     if ( [prompt isEqualToString:@"open:"] )
-        dispatch_after(.1, dispatch_get_main_queue(), ^{
+        dispatch_after(0.1*NSEC_PER_SEC, dispatch_get_main_queue(), ^{
             NSString *scrollToVisble = [NSString stringWithFormat:@"window.scrollTo( 0, $('%@').offsetTop );", defaultText];
             [dotConsole.window makeKeyAndOrderFront:self];
             [dotConsole execJS:scrollToVisble];

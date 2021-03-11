@@ -25,7 +25,7 @@ class Vaccine {
     func performInjection(on object: AnyObject) {
         switch object {
         case let viewController as ViewController:
-            var snapshotView: View? = createSnapshotViewIfNeeded(for: viewController)
+            let snapshotView: View? = createSnapshotViewIfNeeded(for: viewController)
             if viewController.nibName == nil {
                 CATransaction.begin()
                 CATransaction.setAnimationDuration(1.0)

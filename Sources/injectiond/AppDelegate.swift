@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#6 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#7 $
 //
 
 import Cocoa
@@ -52,8 +52,9 @@ class AppDelegate : NSObject, NSApplicationDelegate {
                                         tableName: "Project Directory",
                                         comment: "Project Directory")
 
-    let defaults = UserDefaults.standard
+    @objc let defaults = UserDefaults.standard
     var defaultsMap: [NSMenuItem: String]!
+
     lazy var isSandboxed =
         ProcessInfo.processInfo.environment["APP_SANDBOX_CONTAINER_ID"] != nil
     var runningXcodeDevURL: URL? =

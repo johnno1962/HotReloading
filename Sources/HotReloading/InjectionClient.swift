@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#15 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#16 $
 //
 //  Client app side of HotReloading started by +load
 //  method in HotReloadingGuts/ClientBoot.mm
@@ -137,12 +137,14 @@ public class InjectionClient: SimpleSocket {
         case .trace:
             SwiftTrace.traceMainBundleMethods()
             print("\(APP_PREFIX)Added trace to non-final methods of classes in app bundle")
+            filteringChanged()
         case .untrace:
             SwiftTrace.removeAllTraces()
         case .traceUI:
             SwiftTrace.traceMainBundleMethods()
             SwiftTrace.traceMainBundle()
             print("\(APP_PREFIX)Added trace to methods in main bundle")
+            filteringChanged()
         case .traceUIKit:
             DispatchQueue.main.sync {
                 let OSView: AnyClass = (objc_getClass("UIView") ??
@@ -151,6 +153,7 @@ public class InjectionClient: SimpleSocket {
                 SwiftTrace.traceBundle(containing: OSView)
                 print("\(APP_PREFIX)Completed adding trace.")
             }
+            filteringChanged()
         case .traceSwiftUI:
             if let AnyText = swiftUIBundlePath() {
                 print("\(APP_PREFIX)Adding trace to SwiftUI calls.")

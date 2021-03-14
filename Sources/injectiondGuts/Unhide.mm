@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/injectiondGuts/Unhide.mm#12 $
+//  $Id: //depot/HotReloading/Sources/injectiondGuts/Unhide.mm#14 $
 //
 
 #import <Foundation/Foundation.h>
@@ -92,13 +92,17 @@ int unhide_symbols(const char *framework, const char *linkFileList) {
                 if (strncmp(symname, "_$s", 3) != 0)
                     continue; // not swift symbol
 
+                // Default argument generators have a suffix ANN_
                 symend = symname + strlen(symname);
-                BOOL isDefaultArgumentGenerator = (symend[-1] == '_' &&
+                BOOL isDefaultArgument = (symend[-1] == '_' &&
                    (symend[-2] == 'A' || (symend[-3] == 'A' && isdigit(symend[-2])) ||
                     (symend[-4] == 'A' && isdigit(symend[-3]) && isdigit(symend[-2])))) ||
                     strcmp(symend-4, "QOMg") == 0;
 
-                if (isDefaultArgumentGenerator && symbol.n_sect != NO_SECT &&
+                // The following reads: If symbol is for a default argument
+                // and it is the definition (not a reference) and we've not
+                // seen it before and it hadsn't already been "unhidden"...
+                if (isDefaultArgument && symbol.n_sect != NO_SECT &&
                     !seen[symname]++ && symbol.n_type & N_PEXT) {
                     symbol.n_type |= N_EXT;
                     symbol.n_type &= ~N_PEXT;

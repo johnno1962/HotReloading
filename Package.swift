@@ -1,7 +1,7 @@
 // swift-tools-version:5.0
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
-//  $Id: //depot/HotReloading/Package.swift#9 $
+//  $Id: //depot/HotReloading/Package.swift#10 $
 //
 
 import PackageDescription
@@ -18,9 +18,9 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/johnno1962/SwiftTrace",
-                 .upToNextMajor(from: "7.0.2")),
+                 .upToNextMinor(from: "7.1.0")),
         .package(url: "https://github.com/johnno1962/SwiftRegex5",
-                 .upToNextMajor(from: "5.2.1")),
+                 .upToNextMinor(from: "5.2.1")),
     ],
     targets: [
         .target(name: "HotReloading", dependencies: ["HotReloadingGuts", "SwiftTrace"]),

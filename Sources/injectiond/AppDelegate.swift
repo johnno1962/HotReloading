@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#7 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#8 $
 //
 
 import Cocoa
@@ -69,11 +69,6 @@ class AppDelegate : NSObject, NSApplicationDelegate {
 
         let statusBar = NSStatusBar.system
         statusItem = statusBar.statusItem(withLength: statusBar.thickness)
-        #if SWIFT_PACKAGE
-        statusItem.toolTip = "Hot Reloading"
-        #else
-        statusItem.toolTip = "Code Injection"
-        #endif
         statusItem.highlightMode = true
         statusItem.menu = statusMenu
         statusItem.isEnabled = true
@@ -121,33 +116,62 @@ class AppDelegate : NSObject, NSApplicationDelegate {
         }
 
         setMenuIcon("InjectionIdle")
-        #if !SWIFT_PACKAGE
+        versionSpecific()
+    }
+
+    func versionSpecific() {
+        #if SWIFT_PACKAGE
+        statusItem.toolTip = "Hot Reloading"
+        var arguments = CommandLine.arguments.dropFirst()
+        let projectURL = URL(fileURLWithPath: arguments.removeFirst())
+        let projectRoot = projectURL.deletingLastPathComponent().path
+        NSDocumentController.shared.noteNewRecentDocumentURL(projectURL)
+        AppDelegate.ensureInterposable(project: projectURL.path)
+        derivedLogs = arguments.removeFirst()
+
+        selectedProject = projectURL.path
+        appDelegate.watchedDirectories = [projectRoot]
+        for dir in arguments where !dir.hasPrefix(projectRoot) {
+            appDelegate.watchedDirectories.insert(dir)
+        }
+
+        // Default argument symbols need to not be "hidden"
+        // so files using default arguments can be injected.
+        if let symroot = getenv("SYMROOT"),
+           let product = getenv("PRODUCT_NAME"),
+           let linkFile = getenv("LINK_FILE_LIST") {
+            unhide_symbols(product, linkFile)
+
+            // Unhide of app Packages
+            let buildDir = URL(fileURLWithPath:
+                String(cString: symroot)).deletingLastPathComponent()
+            if let enumerator = FileManager.default
+                    .enumerator(atPath: buildDir.path) {
+                for any in enumerator {
+                    let file = any as! String
+                    if file.hasSuffix(".o.LinkFileList") {
+                        let fileURL = buildDir
+                            .appendingPathComponent(file)
+                        unhide_symbols(fileURL
+                            .deletingPathExtension().deletingPathExtension()
+                            .lastPathComponent, fileURL.path)
+                    }
+                }
+            }
+        }
+        #else
+        statusItem.toolTip = "Code Injection"
         DDHotKeyCenter.shared()?
             .registerHotKey(withKeyCode: UInt16(kVK_ANSI_Equal),
                modifierFlags: NSEvent.ModifierFlags.control.rawValue,
                target:self, action:#selector(autoInject(_:)), object:nil)
-        #endif
 
-        #if SWIFT_PACKAGE
-        var arguments = CommandLine.arguments.dropFirst()
-        let projectURL = URL(fileURLWithPath: arguments.removeFirst())
-        derivedLogs = arguments.removeFirst()
-
-        NSDocumentController.shared.noteNewRecentDocumentURL(projectURL)
-        selectedProject = projectURL.path
-        appDelegate.watchedDirectories
-            .insert(projectURL.deletingLastPathComponent().path)
-        for dir in arguments {
-            appDelegate.watchedDirectories.insert(dir)
-        }
-        #else
         NSApp.servicesProvider = self
         if let lastWatched = defaults.string(forKey: UserDefaultsLastWatched) {
             _ = self.application(NSApp, openFile: lastWatched)
         } else {
             NSUpdateDynamicServices()
         }
-        #endif
 
         let nextUpdateCheck = defaults.double(forKey: UserDefaultsUpdateCheck)
         if !isSandboxed && nextUpdateCheck != 0.0 {
@@ -156,6 +180,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
                 self.updateCheck(nil)
             }
         }
+        #endif
     }
 
     func application(_ theApplication: NSApplication, openFile filename: String) -> Bool {

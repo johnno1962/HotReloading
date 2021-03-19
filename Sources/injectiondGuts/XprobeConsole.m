@@ -5,6 +5,8 @@
 //  Created by John Holdsworth on 18/05/2014.
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
+//  $Id: //depot/HotReloading/Sources/injectiondGuts/XprobeConsole.m#5 $
+//
 
 #import "XprobePluginMenuController.h"
 #import "XprobeConsole.h"
@@ -52,7 +54,7 @@ static int serverSocket;
     struct sockaddr_in serverAddr;
 
 #ifndef INJECTION_ADDR
-#define INJECTION_ADDR INADDR_ANY
+#define INJECTION_ADDR INADDR_LOOPBACK
 #endif
 
     serverAddr.sin_family = AF_INET;
@@ -172,11 +174,18 @@ static int serverSocket;
         else if ( [dhtmlOrDotOrTrace hasPrefix:@"open: "] )
             [[NSWorkspace sharedWorkspace] openURL:[NSURL fileURLWithPath:[dhtmlOrDotOrTrace substringFromIndex:6]]];
         else if ( [dhtmlOrDotOrTrace hasPrefix:@"snapshot: "] ) {
-            NSData *data = [[NSData alloc] initWithBase64EncodedString:[dhtmlOrDotOrTrace substringFromIndex:10] options:0];
-            NSString *snapfile = [NSTemporaryDirectory() stringByAppendingPathComponent:@"snapshot.html.gz"];
+            NSString *base64 = [dhtmlOrDotOrTrace substringFromIndex:10];
+            NSData *data = [[NSData alloc]
+                            initWithBase64EncodedString:base64 options:0];
+            NSString *snaphtml = [NSTemporaryDirectory()
+                                  stringByAppendingPathComponent:@"snapshot.html"];
+#ifdef ZIPPED_SNAPSHOTS
+            NSString *snapfile = [snaphtml stringByAppendingString:@".gz"];
             [data writeToFile:snapfile atomically:NO];
-            system([NSString stringWithFormat:@"gunzip -f %@", snapfile].UTF8String);
-            NSString *snaphtml = [NSTemporaryDirectory() stringByAppendingPathComponent:@"snapshot.html"];
+            system([NSString stringWithFormat:@"gunzip -f \"%@\"", snapfile].UTF8String);
+#else
+            [data writeToFile:snaphtml atomically:NO];
+#endif
             [[NSWorkspace sharedWorkspace] openURL:[NSURL fileURLWithPath:snaphtml]];
         }
         else {

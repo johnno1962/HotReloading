@@ -5,6 +5,8 @@
 //  Created by John Holdsworth on 01/05/2014.
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
+//  $Id: //depot/HotReloading/Sources/injectiondGuts/XprobePluginMenuController.m#8 $
+//
 
 #import "XprobePluginMenuController.h"
 
@@ -235,7 +237,8 @@ static id lastKeyWindow;
     [dotConsole writeString:prompt];
     [dotConsole writeString:defaultText];
     if ( [prompt isEqualToString:@"open:"] )
-        dispatch_after(0.1*NSEC_PER_SEC, dispatch_get_main_queue(), ^{
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1*NSEC_PER_SEC),
+                       dispatch_get_main_queue(), ^{
             NSString *scrollToVisble = [NSString stringWithFormat:@"window.scrollTo( 0, $('%@').offsetTop );", defaultText];
             [dotConsole.window makeKeyAndOrderFront:self];
             [dotConsole execJS:scrollToVisble];

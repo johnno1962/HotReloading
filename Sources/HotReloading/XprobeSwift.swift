@@ -5,11 +5,13 @@
 //  Created by John Holdsworth on 23/04/2015.
 //  Copyright (c) 2015 John Holdsworth. All rights reserved.
 //
+//  $Id: //depot/HotReloading/Sources/HotReloading/XprobeSwift.swift#6 $
+//
 
 import Foundation
+import SwiftTrace
 #if SWIFT_PACKAGE
 import HotReloadingGuts
-import SwiftTrace
 #endif
 
 @_silgen_name("swift_EnumCaseName")
@@ -102,19 +104,18 @@ class XprobeSwift: NSObject {
     }
 
     @objc class func traceClass( _ aClass: AnyClass ) {
-        SwiftTrace.traceBundle(containing: aClass)
-        SwiftTrace.traceMethods(inFrameworkContaining: aClass)
+        SwiftTrace.trace(aClass: aClass)
     }
 
     @objc class func traceInstance( _ instance: NSObject ) {
-        instance.swiftTraceInstance()
+        SwiftTrace.trace(anInstance: instance)
     }
 
     @objc class func injectionSweep( _ instance: AnyObject, forClass: AnyClass ) {
         var out: IvarOutputStream? = nil
         dumpMembers( instance, target: &out, indent: "", aClass: forClass, processInstance: {
             (obj, out) in
-//            obj.bsweep?()
+            obj.legacySwiftSweep?()
         })
     }
 
@@ -122,7 +123,7 @@ class XprobeSwift: NSObject {
         var out: IvarOutputStream? = nil
         dumpMembers( instance, target: &out, indent: "", aClass: forClass, processInstance: {
             (obj, out) in
-//            obj.xsweep?()
+            obj.xsweep?()
         })
     }
 
@@ -176,7 +177,7 @@ class XprobeSwift: NSObject {
     class func dumpMembers(_ instance: Any, target: inout IvarOutputStream?, indent: String?,
                            aClass: AnyClass? = nil, separator: String = "<br>",
                            processInstance: (AnyObject, inout IvarOutputStream) -> Void ) {
-        let indent = indent != nil ? "&#160; &#160; " : nil
+        let indent = indent != nil ? indent! + "&#160; &#160; " : nil
         var mirror = Mirror(reflecting: instance)
         while aClass != nil, let thisClass = mirror.subjectType as? AnyClass,
             aClass != thisClass, let superMirror = mirror.superclassMirror {
@@ -321,9 +322,9 @@ class XprobeSwift: NSObject {
                 dumpMembers( value, target: &target, indent: nil, separator: ", ", processInstance:  processInstance )
                 target?.write(")")
             case .struct:
-                target?.write("(<br>")
+                target?.write("{<br>")
                 dumpMembers( value, target: &target, indent: indent, processInstance:  processInstance )
-                target?.write("\(indent ?? "")\(separator ?? ""))")
+                target?.write("\(separator ?? ""))<br>\(indent ?? "")}")
             default:
                 target?.write("??")
                 break

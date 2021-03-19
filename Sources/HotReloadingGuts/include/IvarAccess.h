@@ -625,7 +625,7 @@ id xvalueForIvarType( id self, Ivar ivar, const char *type, Class aClass ) {
 }
 
 id xvalueForIvar( id self, Ivar ivar, Class aClass ) {
-    const char *type = ivar_getTypeEncoding(ivar);
+    const char *type = ivar_getTypeEncodingSwift(ivar, aClass);
     //NSLog( @"%@ %p %p %s %s %s", aClass, ivar, isSwift(aClass), ivar_getName(ivar), ivar_getTypeEncoding(ivar), type );
     return xvalueForIvarType( self, ivar, type, aClass );
 }

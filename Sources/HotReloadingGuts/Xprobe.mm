@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  For full licensing term see https://github.com/johnno1962/XprobePlugin
-//  $Id: //depot/XprobePlugin/Classes/Xprobe.mm#236 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Xprobe.mm#2 $
 //
 //  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 //  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -132,7 +132,7 @@ static char snapshotInclude[] =
 <style>\n\
 \n\
 body { background: #f0f8ff; }\n\
-body, table { font: 10pt Arial; }\n\
+body, table { font-family: \"Helvetica Neue\", Helvetica, Arial, sans-serif; }\n\
 \n\
 span.letStyle { color: #A90D91; }\n\
 span.typeStyle { color: green; }\n\
@@ -479,7 +479,7 @@ static const char *seedName = "seed", *superName = "super";
 @implementation Xprobe
 
 + (NSString *)revision {
-    return @"$Id: //depot/XprobePlugin/Classes/Xprobe.mm#236 $";
+    return @"$Id: //depot/HotReloading/Sources/HotReloadingGuts/Xprobe.mm#2 $";
 }
 
 + (BOOL)xprobeExclude:(NSString *)className {
@@ -995,7 +995,7 @@ static OSSpinLock edgeLock;
         
         for ( unsigned i=0 ; i<ic ; i++ ) {
             const char *currentIvarName = sweepState.source = ivar_getName( ivars[i] );
-            const char *type = ivar_getTypeEncoding( ivars[i] );
+            const char *type = ivar_getTypeEncodingSwift( ivars[i], aClass );
 
             if ( strncmp( currentIvarName, "__", 2 ) != 0 && strcmp( currentIvarName, "_extraIvars" ) != 0 &&
                 type && (type[0] == '@' || isSwiftObject( type ) || isOOType( type )) ) {

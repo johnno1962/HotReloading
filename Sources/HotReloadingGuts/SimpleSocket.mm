@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#6 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#7 $
 //
 
 #import "SimpleSocket.h"
@@ -156,8 +156,8 @@
     uint32_t length = [self readInt];
     if (length == ~0)
         return nil;
-    char utf8[length + 1];
-    size_t rd, ptr = 0;
+    char *utf8 = (char *)malloc(length + 1);
+    ssize_t rd, ptr = 0;
     while (ptr < length &&
        (rd = read(clientSocket, utf8+ptr, length-ptr)) > 0)
         ptr += rd;
@@ -165,7 +165,9 @@
         return nil;
     utf8[length] = '\000';
     SLog(@"#%d <- %d '%s'", clientSocket, length, utf8);
-    return [NSString stringWithUTF8String:utf8];
+    NSString *str = [NSString stringWithUTF8String:utf8];
+    free(utf8);
+    return str;
 }
 
 - (BOOL)writeInt:(int)length {

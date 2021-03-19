@@ -9,6 +9,8 @@
 //  Xprobe service in an application providing HTML to the
 //  object browser inside Xcode.
 //
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Xprobe+Service.mm#3 $
+//
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wold-style-cast"
@@ -95,8 +97,16 @@ static int clientSocket;
         NSLog( @"Xprobe: Could not set TCP_NODELAY: %s", strerror( errno ) );
     else if ( setsockopt( clientSocket, SOL_SOCKET, SO_NOSIGPIPE, &optval, sizeof(optval) ) < 0 )
         NSLog( @"Xprobe: Could not set SO_NOSIGPIPE: %s", strerror( errno ) );
-    else
+    else {
+        uint32_t magic = XPROBE_MAGIC;
+        if ( write(clientSocket, &magic, sizeof magic ) != sizeof magic ) {
+            close( clientSocket );
+            return;
+        }
+
+        [self writeString:[[NSBundle mainBundle] bundleIdentifier]];
         [self performSelectorInBackground:@selector(service) withObject:nil];
+    }
 
     [self hackSwiftObject];
 }
@@ -125,15 +135,6 @@ static int clientSocket;
 }
 
 + (void)service {
-
-    uint32_t magic = XPROBE_MAGIC;
-    if ( write(clientSocket, &magic, sizeof magic ) != sizeof magic ) {
-        close( clientSocket );
-        return;
-    }
-
-    [self writeString:[[NSBundle mainBundle] bundleIdentifier]];
-
     while ( clientSocket ) {
         NSString *command = [self readString];
         if ( !command )

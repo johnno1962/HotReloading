@@ -6,9 +6,9 @@
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
 
-#import "SimpleSocket.h"
+#import <Foundation/Foundation.h>
 
-@interface SignerService : SimpleSocket
+@interface SignerService: NSObject
 
 + (BOOL)codesignDylib:(NSString * _Nonnull)dylib identity:(NSString * _Nullable)identity;
 

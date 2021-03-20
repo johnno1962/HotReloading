@@ -21,11 +21,13 @@ let package = Package(
                  .upToNextMinor(from: "7.1.1")),
         .package(url: "https://github.com/johnno1962/SwiftRegex5",
                  .upToNextMinor(from: "5.2.1")),
+        .package(url: "https://github.com/johnno1962/Xprobe",
+                 .upToNextMinor(from: "1.0.0")),
     ],
     targets: [
-        .target(name: "HotReloading", dependencies: ["HotReloadingGuts", "SwiftTrace"]),
-        .target(name: "HotReloadingGuts", dependencies: []),
-        .target(name: "injectiondGuts", dependencies: []),
-        .target(name: "injectiond", dependencies: ["HotReloadingGuts", "injectiondGuts", "SwiftRegex"]),
+        .target(name: "HotReloading", dependencies: ["HotReloadingGuts", "SwiftTrace", "Xprobe", "XprobeSwift"]),
+        .target(name: "HotReloadingGuts", dependencies: ["Xprobe"]),
+        .target(name: "injectiondGuts", dependencies: ["Xprobe"]),
+        .target(name: "injectiond", dependencies: ["HotReloadingGuts", "injectiondGuts", "SwiftRegex", "XprobeUI"]),
     ]
 )

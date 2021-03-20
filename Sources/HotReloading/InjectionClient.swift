@@ -16,6 +16,7 @@ import SwiftTrace
 #if SWIFT_PACKAGE
 import SwiftTraceGuts
 import HotReloadingGuts
+import Xprobe
 #endif
 
 @objc(InjectionClient)

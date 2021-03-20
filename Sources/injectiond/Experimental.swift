@@ -13,6 +13,7 @@ import SwiftRegex
 #if SWIFT_PACKAGE
 import HotReloadingGuts
 import injectiondGuts
+import XprobeUI
 #endif
 
 extension AppDelegate {

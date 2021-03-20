@@ -13,6 +13,7 @@
 #import "InjectionClient.h"
 #import <XCTest/XCTest.h>
 #import <objc/runtime.h>
+#import "SimpleSocket.h"
 
 #ifndef INJECTION_III_APP
 NSString *INJECTION_KEY = @__FILE__;
@@ -66,22 +67,6 @@ NSString *INJECTION_KEY = @__FILE__;
     XCTestSuiteRun *tr = [_XCTestSuiteRun testRunWithTest: suite];
     [suite0 addTest:suite];
     [suite0 performTest:tr];
-}
-@end
-
-@implementation Xprobe(Seeding)
-+ (NSArray *)xprobeSeeds {
-    #ifdef __IPHONE_OS_VERSION_MIN_REQUIRED
-    UIApplication *app = [UIApplication sharedApplication];
-    NSMutableArray *seeds = [[app windows] mutableCopy];
-    [seeds insertObject:app atIndex:0];
-    #else
-    NSApplication *app = [NSApplication sharedApplication];
-    NSMutableArray *seeds = [[app windows] mutableCopy];
-    if ( app.delegate )
-        [seeds insertObject:app.delegate atIndex:0];
-    #endif
-    return seeds;
 }
 @end
 #endif

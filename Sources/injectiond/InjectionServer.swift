@@ -12,6 +12,8 @@ import Cocoa
 #if SWIFT_PACKAGE
 import HotReloadingGuts
 import injectiondGuts
+import XprobeUI
+import Xprobe
 #endif
 
 let commandQueue = DispatchQueue(label: "InjectionCommand")

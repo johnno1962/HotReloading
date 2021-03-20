@@ -8,8 +8,6 @@
 
 #import <Cocoa/Cocoa.h>
 
-#import "XprobePluginMenuController.h"
-
 @class RMDeviceController;
 @class RMImageView;
 

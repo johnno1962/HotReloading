@@ -10,15 +10,12 @@
 //  Shared definitions between server and client.
 //
 
-#import "SimpleSocket.h"
 #import "UserDefaults.h"
 #import <mach-o/dyld.h>
 #ifndef __IPHONE_OS_VERSION_MIN_REQUIRED
 #import <AppKit/NSWorkspace.h>
 #import <libproc.h>
 #endif
-
-#import "Xprobe.h"
 
 #ifdef INJECTION_III_APP
 #define INJECTION_ADDRESS ":8898"

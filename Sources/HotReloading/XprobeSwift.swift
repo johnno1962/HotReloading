@@ -128,12 +128,15 @@ class XprobeSwift: NSObject {
     }
 
     @objc class func dumpMethods( _ aClass: AnyClass, into: NSMutableString ) {
-        into.append("<br><b>Swift vtable:</b><br>")
-        Swizzler.scanSlots(of: aClass ) {
-            (number, slot, demangled) -> Int? in
+        var first = true
+        SwiftTrace.iterateMethods(ofClass: aClass) {
+            (demangled, slot, symbol, stop) in
+            if first {
+                into.append("<br><b>Swift vtable:</b><br>")
+                first = false
+            }
             into.append(demangled)
             into.append("<br>")
-            return nil
         }
     }
 

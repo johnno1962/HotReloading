@@ -1,7 +1,7 @@
 // swift-tools-version:5.0
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
-//  $Id: //depot/HotReloading/Package.swift#11 $
+//  $Id: //depot/HotReloading/Package.swift#12 $
 //
 
 import PackageDescription
@@ -26,7 +26,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "HotReloading", dependencies: ["HotReloadingGuts", "SwiftTrace", "Xprobe", "XprobeSwift"]),
-        .target(name: "HotReloadingGuts", dependencies: ["Xprobe"]),
+        .target(name: "HotReloadingGuts", dependencies: []),
         .target(name: "injectiondGuts", dependencies: ["Xprobe"]),
         .target(name: "injectiond", dependencies: ["HotReloadingGuts", "injectiondGuts", "SwiftRegex", "XprobeUI"]),
     ]

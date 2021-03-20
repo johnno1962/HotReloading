@@ -1,7 +1,7 @@
 // swift-tools-version:5.0
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
-//  $Id: //depot/HotReloading/Package.swift#14 $
+//  $Id: //depot/HotReloading/Package.swift#16 $
 //
 
 import PackageDescription
@@ -22,7 +22,7 @@ let package = Package(
         .package(url: "https://github.com/johnno1962/SwiftRegex5",
                  .upToNextMinor(from: "5.2.1")),
         .package(url: "https://github.com/johnno1962/XprobePlugin",
-                 .upToNextMinor(from: "1.1.0")),
+                 .upToNextMinor(from: "1.1.2")),
     ],
     targets: [
         .target(name: "HotReloading", dependencies: ["HotReloadingGuts",

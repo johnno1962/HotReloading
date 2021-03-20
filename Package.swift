@@ -21,8 +21,8 @@ let package = Package(
                  .upToNextMinor(from: "7.1.1")),
         .package(url: "https://github.com/johnno1962/SwiftRegex5",
                  .upToNextMinor(from: "5.2.1")),
-        .package(url: "https://github.com/johnno1962/Xprobe",
-                 .upToNextMinor(from: "1.0.0")),
+        .package(url: "https://github.com/johnno1962/XprobePlugin",
+                 .upToNextMinor(from: "1.1.0")),
     ],
     targets: [
         .target(name: "HotReloading", dependencies: ["HotReloadingGuts",

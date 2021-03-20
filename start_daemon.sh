@@ -2,7 +2,7 @@
 #
 # Start up daemon process to rebuild changed sources
 #
-# $Id: //depot/HotReloading/start_daemon.sh#21 $
+# $Id: //depot/HotReloading/start_daemon.sh#22 $
 #
 
 cd "$(dirname $0)"
@@ -28,7 +28,7 @@ export LINK_FILE_LIST="$NORMAL_ARCH_FILE.LinkFileList"
 kill -9 `ps auxww | grep .build/debug/injectiond | grep -v grep | awk '{ print $2 }'`
 
 # rebuild daemon
-/usr/bin/env -i PATH="$PATH" "$TOOLCHAIN_DIR"/usr/bin/swift build &&
+/usr/bin/env -i PATH="$PATH" "$TOOLCHAIN_DIR"/usr/bin/swift build --product injectiond &&
 
 # provide a Contents driectory for Cocoa
 rm -f .build/debug/Contents && ln -s "$PWD/Contents" .build/debug &&

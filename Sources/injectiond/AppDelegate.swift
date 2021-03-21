@@ -5,13 +5,14 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#8 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#9 $
 //
 
 import Cocoa
 #if SWIFT_PACKAGE
 import HotReloadingGuts
 import injectiondGuts
+import RemoteUI
 
 // nib compatability...
 import WebKit

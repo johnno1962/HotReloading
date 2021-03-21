@@ -2,7 +2,7 @@
 #
 # Start up daemon process to rebuild changed sources
 #
-# $Id: //depot/HotReloading/start_daemon.sh#22 $
+# $Id: //depot/HotReloading/start_daemon.sh#23 $
 #
 
 cd "$(dirname $0)"
@@ -30,8 +30,8 @@ kill -9 `ps auxww | grep .build/debug/injectiond | grep -v grep | awk '{ print $
 # rebuild daemon
 /usr/bin/env -i PATH="$PATH" "$TOOLCHAIN_DIR"/usr/bin/swift build --product injectiond &&
 
-# provide a Contents driectory for Cocoa
-rm -f .build/debug/Contents && ln -s "$PWD/Contents" .build/debug &&
+# clone Contents directory for Cocoa
+rsync -at Contents .build/debug &&
 
 # run in background passing project file, logs directory
 # followed by a list of additional directories to watch.

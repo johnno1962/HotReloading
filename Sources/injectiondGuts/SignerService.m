@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiondGuts/SignerService.m#8 $
+//  $Id: //depot/HotReloading/Sources/injectiondGuts/SignerService.m#9 $
 //
 
 #import "SignerService.h"
@@ -31,6 +31,7 @@
     return system(command.UTF8String) >> 8 == EXIT_SUCCESS;
 }
 
+#if 0 // no longer used
 - (void)runInBackground {
     char __unused skip, buffer[1000];
     buffer[read(clientSocket, buffer, sizeof buffer-1)] = '\000';
@@ -41,5 +42,6 @@
         write(clientSocket, buffer, strlen(buffer));
     }
 }
+#endif
 
 @end

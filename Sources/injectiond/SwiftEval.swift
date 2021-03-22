@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#15 $
+//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#20 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -193,10 +193,14 @@ public class SwiftEval: NSObject {
     }
 
     func scriptError(_ what: String) -> Error {
+        var log = (try? String(contentsOfFile: logfile)) ??
+                    "Could not read log file '\(logfile)'"
+        if log.contains(".h' file not found") {
+            log += "\(APP_PREFIX)⚠️ Adjust the \"Header Search Paths\" in your project's Build Settings"
+        }
         return evalError("""
             \(what) failed (see: \(cmdfile))
-            \((try? String(contentsOfFile: logfile)) ??
-                "Could not read log file '\(logfile)'")
+            \(log)
             """)
     }
 

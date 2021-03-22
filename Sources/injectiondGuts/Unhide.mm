@@ -97,6 +97,7 @@ int unhide_symbols(const char *framework, const char *linkFileList) {
                 BOOL isDefaultArgument = (symend[-1] == '_' &&
                    (symend[-2] == 'A' || (symend[-3] == 'A' && isdigit(symend[-2])) ||
                     (symend[-4] == 'A' && isdigit(symend[-3]) && isdigit(symend[-2])))) ||
+                    (symend[-2] == 'A' && isdigit(symend[-1])) ||
                     strcmp(symend-4, "QOMg") == 0;
 
                 // The following reads: If symbol is for a default argument

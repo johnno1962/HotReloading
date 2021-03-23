@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#18 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#20 $
 //
 
 import Cocoa
@@ -95,8 +95,9 @@ public class InjectionServer: SimpleSocket {
         // log errors to client
         builder.evalError = {
             (message: String) in
-            NSLog("%@", message)
-            self.sendCommand(.log, with:message)
+            NSLog("evalError: %@", message)
+            self.sendCommand(.log, with:
+                (message.hasPrefix("Compiling") ?"":"⚠️ ")+message)
             return NSError(domain:"SwiftEval", code:-1,
                            userInfo:[NSLocalizedDescriptionKey: message])
         }

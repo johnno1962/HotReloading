@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#20 $
+//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#22 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -188,7 +188,7 @@ public class SwiftEval: NSObject {
     /// Error handler
     @objc public var evalError = {
         (_ message: String) -> Error in
-        print("\(APP_PREFIX)*** \(message) ***")
+        print(APP_PREFIX+(message.hasPrefix("Compiling") ?"":"⚠️ ")+message)
         return NSError(domain: "SwiftEval", code: -1, userInfo: [NSLocalizedDescriptionKey: message])
     }
 

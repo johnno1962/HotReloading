@@ -17,7 +17,9 @@ if [ -f "/tmp/injecting_storyboard.txt" ]; then
     exit 0
 fi
 
-DERIVED_LOGS="$(dirname $(dirname $SYMROOT))/Logs/Build"
+
+DERIVED_DATA="$(dirname $(dirname $SYMROOT))"
+export DERIVED_LOGS="$DERIVED_DATA/Logs/Build"
 
 LAST_LOG=`ls -t $DERIVED_LOGS/*.xcactivitylog | head -n 1`
 
@@ -26,6 +28,11 @@ export LINK_FILE_LIST="$NORMAL_ARCH_FILE.LinkFileList"
 
 # kill any existing daemon process
 kill -9 `ps auxww | grep .build/debug/injectiond | grep -v grep | awk '{ print $2 }'`
+
+for dir in repositories; do # checkouts; do
+    mkdir -p ".build/$dir"
+    ln -s "$DERIVED_DATA/SourcePackages"/$dir/* ".build/$dir"
+done
 
 # rebuild daemon
 /usr/bin/env -i PATH="$PATH" "$TOOLCHAIN_DIR"/usr/bin/swift build --product injectiond &&

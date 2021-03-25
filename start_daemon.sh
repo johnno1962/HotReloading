@@ -2,7 +2,7 @@
 #
 # Start up daemon process to rebuild changed sources
 #
-# $Id: //depot/HotReloading/start_daemon.sh#24 $
+# $Id: //depot/HotReloading/start_daemon.sh#25 $
 #
 
 cd "$(dirname $0)"

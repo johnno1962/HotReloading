@@ -2,7 +2,7 @@
 #
 # Start up daemon process to rebuild changed sources
 #
-# $Id: //depot/HotReloading/start_daemon.sh#23 $
+# $Id: //depot/HotReloading/start_daemon.sh#25 $
 #
 
 cd "$(dirname $0)"
@@ -17,7 +17,9 @@ if [ -f "/tmp/injecting_storyboard.txt" ]; then
     exit 0
 fi
 
-DERIVED_LOGS="$(dirname $(dirname $SYMROOT))/Logs/Build"
+
+DERIVED_DATA="$(dirname $(dirname $SYMROOT))"
+export DERIVED_LOGS="$DERIVED_DATA/Logs/Build"
 
 LAST_LOG=`ls -t $DERIVED_LOGS/*.xcactivitylog | head -n 1`
 
@@ -26,6 +28,8 @@ export LINK_FILE_LIST="$NORMAL_ARCH_FILE.LinkFileList"
 
 # kill any existing daemon process
 kill -9 `ps auxww | grep .build/debug/injectiond | grep -v grep | awk '{ print $2 }'`
+
+mkdir -p .build; ln -s "$DERIVED_DATA/SourcePackages"/repositories .build
 
 # rebuild daemon
 /usr/bin/env -i PATH="$PATH" "$TOOLCHAIN_DIR"/usr/bin/swift build --product injectiond &&

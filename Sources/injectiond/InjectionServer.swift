@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#20 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#21 $
 //
 
 import Cocoa
@@ -30,7 +30,7 @@ public class InjectionServer: SimpleSocket {
 
     override public class func error(_ message: String) -> Int32 {
         let saveno = errno
-        DispatchQueue.main.sync {
+        DispatchQueue.main.async {
             let alert: NSAlert = NSAlert()
             alert.messageText = "Injection Error"
             alert.informativeText = String(format:message, strerror(saveno))

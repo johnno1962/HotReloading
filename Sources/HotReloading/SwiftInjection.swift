@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#9 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#10 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -73,7 +73,7 @@ extension NSObject {
     }
 }
 
-@objc
+@objc(SwiftInjection)
 public class SwiftInjection: NSObject {
 
     static let testQueue = DispatchQueue(label: "INTestQueue")
@@ -325,8 +325,8 @@ public class SwiftInjection: NSObject {
                 injectedClasses.append(cls)
                 if !sweepWarned {
                     print("""
-                        \(APP_PREFIX)As class \(cls) has an @objc injected() method, \
-                        \(APP_NAME) will perform a "sweep" of live \
+                        \(APP_PREFIX)As class \(cls) has an @objc injected() \
+                        method, \(APP_NAME) will perform a "sweep" of live \
                         instances to determine which objects to message. \
                         If this fails, subscribe to the notification \
                         "INJECTION_BUNDLE_NOTIFICATION" instead.
@@ -568,20 +568,15 @@ class SwiftSweeper {
 
 extension NSObject {
     @objc func legacySwiftSweep() {
-        var icnt: UInt32 = 0, cls: AnyClass? = object_getClass(self)!
-        let object = "@".utf16.first!
+        var icnt: UInt32 = 0, cls: AnyClass? = object_getClass(self)
         while cls != nil && cls != NSObject.self && cls != NSURL.self {
             let className = NSStringFromClass(cls!)
-            if className.hasPrefix("_") || className.hasPrefix("NS") ||
-                className.hasPrefix("WK") {
+            if className.hasPrefix("_") || className.hasPrefix("WK") ||
+                className.hasPrefix("NS") && className != "NSWindow" {
                 return
             }
-            #if os(OSX)
-            if className.starts(with: "NS") && cls != NSWindow.self {
-                return
-            }
-            #endif
             if let ivars = class_copyIvarList(cls, &icnt) {
+                let object = UInt8(ascii: "@")
                 for i in 0 ..< Int(icnt) {
                     if let type = ivar_getTypeEncoding(ivars[i]), type[0] == object {
                         (unsafeBitCast(self, to: UnsafePointer<Int8>.self) + ivar_getOffset(ivars[i]))

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#10 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#11 $
 //
 
 import Cocoa
@@ -135,33 +135,6 @@ class AppDelegate : NSObject, NSApplicationDelegate {
         for dir in arguments where !dir.hasPrefix(projectRoot) {
             appDelegate.watchedDirectories.insert(dir)
         }
-
-        #if false
-        // Default argument symbols need to not be "hidden"
-        // so files using default arguments can be injected.
-        if let symroot = getenv("SYMROOT"),
-           let product = getenv("PRODUCT_NAME"),
-           let linkFile = getenv("LINK_FILE_LIST") {
-            unhide_symbols(product, linkFile)
-
-            // Unhide of app Packages
-            let buildDir = URL(fileURLWithPath:
-                String(cString: symroot)).deletingLastPathComponent()
-            if let enumerator = FileManager.default
-                    .enumerator(atPath: buildDir.path) {
-                for any in enumerator {
-                    let file = any as! String
-                    if file.hasSuffix(".o.LinkFileList") {
-                        let fileURL = buildDir
-                            .appendingPathComponent(file)
-                        unhide_symbols(fileURL
-                            .deletingPathExtension().deletingPathExtension()
-                            .lastPathComponent, fileURL.path)
-                    }
-                }
-            }
-        }
-        #endif
         #else
         statusItem.toolTip = "Code Injection"
         DDHotKeyCenter.shared()?

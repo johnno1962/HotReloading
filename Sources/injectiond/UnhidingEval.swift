@@ -1,8 +1,11 @@
 //
-//  File.swift
-//  
+//  UnhidingEval.swift
 //
 //  Created by John Holdsworth on 13/04/2021.
+//
+//  $Id: //depot/HotReloading/Sources/injectiond/UnhidingEval.swift#1 $
+//
+//  Retro-fit Unhide into InjectionIII
 //
 
 import Foundation

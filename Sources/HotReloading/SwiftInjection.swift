@@ -472,7 +472,7 @@ public class SwiftInjection: NSObject {
 }
 
 @objc
-public class SwiftInjectionEval: SwiftEval {
+public class SwiftInjectionEval: UnhidingEval {
 
     @objc public override class func sharedInstance() -> SwiftEval {
         SwiftEval.instance = SwiftInjectionEval()
@@ -505,7 +505,7 @@ class SwiftSweeper {
     func sweepValue(_ value: Any) {
         /// Skip values that cannot be cast into `AnyObject` because they end up being `nil`
         /// Fixes a potential crash that the value is not accessible during injection.
-        guard value as? AnyObject != nil else { return }
+//        guard value as? AnyObject != nil else { return }
 
         let mirror = Mirror(reflecting: value)
         if var style = mirror.displayStyle {

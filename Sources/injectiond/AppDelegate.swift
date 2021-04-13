@@ -136,6 +136,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
             appDelegate.watchedDirectories.insert(dir)
         }
 
+        #if false
         // Default argument symbols need to not be "hidden"
         // so files using default arguments can be injected.
         if let symroot = getenv("SYMROOT"),
@@ -160,6 +161,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
                 }
             }
         }
+        #endif
         #else
         statusItem.toolTip = "Code Injection"
         DDHotKeyCenter.shared()?

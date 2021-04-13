@@ -70,7 +70,7 @@ public class InjectionServer: SimpleSocket {
             return
         }
 
-        builder = SwiftEval()
+        builder = UnhidingEval()
         defer {
             builder.signer = nil
             builder = nil

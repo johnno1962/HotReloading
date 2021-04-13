@@ -94,4 +94,4 @@ typedef NS_ENUM(int, InjectionResponse) {
     InjectionExit = ~0
 };
 
-extern int unhide_symbols(const char *framework, const char *linkFileList);
+extern int unhide_symbols(const char *framework, const char *linkFileList, FILE *log);

@@ -507,19 +507,9 @@ public class SwiftEval: NSObject {
                 print("""
                     \(APP_PREFIX)Loading .dylib has failed, This is likely \
                     because Swift code being injected refers to a function \
-                    with a default argument.
+                    with a default argument. Rebuilding and re-running your \
+                    project (without a build clean) can resolve this.
                     """, terminator: "")
-                #if SWIFT_PACKAGE
-                print("""
-                     Rebuilding and re-running your project can resolve this.
-                    """)
-                #else
-                print("""
-                     Consult the section in the README at \
-                    https://github.com/johnno1962/InjectionIII \
-                    about using \"unhide\".
-                    """)
-                #endif
             }
             throw evalError("dlopen() error: \(error)")
         }

@@ -7,7 +7,8 @@
 
 #ifndef Unhide_h
 #define Unhide_h
+#import <stdio.h>
 
-extern int unhide_symbols(const char *framework, const char *linkFileList);
+extern int unhide_symbols(const char *framework, const char *linkFileList, FILE *log);
 
 #endif /* Header_h */

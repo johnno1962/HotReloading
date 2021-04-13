@@ -28,18 +28,23 @@ public class UnhidingEval: SwiftEval {
             let buildDir = logs.deletingLastPathComponent()
                 .deletingLastPathComponent().appendingPathComponent("Build")
             if let enumerator = FileManager.default
-                    .enumerator(atPath: buildDir.path) {
+                    .enumerator(atPath: buildDir.path),
+                let log = fopen("/tmp/unhide.log", "w") {
                 DispatchQueue.global(qos: .background).async {
                     for any in enumerator {
                         let file = any as! String
                         if file.hasSuffix(".LinkFileList") {
                             let fileURL = buildDir
                                 .appendingPathComponent(file)
-                            unhide_symbols(fileURL
+                            let exported = unhide_symbols(fileURL
                                 .deletingPathExtension().deletingPathExtension()
-                                .lastPathComponent, fileURL.path)
+                                .lastPathComponent, fileURL.path, log)
+                            if exported != 0 {
+                                print("\(APP_PREFIX)Exported \(exported) default arguments")
+                            }
                         }
                     }
+                    fclose(log)
                 }
             }
             unhidden = true

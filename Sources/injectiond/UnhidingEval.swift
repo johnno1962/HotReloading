@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/UnhidingEval.swift#1 $
+//  $Id: //depot/HotReloading/Sources/injectiond/UnhidingEval.swift#2 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -35,8 +35,9 @@ public class UnhidingEval: SwiftEval {
                 let log = fopen("/tmp/unhide.log", "w") {
                 DispatchQueue.global(qos: .background).async {
                     for any in enumerator {
-                        let file = any as! String
-                        if file.hasSuffix(".LinkFileList") {
+                        if let file = any as? String,
+                            file.hasSuffix(".LinkFileList") &&
+                            !file.hasSuffix(".o.LinkFileList") {
                             let fileURL = buildDir
                                 .appendingPathComponent(file)
                             let exported = unhide_symbols(fileURL

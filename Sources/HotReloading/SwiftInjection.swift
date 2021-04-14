@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#11 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#12 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -505,7 +505,7 @@ class SwiftSweeper {
     func sweepValue(_ value: Any) {
         /// Skip values that cannot be cast into `AnyObject` because they end up being `nil`
         /// Fixes a potential crash that the value is not accessible during injection.
-//        guard value as? AnyObject != nil else { return }
+        guard value as? AnyObject != nil else { return }
 
         let mirror = Mirror(reflecting: value)
         if var style = mirror.displayStyle {
@@ -558,7 +558,8 @@ class SwiftSweeper {
     func sweepMembers(_ instance: Any) {
         var mirror: Mirror? = Mirror(reflecting: instance)
         while mirror != nil {
-            for (_, value) in mirror!.children {
+            for (name, value) in mirror!.children
+                where name?.hasSuffix("Type") != true {
                 sweepValue(value)
             }
             mirror = mirror!.superclassMirror

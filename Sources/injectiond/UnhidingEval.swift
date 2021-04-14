@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/UnhidingEval.swift#2 $
+//  $Id: //depot/HotReloading/Sources/injectiond/UnhidingEval.swift#3 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -33,19 +33,21 @@ public class UnhidingEval: SwiftEval {
             if let enumerator = FileManager.default
                     .enumerator(atPath: buildDir.path),
                 let log = fopen("/tmp/unhide.log", "w") {
+                let linkFileLists = enumerator
+                    .compactMap { $0 as? String }
+                    .filter { $0.hasSuffix(".LinkFileList") }
                 DispatchQueue.global(qos: .background).async {
-                    for any in enumerator {
-                        if let file = any as? String,
-                            file.hasSuffix(".LinkFileList") &&
-                            !file.hasSuffix(".o.LinkFileList") {
-                            let fileURL = buildDir
-                                .appendingPathComponent(file)
-                            let exported = unhide_symbols(fileURL
-                                .deletingPathExtension().deletingPathExtension()
-                                .lastPathComponent, fileURL.path, log)
-                            if exported != 0 {
-                                print("\(APP_PREFIX)Exported \(exported) default arguments")
-                            }
+                    for path in linkFileLists.sorted(by: {
+                        ($0.hasSuffix(".o.LinkFileList") ? 0 : 1) <
+                        ($1.hasSuffix(".o.LinkFileList") ? 0 : 1) }) {
+                        print("\(APP_PREFIX)Processing \(path)")
+                        let fileURL = buildDir
+                            .appendingPathComponent(path)
+                        let exported = unhide_symbols(fileURL
+                            .deletingPathExtension().deletingPathExtension()
+                            .lastPathComponent, fileURL.path, log)
+                        if exported != 0 {
+                            print("\(APP_PREFIX)Exported \(exported) default arguments")
                         }
                     }
                     fclose(log)

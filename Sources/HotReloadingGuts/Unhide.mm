@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#2 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#4 $
 //
 
 #import <Foundation/Foundation.h>
@@ -20,10 +20,16 @@
 #import <map>
 
 extern "C" {
-    #import "Unhide.h"
+    extern int unhide_symbols(const char *framework, const char *linkFileList, FILE *log);
+    extern void unhide_reset();
+
 }
 
-std::map<std::string,int> seen;
+static std::map<std::string,int> seen;
+
+void unhide_reset() {
+    seen.clear();
+}
 
 int unhide_symbols(const char *framework, const char *linkFileList, FILE *log) {
     FILE *linkFiles = fopen(linkFileList, "r");

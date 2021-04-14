@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/UnhidingEval.swift#3 $
+//  $Id: //depot/HotReloading/Sources/injectiond/UnhidingEval.swift#4 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -50,6 +50,7 @@ public class UnhidingEval: SwiftEval {
                             print("\(APP_PREFIX)Exported \(exported) default arguments")
                         }
                     }
+                    unhide_reset()
                     fclose(log)
                 }
             }

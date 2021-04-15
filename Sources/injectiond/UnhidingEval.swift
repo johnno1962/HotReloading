@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/UnhidingEval.swift#5 $
+//  $Id: //depot/HotReloading/Sources/injectiond/UnhidingEval.swift#6 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -60,17 +60,18 @@ public class UnhidingEval: SwiftEval {
                     .compactMap { $0 as? String }
                     .filter { $0.hasSuffix(".LinkFileList") }
                 DispatchQueue.global(qos: .background).async {
+                    // linkFileLists sorted to process packages
+                    // first due to Edge case in Fruta example.
                     for path in linkFileLists.sorted(by: {
                         ($0.hasSuffix(".o.LinkFileList") ? 0 : 1) <
                         ($1.hasSuffix(".o.LinkFileList") ? 0 : 1) }) {
-                        print("\(APP_PREFIX)Processing \(path)")
                         let fileURL = buildDir
                             .appendingPathComponent(path)
                         let exported = unhide_symbols(fileURL
                             .deletingPathExtension().deletingPathExtension()
                             .lastPathComponent, fileURL.path, log)
                         if exported != 0 {
-                            print("\(APP_PREFIX)Exported \(exported) default arguments")
+                            print("\(APP_PREFIX)Exported \(exported) default arguments in \(path)")
                         }
                     }
                     unhide_reset()

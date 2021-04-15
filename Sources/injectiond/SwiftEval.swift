@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#22 $
+//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#24 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -507,19 +507,9 @@ public class SwiftEval: NSObject {
                 print("""
                     \(APP_PREFIX)Loading .dylib has failed, This is likely \
                     because Swift code being injected refers to a function \
-                    with a default argument.
-                    """, terminator: "")
-                #if SWIFT_PACKAGE
-                print("""
-                     Rebuilding and re-running your project can resolve this.
+                    with a default argument. Rebuilding and re-running your \
+                    project (without a build clean) can resolve this.
                     """)
-                #else
-                print("""
-                     Consult the section in the README at \
-                    https://github.com/johnno1962/InjectionIII \
-                    about using \"unhide\".
-                    """)
-                #endif
             }
             throw evalError("dlopen() error: \(error)")
         }

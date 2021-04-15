@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/injectiondGuts/Unhide.mm#14 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#4 $
 //
 
 #import <Foundation/Foundation.h>
@@ -20,28 +20,36 @@
 #import <map>
 
 extern "C" {
-    #import "Unhide.h"
+    extern int unhide_symbols(const char *framework, const char *linkFileList, FILE *log);
+    extern void unhide_reset();
+
 }
 
-std::map<std::string,int> seen;
+static std::map<std::string,int> seen;
 
-int unhide_symbols(const char *framework, const char *linkFileList) {
+void unhide_reset() {
+    seen.clear();
+}
+
+int unhide_symbols(const char *framework, const char *linkFileList, FILE *log) {
     FILE *linkFiles = fopen(linkFileList, "r");
     if (!linkFiles) {
-       fprintf(stderr, "unhide: Could not open link file list %s\n", linkFileList);
-       return 1;
+       fprintf(log, "unhide: Could not open link file list %s\n", linkFileList);
+       return -1;
     }
 
     char buffer[PATH_MAX];
+    int totalExported = 0;
 
     while (fgets(buffer, sizeof buffer, linkFiles)) {
         buffer[strlen(buffer)-1] = '\000';
+
         @autoreleasepool {
             NSString *file = [NSString stringWithUTF8String:buffer];
             NSData *patched = [[NSMutableData alloc] initWithContentsOfFile:file];
 
             if (!patched) {
-                fprintf(stderr, "unhide: Could not read %s\n", [file UTF8String]);
+                fprintf(log, "unhide: Could not read %s\n", [file UTF8String]);
                 continue;
             }
 
@@ -49,7 +57,7 @@ int unhide_symbols(const char *framework, const char *linkFileList) {
             const char *filename = file.lastPathComponent.UTF8String;
 
             if (object->magic != MH_MAGIC_64) {
-                fprintf(stderr, "unhide: Invalid magic 0x%x != 0x%x (bad arch?)\n",
+                fprintf(log, "unhide: Invalid magic 0x%x != 0x%x (bad arch?)\n",
                         object->magic, MH_MAGIC_64);
                 continue;
             }
@@ -68,7 +76,7 @@ int unhide_symbols(const char *framework, const char *linkFileList) {
             }
 
             if (!symtab || !dylib) {
-                fprintf(stderr, "unhide: Missing symtab or dylib cmd %s: %p & %p\n",
+                fprintf(log, "unhide: Missing symtab or dylib cmd %s: %p & %p\n",
                         filename, symtab, dylib);
                 continue;
             }
@@ -97,7 +105,7 @@ int unhide_symbols(const char *framework, const char *linkFileList) {
                 BOOL isDefaultArgument = (symend[-1] == '_' &&
                    (symend[-2] == 'A' || (symend[-3] == 'A' && isdigit(symend[-2])) ||
                     (symend[-4] == 'A' && isdigit(symend[-3]) && isdigit(symend[-2])))) ||
-                    strcmp(symend-4, "QOMg") == 0;
+                    strcmp(symend-4, "QOMg") == 0 || strcmp(symend-3, "vau") == 0;
 
                 // The following reads: If symbol is for a default argument
                 // and it is the definition (not a reference) and we've not
@@ -110,7 +118,7 @@ int unhide_symbols(const char *framework, const char *linkFileList) {
                     symbol.n_desc = N_GSYM;
 
                     if (!exported++)
-                        printf("%s.%s: local: %d %d ext: %d %d undef: %d %d extref: %d %d indirect: %d %d extrel: %d %d localrel: %d %d symlen: 0%lo\n",
+                        fprintf(log, "%s.%s: local: %d %d ext: %d %d undef: %d %d extref: %d %d indirect: %d %d extrel: %d %d localrel: %d %d symlen: 0%lo\n",
                                framework, filename,
                                dylib->ilocalsym, dylib->nlocalsym,
                                dylib->iextdefsym, dylib->nextdefsym,
@@ -121,7 +129,7 @@ int unhide_symbols(const char *framework, const char *linkFileList) {
                                dylib->locreloff, dylib->nlocrel,
                                (char *)&end_symbols64->n_un - (char *)object);
 
-                    printf("exported: #%d 0%lo 0x%x 0x%x %3d %s\n", i,
+                    fprintf(log, "exported: #%d 0%lo 0x%x 0x%x %3d %s\n", i,
                            (char *)&symbol.n_type - (char *)object,
                            symbol.n_type, symbol.n_desc,
                            symbol.n_sect, symname);
@@ -129,9 +137,11 @@ int unhide_symbols(const char *framework, const char *linkFileList) {
             }
 
             if (exported && ![patched writeToFile:file atomically:NO])
-                fprintf(stderr, "unhide: Could not write %s\n", [file UTF8String]);
+                fprintf(log, "unhide: Could not write %s\n", [file UTF8String]);
+            totalExported += exported;
         }
     }
 
-    return 0;
+    fclose(linkFiles);
+    return totalExported;
 }

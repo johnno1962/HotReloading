@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#21 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#22 $
 //
 
 import Cocoa
@@ -70,7 +70,7 @@ public class InjectionServer: SimpleSocket {
             return
         }
 
-        builder = SwiftEval()
+        builder = UnhidingEval()
         defer {
             builder.signer = nil
             builder = nil

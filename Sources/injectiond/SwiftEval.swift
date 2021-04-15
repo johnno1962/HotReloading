@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#24 $
+//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#25 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -17,6 +17,9 @@
 import Foundation
 #if SWIFT_PACKAGE
 import HotReloadingGuts
+private let APP_PREFIX = "🔥 "
+#else
+private let APP_PREFIX = "💉 "
 #endif
 
 private func debug(_ str: String) {

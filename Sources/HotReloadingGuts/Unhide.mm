@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#4 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#6 $
 //
 
 #import <Foundation/Foundation.h>
@@ -136,7 +136,7 @@ int unhide_symbols(const char *framework, const char *linkFileList, FILE *log) {
                 }
             }
 
-            if (exported && ![patched writeToFile:file atomically:NO])
+            if (exported && ![patched writeToFile:file atomically:YES])
                 fprintf(log, "unhide: Could not write %s\n", [file UTF8String]);
             totalExported += exported;
         }

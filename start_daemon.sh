@@ -2,7 +2,7 @@
 #
 # Start up daemon process to rebuild changed sources
 #
-# $Id: //depot/HotReloading/start_daemon.sh#27 $
+# $Id: //depot/HotReloading/start_daemon.sh#28 $
 #
 
 cd "$(dirname $0)"
@@ -30,7 +30,7 @@ export LINK_FILE_LIST="$NORMAL_ARCH_FILE.LinkFileList"
 kill -9 `ps auxww | grep .build/debug/injectiond | grep -v grep | awk '{ print $2 }'`
 
 # Avoid having to fetch dependancies again
-mkdir -p .build; ln -s "$DERIVED_DATA"/SourcePackages/repositories .build
+# mkdir -p .build; ln -s "$DERIVED_DATA"/SourcePackages/repositories .build
 
 # rebuild daemon
 /usr/bin/env -i PATH="$PATH" "$TOOLCHAIN_DIR"/usr/bin/swift build --product injectiond &&

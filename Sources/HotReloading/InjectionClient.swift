@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#17 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#18 $
 //
 //  Client app side of HotReloading started by +load
 //  method in HotReloadingGuts/ClientBoot.mm
@@ -83,14 +83,14 @@ public class InjectionClient: SimpleSocket {
                 let frameworkName = readString() ?? "Misssing framework"
                 if let frameworkPath = frameworkPaths[frameworkName] {
                     print("\(APP_PREFIX)Tracing %s\n", frameworkPath)
-                    SwiftTrace.interposeMethods(inBundlePath: frameworkPath,
-                                                packageName: nil)
+                    _ = SwiftTrace.interposeMethods(inBundlePath: frameworkPath,
+                                                    packageName: nil)
                     SwiftTrace.trace(bundlePath:frameworkPath)
                 } else {
                     print("\(APP_PREFIX)Tracing package \(frameworkName)")
                     let mainBundlePath = Bundle.main.executablePath ?? "Missing"
-                    SwiftTrace.interposeMethods(inBundlePath: mainBundlePath,
-                                                packageName: frameworkName)
+                    _ = SwiftTrace.interposeMethods(inBundlePath: mainBundlePath,
+                                                    packageName: frameworkName)
                 }
                 filteringChanged()
             default:
@@ -136,15 +136,18 @@ public class InjectionClient: SimpleSocket {
                 print("\(APP_PREFIX)Discovery of target app's types switched \(SwiftTrace.typeLookup ? "on" : "off")");
             }
         case .trace:
-            SwiftTrace.traceMainBundleMethods()
-            print("\(APP_PREFIX)Added trace to non-final methods of classes in app bundle")
+            if SwiftTrace.traceMainBundleMethods() == 0 {
+                print("\(APP_PREFIX)⚠️ Tacing can only work if you have -Xlinker -interposable to your project's \"Other Linker Flags\"")
+            } else {
+                print("\(APP_PREFIX)Added trace to methods in main bundle")
+            }
             filteringChanged()
         case .untrace:
             SwiftTrace.removeAllTraces()
         case .traceUI:
-            SwiftTrace.traceMainBundleMethods()
+            _ = SwiftTrace.traceMainBundleMethods()
             SwiftTrace.traceMainBundle()
-            print("\(APP_PREFIX)Added trace to methods in main bundle")
+            print("\(APP_PREFIX)Added trace to non-final methods of classes in app bundle")
             filteringChanged()
         case .traceUIKit:
             DispatchQueue.main.sync {
@@ -156,9 +159,9 @@ public class InjectionClient: SimpleSocket {
             }
             filteringChanged()
         case .traceSwiftUI:
-            if let AnyText = swiftUIBundlePath() {
+            if let bundleOfAnyTextStorage = swiftUIBundlePath() {
                 print("\(APP_PREFIX)Adding trace to SwiftUI calls.")
-                SwiftTrace.interposeMethods(inBundlePath:AnyText, packageName:nil)
+                _ = SwiftTrace.interposeMethods(inBundlePath: bundleOfAnyTextStorage, packageName:nil)
                 filteringChanged()
             } else {
                 print("\(APP_PREFIX)Your app doesn't seem to use SwiftUI.")

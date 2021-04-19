@@ -5,7 +5,7 @@
 //  Created by User on 20/10/2020.
 //  Copyright © 2020 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#11 $
+//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#14 $
 //
 
 import Cocoa
@@ -257,6 +257,9 @@ extension AppDelegate {
                 do {
                     try newProjectSource.write(to: pbxprojURL, atomically: true,
                                                encoding: projectEncoding)
+                    let alert = NSAlert()
+                    alert.messageText = "\(APP_NAME) has patched your project slightly to add the required -Xlinker -interposable \"Other Linker Flags\". Restart the app to have these changes take effect. A backup has been saved at: \(backup)"
+                    _ = alert.runModal()
                 } catch {
                     NSLog("Could not patch project \(pbxprojURL): \(error)")
                     let alert = NSAlert()
@@ -289,9 +292,9 @@ extension AppDelegate {
                 return
             }
             let alert = NSAlert()
+            alert.messageText = "About to patch SwiftUI files in the source directory: \(projectRoot.path) for injection."
             alert.addButton(withTitle: "Go ahead")
             alert.addButton(withTitle: "Cancel")
-            alert.messageText = "About to patch SwiftUI files in the source directory: \(projectRoot.path) for injection. This should have also added -Xlinker -interposable to your project setting's \"Other Linker Flags\"."
             switch alert.runModal() {
             case .alertSecondButtonReturn:
                 return

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#12 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#17 $
 //
 
 import Cocoa
@@ -125,14 +125,14 @@ class AppDelegate : NSObject, NSApplicationDelegate {
         statusItem.toolTip = "Hot Reloading"
         var arguments = CommandLine.arguments.dropFirst()
         let projectURL = URL(fileURLWithPath: arguments.removeFirst())
-        let projectRoot = projectURL.deletingLastPathComponent().path
-        NSDocumentController.shared.noteNewRecentDocumentURL(projectURL)
+        let projectRoot = projectURL.deletingLastPathComponent()
         AppDelegate.ensureInterposable(project: projectURL.path)
+        NSDocumentController.shared.noteNewRecentDocumentURL(projectRoot)
         derivedLogs = arguments.removeFirst()
 
         selectedProject = projectURL.path
-        appDelegate.watchedDirectories = [projectRoot]
-        for dir in arguments where !dir.hasPrefix(projectRoot) {
+        appDelegate.watchedDirectories = [projectRoot.path]
+        for dir in arguments where !dir.hasPrefix(projectRoot.path) {
             appDelegate.watchedDirectories.insert(dir)
         }
         #else

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#17 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#21 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -15,20 +15,13 @@
 import Foundation
 import SwiftTrace
 #if SWIFT_PACKAGE
-import SwiftTraceGuts
 import HotReloadingGuts
+import DLKit
 #endif
 
 /** pointer to a function implementing a Swift method */
 public typealias SIMP = SwiftMeta.SIMP
 public typealias ClassMetadataSwift = SwiftMeta.TargetClassMetadata
-
-#if swift(>=3.0)
-public func _stdlib_demangleName(_ mangledName: String) -> String {
-    return mangledName.withCString {
-        SwiftMeta.demangle(symbol: $0) ?? mangledName }
-}
-#endif
 
 #if os(iOS) || os(tvOS)
 import UIKit
@@ -71,6 +64,7 @@ extension NSObject {
 public class SwiftInjection: NSObject {
 
     static let testQueue = DispatchQueue(label: "INTestQueue")
+    static let injectableSuffixes = ["fC", "yF", "lF", "tF", "Qrvg"]
 
     @objc
     public class func inject(oldClass: AnyClass?, classNameOrFile: String) {
@@ -182,10 +176,10 @@ public class SwiftInjection: NSObject {
             }
         }
 
-        findSwiftSymbols("\(tmpfile).dylib", "VN") {
-            (typePtr, symbol, _, _) in
-            if let existing: Any.Type =
-                autoBitCast(dlsym(SwiftMeta.RTLD_DEFAULT, symbol)) {
+        for (symbol, value, _) in DLKit.lastImage
+            .swiftSymbols(withSuffixes: ["VN"]) {
+            if let typePtr = value, let existing: Any.Type =
+                autoBitCast(DLKit.mainImage[symbol]) {
                 print("\(APP_PREFIX)Injected value type '\(_typeName(existing))'")
                 if SwiftMeta.sizeof(anyType: autoBitCast(typePtr)) !=
                    SwiftMeta.sizeof(anyType: existing) {
@@ -222,39 +216,41 @@ public class SwiftInjection: NSObject {
     }
 
     public class func interpose(functionsIn dylib: String) {
-        let main = dlopen(nil, RTLD_NOW)
         let detail = getenv("INJECTION_DETAIL") != nil
-        var interposes = [dyld_interpose_tuple]()
         var symbols = [UnsafePointer<Int8>]()
+        #if true // New DLKit based interposing...
+        var replacements = [UnsafeMutableRawPointer]()
 
         // Find all definitions of Swift functions and ...
         // SwiftUI body properties defined in the new dylib.
-        for suffix in SwiftTrace.swiftFunctionSuffixes {
-            findSwiftSymbols(dylib, suffix) { (loadedFunc, symbol, _, _) in
-                guard let existing = dlsym(main, symbol),
-                    UnsafeRawPointer(existing) != loadedFunc,
-                    let current = SwiftTrace.interposed(replacee: existing) else {
-                    return
-                }
-                let method = SwiftMeta.demangle(symbol: symbol) ?? String(cString: symbol)
-                if detail {
-                    print("\(APP_PREFIX)Replacing \(method)")
-                }
 
-                var replacement = loadedFunc
-                if traceInjection || SwiftTrace.isTracing, let tracer = SwiftTrace
-                    .trace(name: injectedPrefix+method, original: replacement) {
-                    replacement = autoBitCast(tracer)
-                }
-                interposes.append(dyld_interpose_tuple(
-                    replacement: replacement, replacee: current))
-                symbols.append(symbol)
-                #if ORIGINAL_2_2_0_CODE
-                SwiftTrace.interposed[existing] = loadedFunc
-                SwiftTrace.interposed[current] = loadedFunc
-                #endif
+        for (symbol, value, _) in DLKit.lastImage
+            .swiftSymbols(withSuffixes: injectableSuffixes) {
+            guard var replacement = value else {
+                continue
             }
+            let method = symbol.demangled ?? String(cString: symbol)
+            if detail {
+                print("\(APP_PREFIX)Replacing \(method)")
+            }
+
+            if traceInjection || SwiftTrace.isTracing, let tracer = SwiftTrace
+                .trace(name: injectedPrefix+method, original: replacement) {
+                replacement = autoBitCast(tracer)
+            }
+
+            symbols.append(symbol+1)
+            replacements.append(replacement)
         }
+
+        // Rebind all references in all images in the app bundle
+        // to function symbols defined in the last loaded dylib
+        // to the new implementations in the newly loaded dylib.
+        DLKit.appImages[symbols] = replacements
+
+        #else // Previous code...
+        let main = dlopen(nil, RTLD_NOW)
+        var interposes = [dyld_interpose_tuple]()
 
         #if !ORIGINAL_2_2_0_CODE
         if SwiftTrace.apply(interposes: interposes, symbols: symbols, onInjection: { header in
@@ -303,6 +299,7 @@ public class SwiftInjection: NSObject {
 //                print("Patched \(String(cString: image))")
             }
         }
+        #endif
         #endif
     }
 
@@ -453,14 +450,12 @@ public class SwiftInjection: NSObject {
 
     @objc class func packageNames() -> [String] {
         var packages = Set<String>()
-        for suffix in SwiftTrace.swiftFunctionSuffixes {
-            findSwiftSymbols(Bundle.main.executablePath!, suffix) {
-                (_, symname: UnsafePointer<Int8>, _, _) in
-                if let sym = SwiftMeta.demangle(symbol: String(cString: symname)),
-                    !sym.hasPrefix("(extension in "),
-                    let endPackage = sym.firstIndex(of: ".") {
-                    packages.insert(sym[..<(endPackage+0)])
-                }
+        for (symname, value, _) in
+            DLKit.mainImage.swiftSymbols(withSuffixes: injectableSuffixes) {
+            if value != nil, let sym = symname.demangled,
+                !sym.hasPrefix("(extension in "),
+                let endPackage = sym.firstIndex(of: ".") {
+                packages.insert(sym[..<(endPackage+0)])
             }
         }
         return Array(packages)

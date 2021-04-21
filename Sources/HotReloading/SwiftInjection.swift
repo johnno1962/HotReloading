@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#21 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#23 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -215,10 +215,17 @@ public class SwiftInjection: NSObject {
         }
     }
 
+    static var installDLKitLogger: Void = {
+        DLKit.logger = { (msg: String) in
+            print("\(APP_PREFIX)\(msg)")
+        }
+    }()
+
     public class func interpose(functionsIn dylib: String) {
         let detail = getenv("INJECTION_DETAIL") != nil
         var symbols = [UnsafePointer<Int8>]()
         #if true // New DLKit based interposing...
+        _ = installDLKitLogger
         var replacements = [UnsafeMutableRawPointer]()
 
         // Find all definitions of Swift functions and ...

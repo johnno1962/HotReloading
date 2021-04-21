@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#17 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#19 $
 //
 
 import Cocoa
@@ -143,7 +143,11 @@ class AppDelegate : NSObject, NSApplicationDelegate {
                target:self, action:#selector(autoInject(_:)), object:nil)
 
         NSApp.servicesProvider = self
-        if let lastWatched = defaults.string(forKey: UserDefaultsLastWatched) {
+        if let projectFile = defaults.string(forKey: "projectFile") {
+            // Received project file from command line option.
+            _ = self.application(NSApp, openFile:
+                URL(fileURLWithPath: projectFile).deletingLastPathComponent().path)
+        } else if let lastWatched = defaults.string(forKey: UserDefaultsLastWatched) {
             _ = self.application(NSApp, openFile: lastWatched)
         } else {
             NSUpdateDynamicServices()

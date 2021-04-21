@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#20 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#23 $
 //
 
 import Cocoa
@@ -165,24 +165,9 @@ class AppDelegate : NSObject, NSApplicationDelegate {
 
     func application(_ theApplication: NSApplication, openFile filename: String) -> Bool {
         #if !SWIFT_PACKAGE
-        let url: URL
-        if let resolved = resolve(path: filename) {
-            url = resolved
-        } else {
-            let open = NSOpenPanel()
-            open.prompt = openProject
-            if filename != "" {
-                open.directoryURL = URL(fileURLWithPath: filename)
-            }
-            open.canChooseDirectories = true
-            open.canChooseFiles = false
-            // open.showsHiddenFiles = TRUE;
-            if open.runModal() == .OK {
-                url = open.url!
-                persist(url: url)
-            } else {
-                return false
-            }
+        guard filename != Bundle.main.bundlePath,
+            let url = resolve(path: filename) else {
+            return false
         }
 
         if let fileList = try? FileManager.default
@@ -194,8 +179,9 @@ class AppDelegate : NSObject, NSApplicationDelegate {
                 .appendingPathComponent(projectFile).path
             watchedDirectories.removeAll()
             watchedDirectories.insert(url.path)
-            if let alsoWatch = defaults.string(forKey: "addDirectory") {
-                watchedDirectories.insert(alsoWatch)
+            if let alsoWatch = defaults.string(forKey: "addDirectory"),
+                let resolved = resolve(path: alsoWatch) {
+                watchedDirectories.insert(resolved.path)
             }
             lastConnection?.setProject(selectedProject!)
             AppDelegate.ensureInterposable(project: selectedProject!)
@@ -239,7 +225,9 @@ class AppDelegate : NSObject, NSApplicationDelegate {
 
     func resolve(path: String) -> URL? {
         var isStale: Bool = false
-        if let bookmarks =
+        if !isSandboxed, FileManager.default.fileExists(atPath: path) {
+            return URL(fileURLWithPath: path)
+        } else if let bookmarks =
             defaults.value(forKey: UserDefaultsBookmarks) as? [String : Data],
             let bookmark = bookmarks[path],
             let resolved = try? URL(resolvingBookmarkData: bookmark,
@@ -248,6 +236,20 @@ class AppDelegate : NSObject, NSApplicationDelegate {
                            bookmarkDataIsStale: &isStale), !isStale {
             _ = resolved.startAccessingSecurityScopedResource()
             return resolved
+        } else {
+            let open = NSOpenPanel()
+            open.prompt = openProject
+            if path != "" {
+                open.directoryURL = URL(fileURLWithPath: path)
+            }
+            open.canChooseDirectories = true
+            open.canChooseFiles = false
+            // open.showsHiddenFiles = TRUE;
+            if open.runModal() == .OK,
+                let url = open.url {
+                persist(url: url)
+                return url
+            }
         }
 
         return nil

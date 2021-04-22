@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/UnhidingEval.swift#6 $
+//  $Id: //depot/HotReloading/Sources/injectiond/UnhidingEval.swift#7 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -71,7 +71,8 @@ public class UnhidingEval: SwiftEval {
                             .deletingPathExtension().deletingPathExtension()
                             .lastPathComponent, fileURL.path, log)
                         if exported != 0 {
-                            print("\(APP_PREFIX)Exported \(exported) default arguments in \(path)")
+                            let s = exported == 1 ? "" : "s"
+                            print("\(APP_PREFIX)Exported \(exported) default argument\(s) in \(fileURL.lastPathComponent)")
                         }
                     }
                     unhide_reset()

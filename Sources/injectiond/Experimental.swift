@@ -5,7 +5,7 @@
 //  Created by User on 20/10/2020.
 //  Copyright © 2020 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#14 $
+//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#15 $
 //
 
 import Cocoa
@@ -43,6 +43,10 @@ extension AppDelegate {
 
     @IBAction func fileReorder(_ sender: NSMenuItem) {
         lastConnection?.sendCommand(.fileReorder, with: nil)
+    }
+
+    @IBAction func objectCounts(_ sender: NSMenuItem) {
+        lastConnection?.sendCommand(.counts, with: nil)
     }
 
     func fileReorder(signatures: [String]) {

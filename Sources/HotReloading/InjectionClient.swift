@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#18 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#19 $
 //
 //  Client app side of HotReloading started by +load
 //  method in HotReloadingGuts/ClientBoot.mm
@@ -137,7 +137,7 @@ public class InjectionClient: SimpleSocket {
             }
         case .trace:
             if SwiftTrace.traceMainBundleMethods() == 0 {
-                print("\(APP_PREFIX)⚠️ Tacing can only work if you have -Xlinker -interposable to your project's \"Other Linker Flags\"")
+                print("\(APP_PREFIX)⚠️ Tracing Swift methods can only work if you have -Xlinker -interposable to your project's \"Other Linker Flags\"")
             } else {
                 print("\(APP_PREFIX)Added trace to methods in main bundle")
             }
@@ -145,9 +145,11 @@ public class InjectionClient: SimpleSocket {
         case .untrace:
             SwiftTrace.removeAllTraces()
         case .traceUI:
-            _ = SwiftTrace.traceMainBundleMethods()
+            if SwiftTrace.traceMainBundleMethods() == 0 {
+                print("\(APP_PREFIX)⚠️ Tracing Swift methods can only work if you have -Xlinker -interposable to your project's \"Other Linker Flags\"")
+            }
             SwiftTrace.traceMainBundle()
-            print("\(APP_PREFIX)Added trace to non-final methods of classes in app bundle")
+            print("\(APP_PREFIX)Added trace to methods in main bundle")
             filteringChanged()
         case .traceUIKit:
             DispatchQueue.main.sync {
@@ -197,6 +199,13 @@ public class InjectionClient: SimpleSocket {
                 \(APP_PREFIX)(Order the source files should be compiled in target)
                 """)
             SwiftInjection.fileOrder()
+            needsTracing()
+        case .counts:
+            print("""
+                \(APP_PREFIX)Counts of live objects by class:
+                \(APP_PREFIX)================================
+                """)
+            SwiftInjection.objectCounts()
             needsTracing()
         case .fileReorder:
             writeCommand(InjectionResponse.callOrderList.rawValue,

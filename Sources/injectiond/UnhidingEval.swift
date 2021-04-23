@@ -3,18 +3,18 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/UnhidingEval.swift#6 $
+//  $Id: //depot/HotReloading/Sources/injectiond/UnhidingEval.swift#8 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
 //  Unhiding is a work-around for swift giving "hidden" visibility
 //  to default argument generators which are called when code uses
 //  a default argument. "Hidden" visibility is somewhere between a
-//  public and private declaration where de symbol doesn't become
+//  public and private declaration where the symbol doesn't become
 //  part of the Swift ABI but is nevertheless required at call sites.
 //  This causes problems for injection as "hidden" symbols are not
-//  available outside te framework or executable that defines them
-//  so a dynamically loading version of a source file that uses a
+//  available outside the framework or executable that defines them.
+//  So, a dynamically loading version of a source file that uses a
 //  default argument cannot load due to not seeing the symbol.
 //
 //  This file calls a piece of C++ in Unhide.mm which scans all the object
@@ -71,7 +71,8 @@ public class UnhidingEval: SwiftEval {
                             .deletingPathExtension().deletingPathExtension()
                             .lastPathComponent, fileURL.path, log)
                         if exported != 0 {
-                            print("\(APP_PREFIX)Exported \(exported) default arguments in \(path)")
+                            let s = exported == 1 ? "" : "s"
+                            print("\(APP_PREFIX)Exported \(exported) default argument\(s) in \(fileURL.lastPathComponent)")
                         }
                     }
                     unhide_reset()

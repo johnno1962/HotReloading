@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#23 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#24 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -466,6 +466,14 @@ public class SwiftInjection: NSObject {
             }
         }
         return Array(packages)
+    }
+
+    @objc class func objectCounts() {
+        for (className, count) in SwiftTrace.liveObjects
+            .map({(_typeName(autoBitCast($0.key)), $0.value.count)})
+            .sorted(by: {$0.0 < $1.0}) {
+            print("\(count)\t\(className)")
+        }
     }
 }
 

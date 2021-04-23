@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#20 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#21 $
 //
 //  Client app side of HotReloading started by +load
 //  method in HotReloadingGuts/ClientBoot.mm
@@ -234,9 +234,13 @@ public class InjectionClient: SimpleSocket {
                 }
             case .inject:
                 if changed.hasSuffix("storyboard") || changed.hasSuffix("xib") {
+                    #if os(iOS) || os(tvOS)
                     if !NSObject.injectUI(changed) {
                         err = "Interface injection failed"
                     }
+                    #else
+                    err = "Interface injection not available on macOS."
+                    #endif
                 } else {
                     SwiftInjection.inject(oldClass:nil, classNameOrFile:changed)
                 }

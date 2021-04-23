@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#24 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#25 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -469,10 +469,22 @@ public class SwiftInjection: NSObject {
     }
 
     @objc class func objectCounts() {
-        for (className, count) in SwiftTrace.liveObjects
-            .map({(_typeName(autoBitCast($0.key)), $0.value.count)})
-            .sorted(by: {$0.0 < $1.0}) {
-            print("\(count)\t\(className)")
+        var estimated = false
+        for (metaType, className, count) in SwiftTrace.liveObjects
+            .map({($0.key, _typeName(autoBitCast($0.key)), $0.value.count)})
+            .sorted(by: {$0.1 < $1.1}) {
+            var star = ""
+            if !SwiftTrace.tracksDeallocs.contains(metaType) {
+                estimated = true
+                star = "*"
+            }
+            print("\(count)\(star)\t\(className)")
+        }
+        if estimated {
+            print("""
+                * Indicates the count is of allocations not current objects.
+                  Instances must inherit from NSObject to track deallocations.
+                """)
         }
     }
 }

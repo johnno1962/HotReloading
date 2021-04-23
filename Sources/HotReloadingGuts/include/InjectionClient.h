@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#18 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#20 $
 //
 //  Shared definitions between server and client.
 //
@@ -44,7 +44,9 @@ extern NSString *INJECTION_KEY;
 
 @interface NSObject(HotReloading)
 + (void)runXCTestCase:(Class)aTestCase;
+#ifdef __IPHONE_OS_VERSION_MIN_REQUIRED
 + (BOOL)injectUI:(NSString *)changed;
+#endif
 @end
 
 typedef NS_ENUM(int, InjectionCommand) {

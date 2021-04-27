@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#25 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#27 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -16,7 +16,7 @@ import Foundation
 import SwiftTrace
 #if SWIFT_PACKAGE
 import HotReloadingGuts
-import DLKit
+import SwiftTraceGuts
 #endif
 
 /** pointer to a function implementing a Swift method */
@@ -176,10 +176,10 @@ public class SwiftInjection: NSObject {
             }
         }
 
-        for (symbol, value, _) in DLKit.lastImage
-            .swiftSymbols(withSuffixes: ["VN"]) {
-            if let typePtr = value, let existing: Any.Type =
-                autoBitCast(DLKit.mainImage[symbol]) {
+        findSwiftSymbols("\(tmpfile).dylib", "VN") {
+            (typePtr, symbol, _, _) in
+            if let existing: Any.Type =
+                autoBitCast(dlsym(SwiftMeta.RTLD_DEFAULT, symbol)) {
                 print("\(APP_PREFIX)Injected value type '\(_typeName(existing))'")
                 if SwiftMeta.sizeof(anyType: autoBitCast(typePtr)) !=
                    SwiftMeta.sizeof(anyType: existing) {
@@ -191,9 +191,7 @@ public class SwiftInjection: NSObject {
         // new mechanism for injection of Swift functions,
         // using "interpose" API from dynamic loader along
         // with -Xlinker -interposable other linker flags.
-        #if true
         interpose(functionsIn: "\(tmpfile).dylib")
-        #endif
 
         // Thanks https://github.com/johnno1962/injectionforxcode/pull/234
         if !testClasses.isEmpty {
@@ -215,16 +213,18 @@ public class SwiftInjection: NSObject {
         }
     }
 
+    #if false
     static var installDLKitLogger: Void = {
         DLKit.logger = { (msg: String) in
             print("\(APP_PREFIX)\(msg)")
         }
     }()
+    #endif
 
     public class func interpose(functionsIn dylib: String) {
         let detail = getenv("INJECTION_DETAIL") != nil
         var symbols = [UnsafePointer<Int8>]()
-        #if true // New DLKit based interposing...
+        #if flase // New DLKit based interposing...
         _ = installDLKitLogger
         var replacements = [UnsafeMutableRawPointer]()
 
@@ -254,11 +254,36 @@ public class SwiftInjection: NSObject {
         // to function symbols defined in the last loaded dylib
         // to the new implementations in the newly loaded dylib.
         DLKit.appImages[symbols] = replacements
-
-        #else // Previous code...
+        #else // SwiftTrace based code...
         let main = dlopen(nil, RTLD_NOW)
         var interposes = [dyld_interpose_tuple]()
 
+        for suffix in SwiftTrace.swiftFunctionSuffixes {
+            findSwiftSymbols(dylib, suffix) { (loadedFunc, symbol, _, _) in
+                guard let existing = dlsym(main, symbol), existing != loadedFunc,
+                    let current = SwiftTrace.interposed(replacee: existing) else {
+                    return
+                }
+                let method = SwiftMeta.demangle(symbol: symbol) ?? String(cString: symbol)
+                if detail {
+                    print("\(APP_PREFIX)Replacing \(method)")
+                }
+
+                var replacement = loadedFunc
+                if traceInjection || SwiftTrace.isTracing, let tracer = SwiftTrace
+                    .trace(name: injectedPrefix+method, original: replacement) {
+                    replacement = autoBitCast(tracer)
+                }
+                interposes.append(dyld_interpose_tuple(
+                    replacement: replacement, replacee: current))
+                symbols.append(symbol)
+                #if ORIGINAL_2_2_0_CODE
+                SwiftTrace.interposed[existing] = loadedFunc
+                SwiftTrace.interposed[current] = loadedFunc
+                #endif
+            }
+        }
+        
         #if !ORIGINAL_2_2_0_CODE
         if SwiftTrace.apply(interposes: interposes, symbols: symbols, onInjection: { header in
             #if !arch(arm64)
@@ -457,34 +482,24 @@ public class SwiftInjection: NSObject {
 
     @objc class func packageNames() -> [String] {
         var packages = Set<String>()
-        for (symname, value, _) in
-            DLKit.mainImage.swiftSymbols(withSuffixes: injectableSuffixes) {
-            if value != nil, let sym = symname.demangled,
-                !sym.hasPrefix("(extension in "),
-                let endPackage = sym.firstIndex(of: ".") {
-                packages.insert(sym[..<(endPackage+0)])
+        for suffix in SwiftTrace.swiftFunctionSuffixes {
+            findSwiftSymbols(Bundle.main.executablePath!, suffix) {
+                (_, symname: UnsafePointer<Int8>, _, _) in
+                if let sym = SwiftMeta.demangle(symbol: String(cString: symname)),
+                    !sym.hasPrefix("(extension in "),
+                    let endPackage = sym.firstIndex(of: ".") {
+                    packages.insert(sym[..<(endPackage+0)])
+                }
             }
         }
         return Array(packages)
     }
 
     @objc class func objectCounts() {
-        var estimated = false
-        for (metaType, className, count) in SwiftTrace.liveObjects
-            .map({($0.key, _typeName(autoBitCast($0.key)), $0.value.count)})
-            .sorted(by: {$0.1 < $1.1}) {
-            var star = ""
-            if !SwiftTrace.tracksDeallocs.contains(metaType) {
-                estimated = true
-                star = "*"
-            }
-            print("\(count)\(star)\t\(className)")
-        }
-        if estimated {
-            print("""
-                * Indicates the count is of allocations not current objects.
-                  Instances must inherit from NSObject to track deallocations.
-                """)
+        for (className, count) in SwiftTrace.liveObjects
+            .map({(_typeName(autoBitCast($0.key)), $0.value.count)})
+            .sorted(by: {$0.0 < $1.0}) {
+            print("\(count)\t\(className)")
         }
     }
 }

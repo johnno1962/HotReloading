@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#7 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#8 $
 //
 
 #import "SimpleSocket.h"
@@ -152,21 +152,22 @@
     return anint;
 }
 
-- (NSString *)readString {
-    uint32_t length = [self readInt];
-    if (length == ~0)
-        return nil;
-    char *utf8 = (char *)malloc(length + 1);
+- (NSData *)readData {
+    int length = [self readInt];
+    char *bytes = (char *)malloc(length);
     ssize_t rd, ptr = 0;
     while (ptr < length &&
-       (rd = read(clientSocket, utf8+ptr, length-ptr)) > 0)
+       (rd = read(clientSocket, bytes+ptr, length-ptr)) > 0)
         ptr += rd;
     if (ptr < length)
         return nil;
-    utf8[length] = '\000';
-    SLog(@"#%d <- %d '%s'", clientSocket, length, utf8);
-    NSString *str = [NSString stringWithUTF8String:utf8];
-    free(utf8);
+    return [NSData dataWithBytesNoCopy:bytes length:length freeWhenDone:YES];
+}
+
+- (NSString *)readString {
+    NSString *str = [[NSString alloc] initWithData:[self readData]
+                                          encoding:NSUTF8StringEncoding];
+    SLog(@"#%d <- %d '%@'", clientSocket, (int)str.length, str);
     return str;
 }
 
@@ -175,12 +176,17 @@
     return write(clientSocket, &length, sizeof length) == sizeof length;
 }
 
-- (BOOL)writeString:(NSString *)string {
-    const char *utf8 = string.UTF8String;
-    uint32_t length = (uint32_t)strlen(utf8);
-    SLog(@"#%d %d '%s' ->", clientSocket, length, utf8);
+- (BOOL)writeData:(NSData *)data {
+    uint32_t length = (uint32_t)data.length;
+    SLog(@"#%d [%d] ->", clientSocket, length);
     return [self writeInt:length] &&
-        write(clientSocket, utf8, length) == length;
+        write(clientSocket, data.bytes, length) == length;
+}
+
+- (BOOL)writeString:(NSString *)string {
+    NSData *data = [string dataUsingEncoding:NSUTF8StringEncoding];
+    SLog(@"#%d %d '%@' ->", clientSocket, (int)data.length, string);
+    return [self writeData:data];
 }
 
 - (BOOL)writeCommand:(int)command withString:(NSString *)string {

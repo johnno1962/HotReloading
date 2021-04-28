@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#27 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#28 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -101,9 +101,8 @@ public class SwiftInjection: NSObject {
     }
 
     @objc static var traceInjection = false
-    static var injectionNumber = 0
     static var injectedPrefix: String {
-        return "Injection#\(injectionNumber)/"
+        return "Injection#\(SwiftEval.instance.injectionNumber)/"
     }
 
     @objc
@@ -112,7 +111,6 @@ public class SwiftInjection: NSObject {
         let oldClasses = //oldClass != nil ? [oldClass!] :
             newClasses.map { objc_getClass(class_getName($0)) as! AnyClass }
         var testClasses = [AnyClass]()
-        injectionNumber += 1
 
         for i in 0..<oldClasses.count {
             let oldClass: AnyClass = oldClasses[i], newClass: AnyClass = newClasses[i]

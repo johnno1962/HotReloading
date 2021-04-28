@@ -28,8 +28,11 @@
 - (void)runInBackground;
 
 - (int)readInt;
+- (NSData *_Nullable)readData;
 - (NSString *_Nullable)readString;
+
 - (BOOL)writeInt:(int)length;
+- (BOOL)writeData:(NSData *_Nonnull)data;
 - (BOOL)writeString:(NSString *_Nonnull)string;
 - (BOOL)writeCommand:(int)command withString:(NSString *_Nullable)string;
 

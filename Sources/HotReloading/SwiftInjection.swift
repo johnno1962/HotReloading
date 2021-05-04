@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#28 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#30 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -222,7 +222,8 @@ public class SwiftInjection: NSObject {
     public class func interpose(functionsIn dylib: String) {
         let detail = getenv("INJECTION_DETAIL") != nil
         var symbols = [UnsafePointer<Int8>]()
-        #if flase // New DLKit based interposing...
+        #if false // New DLKit based interposing
+        // ... doesn't play well with tracing.
         _ = installDLKitLogger
         var replacements = [UnsafeMutableRawPointer]()
 
@@ -244,7 +245,7 @@ public class SwiftInjection: NSObject {
                 replacement = autoBitCast(tracer)
             }
 
-            symbols.append(symbol+1)
+            symbols.append(symbol)
             replacements.append(replacement)
         }
 

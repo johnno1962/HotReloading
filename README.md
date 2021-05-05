@@ -5,7 +5,7 @@ available as a Swift Package. i.e.:
 
 ![Icon](http://johnholdsworth.com/HotAdding.png)
 
-Then you can do this...
+Then you can do this (using the simulator)...
 ![Icon](http://johnholdsworth.com/HotReloading.png)
 
 To try out an example project that is already set-up, clone this fork of
@@ -62,4 +62,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2021/03/24 $
+$Date: 2021/05/05 $

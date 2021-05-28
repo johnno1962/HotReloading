@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#31 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#32 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -284,7 +284,8 @@ public class SwiftInjection: NSObject {
         }
         
         #if !ORIGINAL_2_2_0_CODE
-        if SwiftTrace.apply(interposes: interposes, symbols: symbols, onInjection: { header in
+        if interposes.count != 0 &&
+            SwiftTrace.apply(interposes: interposes, symbols: symbols, onInjection: { header in
             #if !arch(arm64)
             let interposed = NSObject.swiftTraceInterposed.bindMemory(to:
                 [UnsafeRawPointer : UnsafeRawPointer].self, capacity: 1)
@@ -298,7 +299,7 @@ public class SwiftInjection: NSObject {
             }
             _ = SwiftTrace.apply(interposes: previous, symbols: symbols)
             #endif
-        }) == 0 && interposes.count != 0 {
+        }) == 0 {
             print("\(APP_PREFIX)⚠️ Injection has failed. Have you added -Xlinker -interposable to your project's \"Other Linker Flags\"? ⚠️")
         }
         #else

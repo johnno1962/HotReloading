@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#32 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#33 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -259,10 +259,11 @@ public class SwiftInjection: NSObject {
 
         for suffix in SwiftTrace.swiftFunctionSuffixes {
             findSwiftSymbols(dylib, suffix) { (loadedFunc, symbol, _, _) in
-                guard let existing = dlsym(main, symbol), existing != loadedFunc,
-                    let current = SwiftTrace.interposed(replacee: existing) else {
+                guard let existing = dlsym(main, symbol), existing != loadedFunc/*,
+                    let current = SwiftTrace.interposed(replacee: existing)*/ else {
                     return
                 }
+                let current = existing
                 let method = SwiftMeta.demangle(symbol: symbol) ?? String(cString: symbol)
                 if detail {
                     print("\(APP_PREFIX)Replacing \(method)")

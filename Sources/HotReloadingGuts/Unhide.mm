@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#9 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#10 $
 //
 
 #import <Foundation/Foundation.h>
@@ -43,9 +43,9 @@ int unhide_symbols(const char *framework, const char *linkFileList, FILE *log, t
         buffer[strlen(buffer)-1] = '\000';
 
         @autoreleasepool {
-            struct stat info;
-            if (stat(buffer, &info) || info.st_mtimespec.tv_sec < since)
-                continue;
+//            struct stat info;
+//            if (stat(buffer, &info) || info.st_mtimespec.tv_sec < since)
+//                continue;
             NSString *file = [NSString stringWithUTF8String:buffer];
             NSData *patched = [[NSMutableData alloc] initWithContentsOfFile:file];
 

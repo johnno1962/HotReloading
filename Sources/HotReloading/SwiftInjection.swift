@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#33 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#35 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -105,6 +105,22 @@ public class SwiftInjection: NSObject {
         return "Injection#\(SwiftEval.instance.injectionNumber)/"
     }
 
+    class func versions(of aClass: AnyClass) -> [AnyClass] {
+        let named = class_getName(aClass)
+        var out = [AnyClass]()
+        var nc: UInt32 = 0
+        if let classes = UnsafePointer(objc_copyClassList(&nc)) {
+            for i in 0 ..< Int(nc) {
+                if class_getSuperclass(classes[i]) != nil &&
+                    strcmp(named, class_getName(classes[i])) == 0 {
+                    out.append(classes[i])
+                }
+            }
+            free(UnsafeMutableRawPointer(mutating: classes))
+        }
+        return out
+    }
+
     @objc
     public class func inject(tmpfile: String) throws {
         let newClasses = try SwiftEval.instance.loadAndInject(tmpfile: tmpfile)
@@ -113,7 +129,17 @@ public class SwiftInjection: NSObject {
         var testClasses = [AnyClass]()
 
         for i in 0..<oldClasses.count {
-            let oldClass: AnyClass = oldClasses[i], newClass: AnyClass = newClasses[i]
+            var oldClass: AnyClass = oldClasses[i], newClass: AnyClass = newClasses[i]
+
+            if oldClass === newClass {
+                let versions = Self.versions(of: newClass)
+                if versions.count > 1 {
+                    oldClass = versions.first!
+                    newClass = versions.last!
+                } else {
+                    print("\(APP_PREFIX)⚠️ Could not find class versions. ⚠️")
+                }
+            }
 
             // old-school swizzle Objective-C class & instance methods
             injection(swizzle: object_getClass(newClass), onto: object_getClass(oldClass))
@@ -283,7 +309,7 @@ public class SwiftInjection: NSObject {
                 #endif
             }
         }
-        
+
         #if !ORIGINAL_2_2_0_CODE
         if interposes.count != 0 &&
             SwiftTrace.apply(interposes: interposes, symbols: symbols, onInjection: { header in
@@ -475,7 +501,7 @@ public class SwiftInjection: NSObject {
                 found = true
             }
         }
-        
+
         if !found {
             print("\(APP_PREFIX)Do you have the right project selected?")
         }

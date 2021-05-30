@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#35 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#37 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -137,7 +137,7 @@ public class SwiftInjection: NSObject {
                     oldClass = versions.first!
                     newClass = versions.last!
                 } else {
-                    print("\(APP_PREFIX)⚠️ Could not find class versions. ⚠️")
+                    print("\(APP_PREFIX)⚠️ Could not find versions of class \(_typeName(newClass)). ⚠️")
                 }
             }
 

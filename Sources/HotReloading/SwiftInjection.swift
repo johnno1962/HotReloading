@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#37 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#40 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -382,6 +382,7 @@ public class SwiftInjection: NSObject {
                         instances to determine which objects to message. \
                         If this fails, subscribe to the notification \
                         "INJECTION_BUNDLE_NOTIFICATION" instead.
+                        \(APP_PREFIX)(note: notification may not arrive on the main thread)
                         """)
                     sweepWarned = true
                 }

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#31 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#40 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -105,6 +105,22 @@ public class SwiftInjection: NSObject {
         return "Injection#\(SwiftEval.instance.injectionNumber)/"
     }
 
+    class func versions(of aClass: AnyClass) -> [AnyClass] {
+        let named = class_getName(aClass)
+        var out = [AnyClass]()
+        var nc: UInt32 = 0
+        if let classes = UnsafePointer(objc_copyClassList(&nc)) {
+            for i in 0 ..< Int(nc) {
+                if class_getSuperclass(classes[i]) != nil &&
+                    strcmp(named, class_getName(classes[i])) == 0 {
+                    out.append(classes[i])
+                }
+            }
+            free(UnsafeMutableRawPointer(mutating: classes))
+        }
+        return out
+    }
+
     @objc
     public class func inject(tmpfile: String) throws {
         let newClasses = try SwiftEval.instance.loadAndInject(tmpfile: tmpfile)
@@ -113,7 +129,17 @@ public class SwiftInjection: NSObject {
         var testClasses = [AnyClass]()
 
         for i in 0..<oldClasses.count {
-            let oldClass: AnyClass = oldClasses[i], newClass: AnyClass = newClasses[i]
+            var oldClass: AnyClass = oldClasses[i], newClass: AnyClass = newClasses[i]
+
+            if oldClass === newClass {
+                let versions = Self.versions(of: newClass)
+                if versions.count > 1 {
+                    oldClass = versions.first!
+                    newClass = versions.last!
+                } else {
+                    print("\(APP_PREFIX)⚠️ Could not find versions of class \(_typeName(newClass)). ⚠️")
+                }
+            }
 
             // old-school swizzle Objective-C class & instance methods
             injection(swizzle: object_getClass(newClass), onto: object_getClass(oldClass))
@@ -259,10 +285,11 @@ public class SwiftInjection: NSObject {
 
         for suffix in SwiftTrace.swiftFunctionSuffixes {
             findSwiftSymbols(dylib, suffix) { (loadedFunc, symbol, _, _) in
-                guard let existing = dlsym(main, symbol), existing != loadedFunc,
-                    let current = SwiftTrace.interposed(replacee: existing) else {
+                guard let existing = dlsym(main, symbol), existing != loadedFunc/*,
+                    let current = SwiftTrace.interposed(replacee: existing)*/ else {
                     return
                 }
+                let current = existing
                 let method = SwiftMeta.demangle(symbol: symbol) ?? String(cString: symbol)
                 if detail {
                     print("\(APP_PREFIX)Replacing \(method)")
@@ -282,9 +309,10 @@ public class SwiftInjection: NSObject {
                 #endif
             }
         }
-        
+
         #if !ORIGINAL_2_2_0_CODE
-        if SwiftTrace.apply(interposes: interposes, symbols: symbols, onInjection: { header in
+        if interposes.count != 0 &&
+            SwiftTrace.apply(interposes: interposes, symbols: symbols, onInjection: { header in
             #if !arch(arm64)
             let interposed = NSObject.swiftTraceInterposed.bindMemory(to:
                 [UnsafeRawPointer : UnsafeRawPointer].self, capacity: 1)
@@ -298,7 +326,7 @@ public class SwiftInjection: NSObject {
             }
             _ = SwiftTrace.apply(interposes: previous, symbols: symbols)
             #endif
-        }) == 0 && interposes.count != 0 {
+        }) == 0 {
             print("\(APP_PREFIX)⚠️ Injection has failed. Have you added -Xlinker -interposable to your project's \"Other Linker Flags\"? ⚠️")
         }
         #else
@@ -354,6 +382,7 @@ public class SwiftInjection: NSObject {
                         instances to determine which objects to message. \
                         If this fails, subscribe to the notification \
                         "INJECTION_BUNDLE_NOTIFICATION" instead.
+                        \(APP_PREFIX)(note: notification may not arrive on the main thread)
                         """)
                     sweepWarned = true
                 }
@@ -473,7 +502,7 @@ public class SwiftInjection: NSObject {
                 found = true
             }
         }
-        
+
         if !found {
             print("\(APP_PREFIX)Do you have the right project selected?")
         }

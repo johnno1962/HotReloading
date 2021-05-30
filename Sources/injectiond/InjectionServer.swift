@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#23 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#25 $
 //
 
 import Cocoa
@@ -129,7 +129,8 @@ public class InjectionServer: SimpleSocket {
         }
 
         guard let executable = readString() else { return }
-        if false && appDelegate.enableWatcher.state == .on {
+        if appDelegate.defaults.bool(forKey: UserDefaultsReplay) &&  
+            appDelegate.enableWatcher.state == .on {
             let mtime = {
                 (path: String) -> time_t in
                 var info = stat()

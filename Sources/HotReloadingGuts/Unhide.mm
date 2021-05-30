@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#8 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#10 $
 //
 
 #import <Foundation/Foundation.h>
@@ -15,7 +15,7 @@
 #import <mach-o/loader.h>
 #import <mach-o/nlist.h>
 #import <mach-o/stab.h>
-
+#import <sys/stat.h>
 #import <string>
 #import <map>
 
@@ -29,7 +29,7 @@ void unhide_reset(void) {
     seen.clear();
 }
 
-int unhide_symbols(const char *framework, const char *linkFileList, FILE *log) {
+int unhide_symbols(const char *framework, const char *linkFileList, FILE *log, time_t since) {
     FILE *linkFiles = fopen(linkFileList, "r");
     if (!linkFiles) {
        fprintf(log, "unhide: Could not open link file list %s\n", linkFileList);
@@ -43,6 +43,9 @@ int unhide_symbols(const char *framework, const char *linkFileList, FILE *log) {
         buffer[strlen(buffer)-1] = '\000';
 
         @autoreleasepool {
+//            struct stat info;
+//            if (stat(buffer, &info) || info.st_mtimespec.tv_sec < since)
+//                continue;
             NSString *file = [NSString stringWithUTF8String:buffer];
             NSData *patched = [[NSMutableData alloc] initWithContentsOfFile:file];
 

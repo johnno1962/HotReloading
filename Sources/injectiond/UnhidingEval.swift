@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/UnhidingEval.swift#8 $
+//  $Id: //depot/HotReloading/Sources/injectiond/UnhidingEval.swift#9 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -44,6 +44,10 @@ public class UnhidingEval: SwiftEval {
         return SwiftEval.instance
     }
 
+    static var lastProcessed = [URL: time_t]()
+
+    let unhideQueue = DispatchQueue(label: "unhide")
+
     var unhidden = false
 
     public override func determineEnvironment(classNameOrFile: String) throws -> (URL, URL) {
@@ -51,6 +55,7 @@ public class UnhidingEval: SwiftEval {
             try super.determineEnvironment(classNameOrFile: classNameOrFile)
 
         if !unhidden {
+            unhidden = true
             let buildDir = logs.deletingLastPathComponent()
                 .deletingLastPathComponent().appendingPathComponent("Build")
             if let enumerator = FileManager.default
@@ -59,9 +64,10 @@ public class UnhidingEval: SwiftEval {
                 let linkFileLists = enumerator
                     .compactMap { $0 as? String }
                     .filter { $0.hasSuffix(".LinkFileList") }
-                DispatchQueue.global(qos: .background).async {
+                unhideQueue.async {
                     // linkFileLists sorted to process packages
                     // first due to Edge case in Fruta example.
+                    let since = Self.lastProcessed[buildDir] ?? 0
                     for path in linkFileLists.sorted(by: {
                         ($0.hasSuffix(".o.LinkFileList") ? 0 : 1) <
                         ($1.hasSuffix(".o.LinkFileList") ? 0 : 1) }) {
@@ -69,17 +75,17 @@ public class UnhidingEval: SwiftEval {
                             .appendingPathComponent(path)
                         let exported = unhide_symbols(fileURL
                             .deletingPathExtension().deletingPathExtension()
-                            .lastPathComponent, fileURL.path, log)
+                            .lastPathComponent, fileURL.path, log, since)
                         if exported != 0 {
                             let s = exported == 1 ? "" : "s"
                             print("\(APP_PREFIX)Exported \(exported) default argument\(s) in \(fileURL.lastPathComponent)")
                         }
                     }
+                    Self.lastProcessed[buildDir] = time(nil)
                     unhide_reset()
                     fclose(log)
                 }
             }
-            unhidden = true
         }
 
         return (project, logs)

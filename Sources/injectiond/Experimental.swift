@@ -5,7 +5,7 @@
 //  Created by User on 20/10/2020.
 //  Copyright © 2020 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#15 $
+//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#17 $
 //
 
 import Cocoa
@@ -353,6 +353,10 @@ extension AppDelegate {
 
                         """
                     #endif
+
+                    if !patched.contains("import SwiftUI") {
+                        patched += "\nimport SwiftUI\n"
+                    }
 
                     patched += """
 

@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/UnhidingEval.swift#9 $
+//  $Id: //depot/HotReloading/Sources/injectiond/UnhidingEval.swift#11 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -44,9 +44,9 @@ public class UnhidingEval: SwiftEval {
         return SwiftEval.instance
     }
 
-    static var lastProcessed = [URL: time_t]()
+    static let unhideQueue = DispatchQueue(label: "unhide")
 
-    let unhideQueue = DispatchQueue(label: "unhide")
+    static var lastProcessed = [URL: time_t]()
 
     var unhidden = false
 
@@ -61,10 +61,11 @@ public class UnhidingEval: SwiftEval {
             if let enumerator = FileManager.default
                     .enumerator(atPath: buildDir.path),
                 let log = fopen("/tmp/unhide.log", "w") {
-                let linkFileLists = enumerator
-                    .compactMap { $0 as? String }
-                    .filter { $0.hasSuffix(".LinkFileList") }
-                unhideQueue.async {
+                Self.unhideQueue.async {
+                    // linkFileLists contain the list of object files.
+                    let linkFileLists = enumerator
+                        .compactMap { $0 as? String }
+                        .filter { $0.hasSuffix(".LinkFileList") }
                     // linkFileLists sorted to process packages
                     // first due to Edge case in Fruta example.
                     let since = Self.lastProcessed[buildDir] ?? 0

@@ -18,7 +18,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/johnno1962/SwiftTrace",
-                 .upToNextMinor(from: "7.3.8")),
+                 .revision("328a5fbef73382626666ddb8bd7098715c289915")),
         .package(url: "https://github.com/johnno1962/SwiftRegex5",
                  .upToNextMinor(from: "5.2.1")),
         .package(url: "https://github.com/johnno1962/XprobePlugin",

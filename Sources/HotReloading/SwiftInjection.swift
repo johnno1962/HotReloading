@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#40 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#43 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -127,6 +127,7 @@ public class SwiftInjection: NSObject {
         let oldClasses = //oldClass != nil ? [oldClass!] :
             newClasses.map { objc_getClass(class_getName($0)) as! AnyClass }
         var testClasses = [AnyClass]()
+        var vtabled = 0
 
         for i in 0..<oldClasses.count {
             var oldClass: AnyClass = oldClasses[i], newClass: AnyClass = newClasses[i]
@@ -184,6 +185,7 @@ public class SwiftInjection: NSObject {
                 SwiftTrace.iterateMethods(ofClass: oldClass) {
                     (name, slotIndex, vtableSlot, stop) in
                     vtableSlot.pointee = newTable[slotIndex]
+                    vtabled += 1
                 }
                 #endif
                 #endif
@@ -215,7 +217,7 @@ public class SwiftInjection: NSObject {
         // new mechanism for injection of Swift functions,
         // using "interpose" API from dynamic loader along
         // with -Xlinker -interposable other linker flags.
-        interpose(functionsIn: "\(tmpfile).dylib")
+        interpose(functionsIn: "\(tmpfile).dylib", vtabled)
 
         // Thanks https://github.com/johnno1962/injectionforxcode/pull/234
         if !testClasses.isEmpty {
@@ -245,7 +247,8 @@ public class SwiftInjection: NSObject {
     }()
     #endif
 
-    public class func interpose(functionsIn dylib: String) {
+    public class func interpose(functionsIn dylib: String,
+                                _ vtabled: Int) {
         let detail = getenv("INJECTION_DETAIL") != nil
         var symbols = [UnsafePointer<Int8>]()
         #if false // New DLKit based interposing
@@ -326,8 +329,8 @@ public class SwiftInjection: NSObject {
             }
             _ = SwiftTrace.apply(interposes: previous, symbols: symbols)
             #endif
-        }) == 0 {
-            print("\(APP_PREFIX)⚠️ Injection has failed. Have you added -Xlinker -interposable to your project's \"Other Linker Flags\"? ⚠️")
+        }) + vtabled == 0 {
+            print("\(APP_PREFIX)⚠️ Injection may have failed. Have you added -Xlinker -interposable to the \"Other Linker Flags\" of the executable/framework? ⚠️")
         }
         #else
         // Using array of new interpose structs

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#25 $
+//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#26 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -405,7 +405,7 @@ public class SwiftEval: NSObject {
         _ = evalError("Compiling \(sourceFile)")
 
         guard shell(command: """
-                (cd "\(projectDir.escaping("$"))" && \(compileCommand) -o \"\(tmpfile).o\" >\"\(logfile)\" 2>&1)
+                (cd "\(projectDir.escaping("$"))" && \(compileCommand) >\"\(logfile)\" 2>&1)
                 """) else {
             compileByClass.removeValue(forKey: classNameOrFile)
             throw scriptError("Re-compilation")
@@ -417,6 +417,19 @@ public class SwiftEval: NSObject {
             SwiftEval.longTermCache.write(toFile: SwiftEval.buildCacheFile,
                                      atomically: false)
         }
+
+        // Extract object file path (Xcode 13)
+        let sourceName = URL(fileURLWithPath:
+            sourceFile).deletingPathExtension().lastPathComponent
+        guard
+            let regex = try? NSRegularExpression(
+                pattern: "(?<= -o )(/\\S+/\(sourceName).o)", options: []),
+            let match = regex.firstMatch(in: compileCommand, options: [],
+                      range: NSMakeRange(0, compileCommand.utf16.count)),
+            let range = Range(match.range(at: 1), in: compileCommand) else {
+            throw evalError("Could not determine object file")
+        }
+        let objectFile = compileCommand[range]
 
         // link resulting object file to create dynamic library
 
@@ -440,7 +453,7 @@ public class SwiftEval: NSObject {
         }
 
         guard shell(command: """
-            "\(xcodeDev)/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang" -arch "\(arch)" -bundle -isysroot "\(xcodeDev)/Platforms/\(platform).platform/Developer/SDKs/\(platform).sdk" -L"\(toolchain)/usr/lib/swift/\(platform.lowercased())" \(osSpecific) -undefined dynamic_lookup -dead_strip -Xlinker -objc_abi_version -Xlinker 2 -fobjc-arc -fprofile-instr-generate \"\(tmpfile).o\" -L "\(frameworks)" -F "\(frameworks)" -rpath "\(frameworks)" -o \"\(tmpfile).dylib\" >>\"\(logfile)\" 2>&1
+            "\(xcodeDev)/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang" -arch "\(arch)" -bundle -isysroot "\(xcodeDev)/Platforms/\(platform).platform/Developer/SDKs/\(platform).sdk" -L"\(toolchain)/usr/lib/swift/\(platform.lowercased())" \(osSpecific) -undefined dynamic_lookup -dead_strip -Xlinker -objc_abi_version -Xlinker 2 -fobjc-arc -fprofile-instr-generate \"\(objectFile)\" -L "\(frameworks)" -F "\(frameworks)" -rpath "\(frameworks)" -o \"\(tmpfile).dylib\" >>\"\(logfile)\" 2>&1
             """) else {
             throw scriptError("Linking")
         }
@@ -651,7 +664,12 @@ public class SwiftEval: NSObject {
                 Error reading \(tmpfile).sh, scanCommand: \(cmdfile)
                 """)
         }
+        #if false
         compileCommand = compileCommand.components(separatedBy: " -o ")[0] + " "
+        #else // Xcode 13
+        compileCommand = compileCommand.trimmingCharacters(in:
+            NSCharacterSet.whitespacesAndNewlines)
+        #endif
 
         // remove excess escaping in new build system
         compileCommand = compileCommand
@@ -661,6 +679,7 @@ public class SwiftEval: NSObject {
             .replacingOccurrences(of: #"\\([\"'\\])"#, with: "$1", options: [.regularExpression])
             // pch file may no longer exist
             .replacingOccurrences(of: " -pch-output-dir \\S+ ", with: " ", options: [.regularExpression])
+            .replacingOccurrences(of: " -supplementary-output-file-map \\S+ ", with: " ", options: [.regularExpression])
 
         if isFile {
             return (compileCommand, classNameOrFile)

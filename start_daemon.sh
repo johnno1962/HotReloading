@@ -2,10 +2,10 @@
 #
 # Start up daemon process to rebuild changed sources
 #
-# $Id: //depot/HotReloading/start_daemon.sh#28 $
+# $Id: //depot/HotReloading/start_daemon.sh#29 $
 #
 
-cd "$(dirname $0)"
+cd "$(dirname "$0")"
 
 if [ "$CONFIGURATION" = "Release" ]; then
     echo "error: You shouldn't be shipping HotReloading in your app!"

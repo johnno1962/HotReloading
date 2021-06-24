@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#26 $
+//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#27 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -423,13 +423,15 @@ public class SwiftEval: NSObject {
             sourceFile).deletingPathExtension().lastPathComponent
         guard
             let regex = try? NSRegularExpression(
-                pattern: "(?<= -o )(/\\S+/\(sourceName).o)", options: []),
+                pattern: " -o (/[^\\s\\\\]+(\\\\.[^\\s\\\\]+)*/\(sourceName).o)", options: []),
             let match = regex.firstMatch(in: compileCommand, options: [],
                       range: NSMakeRange(0, compileCommand.utf16.count)),
             let range = Range(match.range(at: 1), in: compileCommand) else {
-            throw evalError("Could not determine object file")
+            throw evalError("Could not determine object file for \(sourceName):\n\(compileCommand)")
         }
         let objectFile = compileCommand[range]
+            .replacingOccurrences(of: #"\\(.)"#, with: "$1",
+                                  options: [.regularExpression])
 
         // link resulting object file to create dynamic library
 

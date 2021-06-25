@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#10 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#11 $
 //
 
 #import <Foundation/Foundation.h>
@@ -104,9 +104,10 @@ int unhide_symbols(const char *framework, const char *linkFileList, FILE *log, t
                 // Default argument generators have a suffix ANN_
                 symend = symname + strlen(symname);
                 BOOL isDefaultArgument = (symend[-1] == '_' &&
-                   (symend[-2] == 'A' || (symend[-3] == 'A' && isdigit(symend[-2])) ||
-                    (symend[-4] == 'A' && isdigit(symend[-3]) && isdigit(symend[-2])))) ||
-                    strcmp(symend-4, "QOMg") == 0 || strcmp(symend-3, "vau") == 0;
+                   (symend[-2] == 'A' || (isdigit(symend[-2] &&
+                    (symend[-3] == 'A' || (isdigit(symend[-3] &&
+                    symend[-4] == 'A'))))))) || strcmp(symend-4, "QOMg") == 0 ||
+                    strcmp(symend-3, "vau") == 0 || strcmp(symend-2, "FZ") == 0;
 
                 // The following reads: If symbol is for a default argument
                 // and it is the definition (not a reference) and we've not

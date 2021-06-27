@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#8 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#10 $
 //
 
 #import "SimpleSocket.h"
@@ -145,9 +145,15 @@
 }
 
 - (int)readInt {
-    int32_t anint;
-    if (read(clientSocket, &anint, sizeof anint) != sizeof anint)
+    int32_t anint = ~0;
+    size_t length = sizeof anint, rd, ptr = 0;
+    while (ptr < length &&
+       (rd = read(clientSocket, (char *)&anint+ptr, length-ptr)) > 0)
+        ptr += rd;
+    if (ptr < length) {
+        NSLog(@"[%@ readInt] error: %lu, %s", self, ptr, strerror(errno));
         return ~0;
+    }
     SLog(@"#%d <- %d", clientSocket, anint);
     return anint;
 }
@@ -159,8 +165,10 @@
     while (ptr < length &&
        (rd = read(clientSocket, bytes+ptr, length-ptr)) > 0)
         ptr += rd;
-    if (ptr < length)
+    if (ptr < length) {
+        NSLog(@"[%@ readString] error: %lu < %d, %s", self, ptr, length, strerror(errno));
         return nil;
+    }
     return [NSData dataWithBytesNoCopy:bytes length:length freeWhenDone:YES];
 }
 

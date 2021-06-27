@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#25 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#26 $
 //
 
 import Cocoa
@@ -63,7 +63,7 @@ public class InjectionServer: SimpleSocket {
         // tell client app the inferred project being watched
         NSLog("Connection for project file: \(projectFile)")
 
-        if readInt() != INJECTION_SALT || readString() != INJECTION_KEY {
+        if readInt() != INJECTION_SALT || readString() != INJECTION_KEY && true {
             NSLog("*** Error: SALT or KEY invalid. Are you running start_daemon.sh or InjectionIII.app from the right directory?")
             write("/tmp")
             write(InjectionCommand.invalid.rawValue)
@@ -91,6 +91,7 @@ public class InjectionServer: SimpleSocket {
             builder.tmpDir = builder.frameworks
         }
         write(builder.tmpDir)
+        NSLog("Using tmp dir: \(builder.tmpDir)")
 
         // log errors to client
         builder.evalError = {

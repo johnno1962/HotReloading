@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#43 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#44 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -331,6 +331,9 @@ public class SwiftInjection: NSObject {
             #endif
         }) + vtabled == 0 {
             print("\(APP_PREFIX)⚠️ Injection may have failed. Have you added -Xlinker -interposable to the \"Other Linker Flags\" of the executable/framework? ⚠️")
+            if #available(iOS 15.0, tvOS 15.0, macOS 12.0, *) {
+                print("\(APP_PREFIX)⚠️ Unfortunately, interposing Swift symbols is not availble when targetting iOS 15+ ⚠️")
+            }
         }
         #else
         // Using array of new interpose structs

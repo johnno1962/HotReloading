@@ -5,7 +5,12 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#10 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#14 $
+//
+//  Server and client primitives for networking through sockets
+//  more esailly written in Objective-C than Swift. Subclass to
+//  implement service or client that runs on a background thread
+//  implemented by overriding the "runInBackground" method.
 //
 
 #import "SimpleSocket.h"
@@ -144,31 +149,32 @@
     [[self class] error:@"-[Networking run] not implemented in subclass"];
 }
 
-- (int)readInt {
-    int32_t anint = ~0;
-    size_t length = sizeof anint, rd, ptr = 0;
+- (BOOL)readBytes:(void *)buffer length:(size_t)length cmd:(SEL)cmd {
+    size_t rd, ptr = 0;
     while (ptr < length &&
-       (rd = read(clientSocket, (char *)&anint+ptr, length-ptr)) > 0)
+       (rd = read(clientSocket, (char *)buffer+ptr, length-ptr)) > 0)
         ptr += rd;
     if (ptr < length) {
-        NSLog(@"[%@ readInt] error: %lu, %s", self, ptr, strerror(errno));
-        return ~0;
+        NSLog(@"[%@ %s:%p length:%lu] error: %lu %s",
+              self, sel_getName(cmd), buffer, length, ptr, strerror(errno));
+        return FALSE;
     }
+    return TRUE;
+}
+
+- (int)readInt {
+    int32_t anint = ~0;
+    if (![self readBytes:&anint length:sizeof anint cmd:_cmd])
+        return ~0;
     SLog(@"#%d <- %d", clientSocket, anint);
     return anint;
 }
 
 - (NSData *)readData {
-    int length = [self readInt];
-    char *bytes = (char *)malloc(length);
-    ssize_t rd, ptr = 0;
-    while (ptr < length &&
-       (rd = read(clientSocket, bytes+ptr, length-ptr)) > 0)
-        ptr += rd;
-    if (ptr < length) {
-        NSLog(@"[%@ readString] error: %lu < %d, %s", self, ptr, length, strerror(errno));
+    size_t length = [self readInt];
+    void *bytes = malloc(length);
+    if (![self readBytes:bytes length:length cmd:_cmd])
         return nil;
-    }
     return [NSData dataWithBytesNoCopy:bytes length:length freeWhenDone:YES];
 }
 

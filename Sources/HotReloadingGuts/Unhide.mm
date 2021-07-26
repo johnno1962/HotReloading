@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#14 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#17 $
 //
 
 #import <Foundation/Foundation.h>
@@ -92,7 +92,9 @@ int unhide_symbols(const char *framework, const char *linkFileList, FILE *log, t
 #endif
             for (int i=0 ; i<symtab->nsyms ; i++) {
                 struct nlist_64 &symbol = all_symbols64[i];
-                const char *symname = (char *)object + symtab->stroff + symbol.n_un.n_strx, *symend;
+                if (symbol.n_sect == NO_SECT)
+                    continue; // not definition
+                const char *symname = (char *)object + symtab->stroff + symbol.n_un.n_strx;
 
 //                printf("symbol: #%d 0%lo 0x%x 0x%x %3d %s\n", i,
 //                       (char *)&symbol.n_type - (char *)object,
@@ -102,19 +104,20 @@ int unhide_symbols(const char *framework, const char *linkFileList, FILE *log, t
                     continue; // not swift symbol
 
                 // Default argument generators have a suffix ANN_
-                symend = symname + strlen(symname);
-                BOOL isDefaultArgument = (symend[-1] == '_' &&
-                   (symend[-2] == 'A' || (isdigit(symend[-2] &&
-                    (symend[-3] == 'A' || (isdigit(symend[-3] &&
-                    symend[-4] == 'A'))))))) || strcmp(symend-4, "QOMg") == 0 ||
-                    strcmp(symend-3, "vau") == 0 || strcmp(symend-2, "FZ") == 0 ||
-                    strcmp(symend-2, "Mc") == 0 || strcmp(symend-2, "Mg") == 0;
+                // Covers a few other cases encountred now as well.
+                const char *symend = symname + strlen(symname) - 1;
+                BOOL isDefaultArgument = (*symend == '_' &&
+                    (symend[-1] == 'A' || (isdigit(symend[-1]) &&
+                    (symend[-2] == 'A' || (isdigit(symend[-2]) &&
+                     symend[-3] == 'A'))))) || strcmp(symend-2, "vau") == 0 ||
+                    strcmp(symend-1, "FZ") == 0 || (symend[-1] == 'M' && (
+                    *symend == 'c' || *symend == 'g' || *symend == 'n'));
 
                 // The following reads: If symbol is for a default argument
                 // and it is the definition (not a reference) and we've not
                 // seen it before and it hadsn't already been "unhidden"...
-                if (isDefaultArgument && symbol.n_sect != NO_SECT &&
-                    !seen[symname]++ && symbol.n_type & N_PEXT) {
+                if (isDefaultArgument && !seen[symname]++ &&
+                    symbol.n_type & N_PEXT) {
                     symbol.n_type |= N_EXT;
                     symbol.n_type &= ~N_PEXT;
                     symbol.n_type = 0xf;

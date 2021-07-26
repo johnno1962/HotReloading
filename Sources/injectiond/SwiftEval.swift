@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#27 $
+//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#28 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -415,19 +415,20 @@ public class SwiftEval: NSObject {
         if SwiftEval.longTermCache[classNameOrFile] as? String != compileCommand && classNameOrFile.hasPrefix("/") {
             SwiftEval.longTermCache[classNameOrFile] = compileCommand
             SwiftEval.longTermCache.write(toFile: SwiftEval.buildCacheFile,
-                                     atomically: false)
+                                          atomically: false)
         }
 
         // Extract object file path (Xcode 13)
         let sourceName = URL(fileURLWithPath:
             sourceFile).deletingPathExtension().lastPathComponent
+            .replacingOccurrences(of: " ", with: "\\ ")
+        let findObj = #" -o ("?)(/[^\s\\]+((\s(?!-o)|\\.)[^\s\\]+)*/\Q\#(sourceName).o\E)\1"#
         guard
-            let regex = try? NSRegularExpression(
-                pattern: " -o (/[^\\s\\\\]+(\\\\.[^\\s\\\\]+)*/\(sourceName).o)", options: []),
+            let regex = try? NSRegularExpression(pattern: findObj, options: []),
             let match = regex.firstMatch(in: compileCommand, options: [],
                       range: NSMakeRange(0, compileCommand.utf16.count)),
-            let range = Range(match.range(at: 1), in: compileCommand) else {
-            throw evalError("Could not determine object file for \(sourceName):\n\(compileCommand)")
+            let range = Range(match.range(at: 2), in: compileCommand) else {
+            throw evalError("Could not determine object file for \(sourceName):\n\(findObj)\n\(compileCommand)")
         }
         let objectFile = compileCommand[range]
             .replacingOccurrences(of: #"\\(.)"#, with: "$1",
@@ -666,15 +667,9 @@ public class SwiftEval: NSObject {
                 Error reading \(tmpfile).sh, scanCommand: \(cmdfile)
                 """)
         }
-        #if false
-        compileCommand = compileCommand.components(separatedBy: " -o ")[0] + " "
-        #else // Xcode 13
-        compileCommand = compileCommand.trimmingCharacters(in:
-            NSCharacterSet.whitespacesAndNewlines)
-        #endif
-
         // remove excess escaping in new build system
         compileCommand = compileCommand
+            .components(separatedBy: " -index-system-modules")[0]
 //            // escape ( & ) outside quotes
 //            .replacingOccurrences(of: "[()](?=(?:(?:[^\"]*\"){2})*[^\"]$)", with: "\\\\$0", options: [.regularExpression])
             // (logs of new build system escape ', $ and ")

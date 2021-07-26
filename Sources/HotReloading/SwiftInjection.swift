@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#48 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#50 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -127,7 +127,7 @@ public class SwiftInjection: NSObject {
         let oldClasses = //oldClass != nil ? [oldClass!] :
             newClasses.map { objc_getClass(class_getName($0)) as! AnyClass }
         var testClasses = [AnyClass]()
-        var vtabled = 0
+        var swizzled = 0
 
         for i in 0..<oldClasses.count {
             var oldClass: AnyClass = oldClasses[i], newClass: AnyClass = newClasses[i]
@@ -143,8 +143,9 @@ public class SwiftInjection: NSObject {
             }
 
             // old-school swizzle Objective-C class & instance methods
-            injection(swizzle: object_getClass(newClass), onto: object_getClass(oldClass))
-            injection(swizzle: newClass, onto: oldClass)
+            swizzled += injection(swizzle: object_getClass(newClass),
+                                 onto: object_getClass(oldClass))
+            swizzled += injection(swizzle: newClass, onto: oldClass)
 
             // overwrite Swift vtable of existing class with implementations from new class
             let existingClass = unsafeBitCast(oldClass, to:
@@ -185,7 +186,7 @@ public class SwiftInjection: NSObject {
                 SwiftTrace.iterateMethods(ofClass: oldClass) {
                     (name, slotIndex, vtableSlot, stop) in
                     vtableSlot.pointee = newTable[slotIndex]
-                    vtabled += 1
+                    swizzled += 1
                 }
                 #endif
                 #endif
@@ -217,7 +218,7 @@ public class SwiftInjection: NSObject {
         // new mechanism for injection of Swift functions,
         // using "interpose" API from dynamic loader along
         // with -Xlinker -interposable other linker flags.
-        interpose(functionsIn: "\(tmpfile).dylib", vtabled)
+        interpose(functionsIn: "\(tmpfile).dylib", swizzled)
 
         // Thanks https://github.com/johnno1962/injectionforxcode/pull/234
         if !testClasses.isEmpty {
@@ -248,7 +249,7 @@ public class SwiftInjection: NSObject {
     #endif
 
     public class func interpose(functionsIn dylib: String,
-                                _ vtabled: Int) {
+                                _ swizzled: Int) {
         let detail = getenv("INJECTION_DETAIL") != nil
         var symbols = [UnsafePointer<Int8>]()
         #if false // New DLKit based interposing
@@ -315,21 +316,24 @@ public class SwiftInjection: NSObject {
 
         #if !ORIGINAL_2_2_0_CODE
         if interposes.count != 0 &&
-            SwiftTrace.apply(interposes: interposes, symbols: symbols, onInjection: { header in
-            #if !arch(arm64)
+            SwiftTrace.apply(interposes: interposes, symbols: symbols, onInjection: { (header, slide) in
             let interposed = NSObject.swiftTraceInterposed.bindMemory(to:
                 [UnsafeRawPointer : UnsafeRawPointer].self, capacity: 1)
-            // Need to apply all previous interposes
+            var info = Dl_info()
+            // Need to apply previous interposes
             // to the newly loaded dylib as well.
-            var previous = Array<dyld_interpose_tuple>()
+            var previous = Array<rebinding>()
             for (replacee, replacement) in interposed.pointee {
-                previous.append(dyld_interpose_tuple(
-                    replacement: SwiftTrace.interposed(replacee: replacement)!,
-                    replacee: replacee))
+                if dladdr(replacee, &info) != 0, let symname = info.dli_sname,
+                   let replacement = SwiftTrace.interposed(replacee: replacement) {
+                    previous.append(rebinding(name: symname,
+                        replacement: UnsafeMutableRawPointer(mutating: replacement),
+                                              replaced: nil))
+                }
             }
-            _ = SwiftTrace.apply(interposes: previous, symbols: symbols)
-            #endif
-        }) + vtabled == 0 {
+            rebind_symbols_image(UnsafeMutableRawPointer(mutating: header),
+                                 slide, &previous, previous.count)
+        }) + swizzled == 0 {
             print("\(APP_PREFIX)⚠️ Injection may have failed. Have you added -Xlinker -interposable to the \"Other Linker Flags\" of the executable/framework? ⚠️")
             if #available(iOS 15.0, tvOS 15.0, macOS 12.0, *) {
                 print("""
@@ -457,8 +461,8 @@ public class SwiftInjection: NSObject {
     }
     #endif
 
-    static func injection(swizzle newClass: AnyClass?, onto oldClass: AnyClass?) {
-        var methodCount: UInt32 = 0
+    static func injection(swizzle newClass: AnyClass?, onto oldClass: AnyClass?) -> Int {
+        var methodCount: UInt32 = 0, swizzled = 0
         if let methods = class_copyMethodList(newClass, &methodCount) {
             for i in 0 ..< Int(methodCount) {
                 let method = method_getName(methods[i])
@@ -471,9 +475,11 @@ public class SwiftInjection: NSObject {
                 }
                 class_replaceMethod(oldClass, method, replacement,
                                     method_getTypeEncoding(methods[i]))
+                swizzled += 1
             }
             free(methods)
         }
+        return swizzled
     }
 
     @objc class func dumpStats(top: Int) {

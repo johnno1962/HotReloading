@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#14 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#15 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -173,7 +173,7 @@
 - (NSData *)readData {
     size_t length = [self readInt];
     void *bytes = malloc(length);
-    if (![self readBytes:bytes length:length cmd:_cmd])
+    if (!bytes || ![self readBytes:bytes length:length cmd:_cmd])
         return nil;
     return [NSData dataWithBytesNoCopy:bytes length:length freeWhenDone:YES];
 }

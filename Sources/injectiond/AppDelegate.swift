@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#23 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#24 $
 //
 
 import Cocoa
@@ -184,7 +184,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
                 watchedDirectories.insert(resolved.path)
             }
             lastConnection?.setProject(selectedProject!)
-            AppDelegate.ensureInterposable(project: selectedProject!)
+//            AppDelegate.ensureInterposable(project: selectedProject!)
             NSDocumentController.shared.noteNewRecentDocumentURL(url)
 //            let projectName = URL(fileURLWithPath: projectFile)
 //                .deletingPathExtension().lastPathComponent

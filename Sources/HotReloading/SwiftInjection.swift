@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#50 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#53 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -323,12 +323,15 @@ public class SwiftInjection: NSObject {
             // Need to apply previous interposes
             // to the newly loaded dylib as well.
             var previous = Array<rebinding>()
-            for (replacee, replacement) in interposed.pointee {
-                if dladdr(replacee, &info) != 0, let symname = info.dli_sname,
-                   let replacement = SwiftTrace.interposed(replacee: replacement) {
-                    previous.append(rebinding(name: symname,
-                        replacement: UnsafeMutableRawPointer(mutating: replacement),
+            var already = Set<UnsafeRawPointer>()
+            for (replacee, _) in interposed.pointee {
+                if let replacement = SwiftTrace.interposed(replacee: replacee),
+                   !already.contains(replacement),
+                   dladdr(replacee, &info) != 0, let symname = info.dli_sname {
+                    previous.append(rebinding(name: symname, replacement:
+                        UnsafeMutableRawPointer(mutating: replacement),
                                               replaced: nil))
+                    already.insert(replacement)
                 }
             }
             rebind_symbols_image(UnsafeMutableRawPointer(mutating: header),

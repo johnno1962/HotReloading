@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#28 $
+//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#30 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -402,22 +402,6 @@ public class SwiftEval: NSObject {
 
         let projectDir = projectFile.deletingLastPathComponent().path
 
-        _ = evalError("Compiling \(sourceFile)")
-
-        guard shell(command: """
-                (cd "\(projectDir.escaping("$"))" && \(compileCommand) >\"\(logfile)\" 2>&1)
-                """) else {
-            compileByClass.removeValue(forKey: classNameOrFile)
-            throw scriptError("Re-compilation")
-        }
-
-        compileByClass[classNameOrFile] = (compileCommand, sourceFile)
-        if SwiftEval.longTermCache[classNameOrFile] as? String != compileCommand && classNameOrFile.hasPrefix("/") {
-            SwiftEval.longTermCache[classNameOrFile] = compileCommand
-            SwiftEval.longTermCache.write(toFile: SwiftEval.buildCacheFile,
-                                          atomically: false)
-        }
-
         // Extract object file path (Xcode 13)
         let sourceName = URL(fileURLWithPath:
             sourceFile).deletingPathExtension().lastPathComponent
@@ -433,6 +417,31 @@ public class SwiftEval: NSObject {
         let objectFile = compileCommand[range]
             .replacingOccurrences(of: #"\\(.)"#, with: "$1",
                                   options: [.regularExpression])
+
+        // Trim off junk at end of compile command
+        if sourceFile.hasSuffix(".swift") {
+            compileCommand = compileCommand
+                .components(separatedBy: " -index-system-modules")[0]
+        } else {
+            compileCommand = compileCommand
+                .components(separatedBy: " -o ")[0]+" -o "+objectFile
+        }
+
+        _ = evalError("Compiling \(sourceFile)")
+
+        guard shell(command: """
+                (cd "\(projectDir.escaping("$"))" && \(compileCommand) >\"\(logfile)\" 2>&1)
+                """) else {
+            compileByClass.removeValue(forKey: classNameOrFile)
+            throw scriptError("Re-compilation")
+        }
+
+        compileByClass[classNameOrFile] = (compileCommand, sourceFile)
+        if SwiftEval.longTermCache[classNameOrFile] as? String != compileCommand && classNameOrFile.hasPrefix("/") {
+            SwiftEval.longTermCache[classNameOrFile] = compileCommand
+            SwiftEval.longTermCache.write(toFile: SwiftEval.buildCacheFile,
+                                          atomically: false)
+        }
 
         // link resulting object file to create dynamic library
 
@@ -667,12 +676,12 @@ public class SwiftEval: NSObject {
                 Error reading \(tmpfile).sh, scanCommand: \(cmdfile)
                 """)
         }
+
         // remove excess escaping in new build system
-        compileCommand = compileCommand
-            .components(separatedBy: " -index-system-modules")[0]
 //            // escape ( & ) outside quotes
 //            .replacingOccurrences(of: "[()](?=(?:(?:[^\"]*\"){2})*[^\"]$)", with: "\\\\$0", options: [.regularExpression])
             // (logs of new build system escape ', $ and ")
+        compileCommand = compileCommand
             .replacingOccurrences(of: #"\\([\"'\\])"#, with: "$1", options: [.regularExpression])
             // pch file may no longer exist
             .replacingOccurrences(of: " -pch-output-dir \\S+ ", with: " ", options: [.regularExpression])

@@ -255,14 +255,12 @@ class AppDelegate : NSObject, NSApplicationDelegate {
         return nil
     }
 
-    func setMenuIcon(_ tiffName: String) {
+    func setMenuIcon(_ imageName: String) {
         DispatchQueue.main.async {
-            if let path = Bundle.main.path(forResource: tiffName, ofType: "tif"),
-                let image = NSImage(contentsOfFile: path) {
+            if let image = NSImage(named: imageName) {
     //            image.template = TRUE;
                 self.statusItem.image = image
-                self.statusItem.alternateImage = self.statusItem.image
-                let appRunning = tiffName != "InjectionIdle"
+                let appRunning = imageName != "InjectionIdle"
                 self.startItem.isEnabled = appRunning
                 self.xprobeItem.isEnabled = appRunning
                 for item in self.traceItem.submenu!.items {

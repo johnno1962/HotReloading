@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#30 $
+//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#31 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -620,7 +620,7 @@ public class SwiftEval: NSObject {
                             # may need to extract file list
                             if ($line =~ / -filelist /) {
                                 while (defined (my $line2 = <GUNZIP>)) {
-                                    if (my($filemap) = $line2 =~ / -output-file-map ([^ \\]+(?:\\ [^ \\]+)*) / ) {
+                                    if (my($filemap) = $line2 =~ / -output-file-map ([^ \\]+(?:\\.[^ \\]+)*) / ) {
                                         $filemap =~ s/\\//g;
                                         my $file_handle = IO::File->new( "< $filemap" )
                                             or die "Could not open filemap '$filemap'";

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#55 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#61 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -132,20 +132,32 @@ public class SwiftInjection: NSObject {
         for i in 0..<oldClasses.count {
             var oldClass: AnyClass = oldClasses[i], newClass: AnyClass = newClasses[i]
 
-            if oldClass === newClass {
-                let versions = Self.versions(of: newClass)
-                if versions.count > 1 {
-                    oldClass = versions.first!
-                    newClass = versions.last!
-                } else {
-                    print("\(APP_PREFIX)⚠️ Could not find versions of class \(_typeName(newClass)). ⚠️")
+            // Is there a generic superclass?
+            var genericSuperclass: AnyClass? = oldClass.superclass()
+            while let parent = genericSuperclass {
+                if "\(parent)".contains("<") {
+                    break
                 }
+                genericSuperclass = parent.superclass()
             }
 
-            // old-school swizzle Objective-C class & instance methods
-            swizzled += injection(swizzle: object_getClass(newClass),
-                                 onto: object_getClass(oldClass))
-            swizzled += injection(swizzle: newClass, onto: oldClass)
+            // ... if so, skip objc processing
+            if genericSuperclass == nil {
+                if oldClass === newClass {
+                    let versions = Self.versions(of: newClass)
+                    if versions.count > 1 {
+                        oldClass = versions.first!
+                        newClass = versions.last!
+                    } else {
+                        print("\(APP_PREFIX)⚠️ Could not find versions of class \(_typeName(newClass)). ⚠️")
+                    }
+                }
+
+                // old-school swizzle Objective-C class & instance methods
+                swizzled += injection(swizzle: object_getClass(newClass),
+                                      onto: object_getClass(oldClass))
+                swizzled += injection(swizzle: newClass, onto: oldClass)
+            }
 
             // overwrite Swift vtable of existing class with implementations from new class
             let existingClass = unsafeBitCast(oldClass, to:
@@ -194,7 +206,8 @@ public class SwiftInjection: NSObject {
 
             print("\(APP_PREFIX)Injected class '\(_typeName(oldClass))'")
 
-            if let XCTestCase = objc_getClass("XCTestCase") as? AnyClass,
+            if genericSuperclass == nil,
+               let XCTestCase = objc_getClass("XCTestCase") as? AnyClass,
                 newClass.isSubclass(of: XCTestCase) {
                 testClasses.append(newClass)
 //                if ( [newClass isSubclassOfClass:objc_getClass("QuickSpec")] )

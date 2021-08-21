@@ -1,7 +1,7 @@
 // swift-tools-version:5.0
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
-//  $Id: //depot/HotReloading/Package.swift#61 $
+//  $Id: //depot/HotReloading/Package.swift#62 $
 //
 
 import PackageDescription
@@ -18,17 +18,19 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/johnno1962/SwiftTrace",
-                 .upToNextMinor(from: "7.5.1")),
+                 .upToNextMinor(from: "7.6.0")),
         .package(url: "https://github.com/johnno1962/SwiftRegex5",
                  .upToNextMinor(from: "5.2.1")),
         .package(url: "https://github.com/johnno1962/XprobePlugin",
-                 .upToNextMinor(from: "2.5.0")),
+                 .upToNextMinor(from: "2.6.0")),
         .package(url: "https://github.com/johnno1962/Remote",
                  .upToNextMinor(from: "2.3.2")),
+        .package(url: "https://github.com/johnno1962/DLKit",
+                 .upToNextMinor(from: "1.2.1")),
     ],
     targets: [
         .target(name: "HotReloading", dependencies: ["HotReloadingGuts",
-                                 "SwiftTrace", "Xprobe"]),
+                                 "SwiftTrace", "Xprobe", "DLKit"]),
         .target(name: "HotReloadingGuts", dependencies: []),
         .target(name: "injectiondGuts", dependencies: []),
         .target(name: "injectiond", dependencies: ["HotReloadingGuts",

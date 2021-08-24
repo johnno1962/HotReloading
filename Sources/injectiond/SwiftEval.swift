@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#31 $
+//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#32 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -541,7 +541,7 @@ public class SwiftEval: NSObject {
             }
             throw evalError("dlopen() error: \(error)")
         }
-        print("\(APP_PREFIX)Loaded .dylib - Ignore any duplicate class warning ^")
+        print("\(APP_PREFIX)Loaded .dylib - Ignore any duplicate class warning ⬆️")
 
         if oldClass != nil {
             // find patched version of class using symbol for existing

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#88 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#91 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -343,21 +343,14 @@ public class SwiftInjection: NSObject {
         let newTable = classMetadata.flatMap { vtableAddr(&$0.pointee.IVarDestroyer) }
         #endif
 
-        SwiftTrace.iterateMethods(ofClass: oldClass) {
-            (name, slotIndex, vtableSlot, stop) in
+        SwiftTrace.forEachVTableEntry(ofClass: oldClass) {
+            (symname, slotIndex, vtableSlot, stop) in
             let existing: UnsafeMutableRawPointer = autoBitCast(vtableSlot.pointee)
-            if let symname = symname(for: existing),
-               var replacement = lastImage[symname], replacement != existing {
+            if let replacement = lastImage[symname], replacement != existing {
 //                print("Patching", DLKit.lastImage.imageNumber.imagePath,
 //                      existing, "->", replacement, String(cString: symfo.name))
-                if traceInjection || SwiftTrace.isTracing,
-                   let demangled = SwiftMeta.demangle(symbol: symname),
-                   let tracer = SwiftTrace.trace(name: injectedPrefix+demangled,
-                                                 original: replacement) {
-                    replacement = autoBitCast(tracer)
-                }
-
-                vtableSlot.pointee = autoBitCast(replacement)
+                vtableSlot.pointee = traceInjected(replacement: replacement,
+                                                   symname: symname)
                 patched += 1
             }
         }
@@ -365,7 +358,21 @@ public class SwiftInjection: NSObject {
         return patched
     }
 
-    /// Make sure at least the @objc func injected() and viewDidLoad() methods are swizzled
+    /// Pop a trace on a newly injected method and convert the pointer type while you're at it
+    open class func traceInjected<IN, OUT>(replacement: IN, name: String? = nil,
+                                     symname: UnsafePointer<Int8>? = nil,
+             objcMethod: Method? = nil, objcClass: AnyClass? = nil) -> OUT {
+        if traceInjection || SwiftTrace.isTracing,
+           let name = name ?? symname.flatMap({SwiftMeta.demangle(symbol: $0)}),
+           let tracer = SwiftTrace.trace(name: injectedPrefix + name,
+                   objcMethod: objcMethod, objcClass: objcClass,
+                   original: autoBitCast(replacement)) {
+            return autoBitCast(tracer)
+        }
+        return autoBitCast(replacement)
+    }
+
+    /// Fallback to make sure at least the @objc func injected() and viewDidLoad() methods are swizzled
     open class func swizzleBasics(oldClass: AnyClass, tmpfile: String) -> Int {
         var swizzled = swizzle(oldClass: oldClass, selector: injectedSEL, tmpfile)
         #if os(iOS) || os(tvOS)
@@ -375,11 +382,12 @@ public class SwiftInjection: NSObject {
     }
 
     /// Resolve a function or trampoline back to name of original symbol
-    open class func symname(for existing: UnsafeMutableRawPointer) -> SymbolName? {
+    open class func originalSym(for existing: UnsafeMutableRawPointer) -> SymbolName? {
         if let symfo = DLKit.appImages[existing] {
             return symfo.name
-        } else if let original = SwiftTrace.swizzled(forTrampoline: existing),
-            let symfo = DLKit.appImages[original] {
+        } else if let swizzle = SwiftTrace.originalSwizzle(for: autoBitCast(existing)),
+                  let symfo = DLKit.appImages[unsafeBitCast(swizzle.implementation,
+                                              to: UnsafeMutableRawPointer.self)] {
             return symfo.name
         }
         return nil
@@ -392,13 +400,15 @@ public class SwiftInjection: NSObject {
         if let method = class_getInstanceMethod(oldClass, selector),
             let existing = unsafeBitCast(method_getImplementation(method),
                                          to: UnsafeMutableRawPointer?.self),
-            let symname = symname(for: existing) {
+            let symname = originalSym(for: existing) {
             findHiddenSwiftSymbols("\(tmpfile).dylib", symname, ST_LOCAL_VISIBILITY) {
                 (replacement, symbol, _, _) in
-//                print("Swizzling", oldClass, existing, "->", replacement)
                 if replacement == existing { return }
+//                print("Swizzling", oldClass, existing, "->", replacement)
                 class_replaceMethod(oldClass, selector,
-                                    unsafeBitCast(replacement, to: IMP.self),
+                    traceInjected(replacement: replacement,
+                        name: NSStringFromSelector(method_getName(method)),
+                                  objcMethod: method, objcClass: oldClass),
                                     method_getTypeEncoding(method))
                 swizzled += 1
             }
@@ -475,13 +485,9 @@ public class SwiftInjection: NSObject {
                     log("Replacing \(method)")
                 }
 
-                var replacement = loadedFunc
-                if traceInjection || SwiftTrace.isTracing, let tracer = SwiftTrace
-                    .trace(name: injectedPrefix+method, original: replacement) {
-                    replacement = autoBitCast(tracer)
-                }
-                interposes.append(dyld_interpose_tuple(
-                    replacement: replacement, replacee: current))
+                interposes.append(dyld_interpose_tuple(replacement:
+                            traceInjected(replacement: loadedFunc, name: method),
+                                                       replacee: current))
                 symbols.append(symbol)
                 #if ORIGINAL_2_2_0_CODE
                 SwiftTrace.interposed[existing] = loadedFunc
@@ -643,18 +649,15 @@ public class SwiftInjection: NSObject {
         if let methods = class_copyMethodList(newClass, &methodCount) {
             for i in 0 ..< Int(methodCount) {
                 let method = method_getName(methods[i])
-                var replacement = method_getImplementation(methods[i])
+                let replacement = method_getImplementation(methods[i])
                 if let existing = class_getInstanceMethod(oldClass, method),
                    replacement == method_getImplementation(existing) {
                     continue
                 }
-                if traceInjection, let tracer = SwiftTrace
-                    .trace(name: injectedPrefix+NSStringFromSelector(method),
-                    objcMethod: methods[i], objcClass: newClass,
-                    original: autoBitCast(replacement)) {
-                    replacement = autoBitCast(tracer)
-                }
-                class_replaceMethod(oldClass, method, replacement,
+                class_replaceMethod(oldClass, method,
+                    traceInjected(replacement: replacement,
+                                  name: NSStringFromSelector(method),
+                                  objcMethod: methods[i], objcClass: newClass),
                                     method_getTypeEncoding(methods[i]))
                 swizzled += 1
             }

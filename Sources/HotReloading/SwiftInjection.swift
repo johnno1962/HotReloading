@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#94 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#95 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -379,7 +379,7 @@ public class SwiftInjection: NSObject {
            let name = name ??
                 symname.flatMap({ SwiftMeta.demangle(symbol: $0) }) ??
                 objcMethod.flatMap({ NSStringFromSelector(method_getName($0)) }),
-            let tracer = SwiftTrace.swizzleFactory.init(name: injectedPrefix + name,
+           let tracer = SwiftTrace.trace(name: injectedPrefix + name,
                    objcMethod: objcMethod, objcClass: objcClass,
                    original: autoBitCast(replacement)) {
             return autoBitCast(tracer)

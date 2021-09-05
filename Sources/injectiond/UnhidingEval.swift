@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/UnhidingEval.swift#11 $
+//  $Id: //depot/HotReloading/Sources/injectiond/UnhidingEval.swift#12 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -63,9 +63,14 @@ public class UnhidingEval: SwiftEval {
                 let log = fopen("/tmp/unhide.log", "w") {
                 Self.unhideQueue.async {
                     // linkFileLists contain the list of object files.
-                    let linkFileLists = enumerator
-                        .compactMap { $0 as? String }
-                        .filter { $0.hasSuffix(".LinkFileList") }
+                    var linkFileLists = [String](), frameworks = [String]()
+                    for path in enumerator.compactMap({ $0 as? String }) {
+                        if path.hasSuffix(".LinkFileList") {
+                            linkFileLists.append(path)
+                        } else if path.hasSuffix(".framework") {
+                            frameworks.append(path)
+                        }
+                    }
                     // linkFileLists sorted to process packages
                     // first due to Edge case in Fruta example.
                     let since = Self.lastProcessed[buildDir] ?? 0
@@ -82,6 +87,20 @@ public class UnhidingEval: SwiftEval {
                             print("\(APP_PREFIX)Exported \(exported) default argument\(s) in \(fileURL.lastPathComponent)")
                         }
                     }
+
+                    for framework in frameworks {
+                        let fileURL = buildDir
+                            .appendingPathComponent(framework)
+                        let frameworkName = fileURL
+                            .deletingPathExtension().lastPathComponent
+                        let exported = unhide_framework(fileURL
+                            .appendingPathComponent(frameworkName).path, log)
+                        if exported != 0 {
+                            let s = exported == 1 ? "" : "s"
+                            print("\(APP_PREFIX)Exported \(exported) symbol\(s) in framework \(frameworkName)")
+                        }
+                    }
+
                     Self.lastProcessed[buildDir] = time(nil)
                     unhide_reset()
                     fclose(log)

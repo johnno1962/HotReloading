@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#92 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#94 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -376,8 +376,10 @@ public class SwiftInjection: NSObject {
                      objcMethod: Method? = nil, objcClass: AnyClass? = nil)
         -> UnsafeRawPointer {
         if traceInjection || SwiftTrace.isTracing,
-           let name = name ?? symname.flatMap({SwiftMeta.demangle(symbol: $0)}),
-           let tracer = SwiftTrace.trace(name: injectedPrefix + name,
+           let name = name ??
+                symname.flatMap({ SwiftMeta.demangle(symbol: $0) }) ??
+                objcMethod.flatMap({ NSStringFromSelector(method_getName($0)) }),
+            let tracer = SwiftTrace.swizzleFactory.init(name: injectedPrefix + name,
                    objcMethod: objcMethod, objcClass: objcClass,
                    original: autoBitCast(replacement)) {
             return autoBitCast(tracer)
@@ -445,7 +447,6 @@ public class SwiftInjection: NSObject {
                 (replacement, symbol, _, _) in
                 if replacement == existing { return }
                 traceAndReplace(existing, replacement: replacement,
-                        name: NSStringFromSelector(method_getName(method)),
                         objcMethod: method, objcClass: oldClass) {
                     (replacement: IMP) -> String? in
                     if class_replaceMethod(oldClass, selector, replacement,
@@ -697,7 +698,6 @@ public class SwiftInjection: NSObject {
                     continue
                 }
                 traceAndReplace(existing, replacement: autoBitCast(replacement),
-                          name: NSStringFromSelector(selector),
                           objcMethod: methods[i], objcClass: newClass) {
                     (replacement: IMP) -> String? in
                     if class_replaceMethod(oldClass, selector, replacement,

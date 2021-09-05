@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#32 $
+//  $Id: //depot/HotReloading/Sources/injectiond/SwiftEval.swift#33 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -530,10 +530,10 @@ public class SwiftEval: NSObject {
         guard let dl = dlopen("\(tmpfile).dylib", RTLD_NOW) else {
             let error = String(cString: dlerror())
             if error.contains("___llvm_profile_runtime") {
-                print("\(APP_PREFIX)Loading .dylib has failed, try turning off collection of test coverage in your scheme")
+                print("\(APP_PREFIX)⚠️ Loading .dylib has failed, try turning off collection of test coverage in your scheme")
             } else if error.contains("Symbol not found:") {
                 print("""
-                    \(APP_PREFIX)Loading .dylib has failed, This is likely \
+                    \(APP_PREFIX)⚠️ Loading .dylib has failed, This is likely \
                     because Swift code being injected refers to a function \
                     with a default argument. Rebuilding and re-running your \
                     project (without a build clean) can resolve this.

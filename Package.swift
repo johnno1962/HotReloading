@@ -1,7 +1,7 @@
 // swift-tools-version:5.0
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
-//  $Id: //depot/HotReloading/Package.swift#69 $
+//  $Id: //depot/HotReloading/Package.swift#73 $
 //
 
 import PackageDescription

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#95 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#97 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -70,6 +70,11 @@ extension NSObject {
     public class func inject(file: String) {
         SwiftInjection.inject(oldClass: nil, classNameOrFile: file)
     }
+
+    @objc
+    public func registerInjectableTCAReducer(_ symbol: String) {
+        SwiftInjection.injectableReducerSymbols.insert(symbol)
+    }
 }
 
 @objc(SwiftInjection)
@@ -82,6 +87,7 @@ public class SwiftInjection: NSObject {
     static let viewDidLoadSEL = #selector(UIViewController.viewDidLoad)
     #endif
     static let notification = Notification.Name("INJECTION_BUNDLE_NOTIFICATION")
+    static var injectableReducerSymbols = Set<String>()
     static var injectionDetail = getenv("INJECTION_DETAIL") != nil
     static var injectedPrefix: String {
         return "Injection#\(SwiftEval.instance.injectionNumber)/"
@@ -258,6 +264,26 @@ public class SwiftInjection: NSObject {
 
         if totalPatched + totalSwizzled + interposed.count == 0 {
             log("⚠️ Injection may have failed. Have you added -Xlinker -interposable to the \"Other Linker Flags\" of the executable/framework? ⚠️")
+        }
+
+        // Support for re-initialising "The Composable Architecture", "Reducer"
+        // variables declared at the top level. Requires custom version of:
+        // https://github.com/pointfreeco/swift-composable-architecture
+        if !injectableReducerSymbols.isEmpty {
+            var totalReducers = 0
+            findHiddenSwiftSymbols("\(tmpfile).dylib", "_WZ",
+                                   ST_LOCAL_VISIBILITY) {
+                accessor, symname, _, _ in
+                if injectableReducerSymbols.contains(String(cString: symname)) {
+                    typealias OneTimeInitialiser = @convention(c) () -> Void
+                    let reinitialise: OneTimeInitialiser = autoBitCast(accessor)
+                    reinitialise()
+                    totalReducers += 1
+                }
+            }
+
+            let s = totalReducers == 1 ? "" : "s"
+            log("Overrode \(totalReducers) reducer"+s)
         }
 
         // Thanks https://github.com/johnno1962/injectionforxcode/pull/234

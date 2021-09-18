@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#24 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#27 $
 //
 
 import Cocoa
@@ -126,7 +126,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
         var arguments = CommandLine.arguments.dropFirst()
         let projectURL = URL(fileURLWithPath: arguments.removeFirst())
         let projectRoot = projectURL.deletingLastPathComponent()
-        AppDelegate.ensureInterposable(project: projectURL.path)
+//        AppDelegate.ensureInterposable(project: projectURL.path)
         NSDocumentController.shared.noteNewRecentDocumentURL(projectRoot)
         derivedLogs = arguments.removeFirst()
 
@@ -136,14 +136,14 @@ class AppDelegate : NSObject, NSApplicationDelegate {
             appDelegate.watchedDirectories.insert(dir)
         }
         #else
-        statusItem.toolTip = "Code Injection"
+        statusItem.toolTip = "InjectionIII"
         DDHotKeyCenter.shared()?
             .registerHotKey(withKeyCode: UInt16(kVK_ANSI_Equal),
                modifierFlags: NSEvent.ModifierFlags.control.rawValue,
                target:self, action:#selector(autoInject(_:)), object:nil)
 
         NSApp.servicesProvider = self
-        if let projectFile = defaults.string(forKey: "projectFile") {
+        if let projectFile = defaults.string(forKey: UserDefaultsProjectFile) {
             // Received project file from command line option.
             _ = self.application(NSApp, openFile:
                 URL(fileURLWithPath: projectFile).deletingLastPathComponent().path)
@@ -164,48 +164,80 @@ class AppDelegate : NSObject, NSApplicationDelegate {
     }
 
     func application(_ theApplication: NSApplication, openFile filename: String) -> Bool {
-        #if !SWIFT_PACKAGE
+        #if SWIFT_PACKAGE
+        return false
+        #else
         guard filename != Bundle.main.bundlePath,
-            let url = resolve(path: filename) else {
+            let url = resolve(path: filename),
+            let fileList = try? FileManager.default
+               .contentsOfDirectory(atPath: url.path) else {
             return false
         }
 
-        if let fileList = try? FileManager.default
-            .contentsOfDirectory(atPath: url.path),
-            let projectFile =
-                fileWithExtension("xcworkspace", inFiles: fileList) ??
-                fileWithExtension("xcodeproj", inFiles: fileList) {
-            selectedProject = url
-                .appendingPathComponent(projectFile).path
-            watchedDirectories.removeAll()
-            watchedDirectories.insert(url.path)
-            if let alsoWatch = defaults.string(forKey: "addDirectory"),
-                let resolved = resolve(path: alsoWatch) {
-                watchedDirectories.insert(resolved.path)
+        let projectFiles =
+            filesWithExtension("xcworkspace", inFiles: fileList) ??
+            filesWithExtension("xcodeproj", inFiles: fileList)
+
+        selectedProject = nil
+        if projectFiles == nil || projectFiles!.count > 1 {
+            if let lastProjectFile = defaults
+                .string(forKey: UserDefaultsProjectFile) {
+                for project in projectFiles ?? [] {
+                    if url.appendingPathComponent(project)
+                        .path == lastProjectFile {
+                        selectedProject = lastProjectFile
+                    }
+                }
             }
-            lastConnection?.setProject(selectedProject!)
+            if selectedProject == nil {
+                let open = NSOpenPanel()
+                open.prompt = "Select Project File"
+                open.directoryURL = url
+                open.canChooseDirectories = false
+                open.canChooseFiles = true
+                // open.showsHiddenFiles = TRUE;
+                if open.runModal() == .OK,
+                    let url = open.url {
+                    selectedProject = url.path
+                }
+            }
+        } else if projectFiles != nil {
+            selectedProject = url
+                .appendingPathComponent(projectFiles![0]).path
+        }
+
+        guard let projectFile = selectedProject else {
+            let alert: NSAlert = NSAlert()
+            alert.messageText = "InjectionIII"
+            alert.informativeText = "Please select a directory with either a .xcworkspace or .xcodeproj file, below which, are the files you wish to inject."
+            alert.alertStyle = NSAlert.Style.warning
+            alert.addButton(withTitle: "OK")
+            _ = alert.runModal()
+            return false
+        }
+
+        watchedDirectories.removeAll()
+        watchedDirectories.insert(url.path)
+        if let alsoWatch = defaults.string(forKey: "addDirectory"),
+            let resolved = resolve(path: alsoWatch) {
+            watchedDirectories.insert(resolved.path)
+        }
+        lastConnection?.setProject(projectFile)
 //            AppDelegate.ensureInterposable(project: selectedProject!)
-            NSDocumentController.shared.noteNewRecentDocumentURL(url)
+        NSDocumentController.shared.noteNewRecentDocumentURL(url)
 //            let projectName = URL(fileURLWithPath: projectFile)
 //                .deletingPathExtension().lastPathComponent
 //            traceInclude.stringValue = projectName
 //            updateTraceInclude(nil)
-            defaults.set(url.path, forKey: UserDefaultsLastWatched)
-            return true
-        }
-
-        let alert: NSAlert = NSAlert()
-        alert.messageText = "Injection"
-        alert.informativeText = "Please select a directory with either a .xcworkspace or .xcodeproj file, below which, are the files you wish to inject."
-        alert.alertStyle = NSAlert.Style.warning
-        alert.addButton(withTitle: "OK")
-        _ = alert.runModal()
+        defaults.set(projectFile, forKey: UserDefaultsProjectFile)
+        defaults.set(url.path, forKey: UserDefaultsLastWatched)
+        return true
         #endif
-        return false
     }
 
-    func fileWithExtension(_ ext: String, inFiles files: [String]) -> String? {
-        return files.first { ($0 as NSString).pathExtension == ext }
+    func filesWithExtension(_ ext: String, inFiles files: [String]) -> [String]? {
+        let matches = files.filter { ($0 as NSString).pathExtension == ext }
+        return matches.count != 0 ? matches : nil
     }
 
     func persist(url: URL) {

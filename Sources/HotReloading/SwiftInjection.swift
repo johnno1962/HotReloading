@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#97 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#101 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -262,15 +262,11 @@ public class SwiftInjection: NSObject {
             log("Interposed \(interposed.count) function references.")
         }
 
-        if totalPatched + totalSwizzled + interposed.count == 0 {
-            log("⚠️ Injection may have failed. Have you added -Xlinker -interposable to the \"Other Linker Flags\" of the executable/framework? ⚠️")
-        }
-
         // Support for re-initialising "The Composable Architecture", "Reducer"
         // variables declared at the top level. Requires custom version of:
         // https://github.com/pointfreeco/swift-composable-architecture
+        var totalReducers = 0
         if !injectableReducerSymbols.isEmpty {
-            var totalReducers = 0
             findHiddenSwiftSymbols("\(tmpfile).dylib", "_WZ",
                                    ST_LOCAL_VISIBILITY) {
                 accessor, symname, _, _ in
@@ -284,6 +280,10 @@ public class SwiftInjection: NSObject {
 
             let s = totalReducers == 1 ? "" : "s"
             log("Overrode \(totalReducers) reducer"+s)
+        }
+
+        if totalPatched + totalSwizzled + interposed.count + totalReducers == 0 {
+            log("⚠️ Injection may have failed. Have you added -Xlinker -interposable to the \"Other Linker Flags\" of the executable/framework? ⚠️")
         }
 
         // Thanks https://github.com/johnno1962/injectionforxcode/pull/234

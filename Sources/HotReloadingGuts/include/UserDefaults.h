@@ -11,6 +11,7 @@
 static NSString *const UserDefaultsTDDEnabled = @"Enabled TDD";
 static NSString *const UserDefaultsVaccineEnabled = @"Enabled Vaccine";
 static NSString *const UserDefaultsLastWatched = @"lastWatched";
+static NSString *const UserDefaultsProjectFile = @"projectFile";
 static NSString *const UserDefaultsBookmarks = @"persistentBookmarks";
 static NSString *const UserDefaultsUpdateCheck = @"nextUpdateCheck";
 static NSString *const UserDefaultsOrderFront = @"orderFront";

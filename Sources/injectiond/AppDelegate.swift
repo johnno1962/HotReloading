@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#27 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#30 $
 //
 
 import Cocoa
@@ -143,7 +143,8 @@ class AppDelegate : NSObject, NSApplicationDelegate {
                target:self, action:#selector(autoInject(_:)), object:nil)
 
         NSApp.servicesProvider = self
-        if let projectFile = defaults.string(forKey: UserDefaultsProjectFile) {
+        if let projectFile = defaults
+            .string(forKey: UserDefaultsProjectFile) {
             // Received project file from command line option.
             _ = self.application(NSApp, openFile:
                 URL(fileURLWithPath: projectFile).deletingLastPathComponent().path)
@@ -180,11 +181,13 @@ class AppDelegate : NSObject, NSApplicationDelegate {
 
         selectedProject = nil
         if projectFiles == nil || projectFiles!.count > 1 {
-            if let lastProjectFile = defaults
-                .string(forKey: UserDefaultsProjectFile) {
+            for lastProjectFile in [UserDefaultsProjectFile,
+                                    UserDefaultsLastProject]
+                .compactMap({ defaults.string(forKey: $0) }) {
                 for project in projectFiles ?? [] {
-                    if url.appendingPathComponent(project)
-                        .path == lastProjectFile {
+                    if selectedProject == nil,
+                        url.appendingPathComponent(project)
+                            .path == lastProjectFile {
                         selectedProject = lastProjectFile
                     }
                 }
@@ -229,7 +232,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
 //                .deletingPathExtension().lastPathComponent
 //            traceInclude.stringValue = projectName
 //            updateTraceInclude(nil)
-        defaults.set(projectFile, forKey: UserDefaultsProjectFile)
+        defaults.set(projectFile, forKey: UserDefaultsLastProject)
         defaults.set(url.path, forKey: UserDefaultsLastWatched)
         return true
         #endif

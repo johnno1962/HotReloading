@@ -417,7 +417,7 @@ public class SwiftEval: NSObject {
         let objectFile = compileCommand[range]
             .replacingOccurrences(of: #"\\(.)"#, with: "$1",
                                   options: [.regularExpression])
-        print(compileCommand, findObj, objectFile)
+        NSLog("\(compileCommand) -- \(findObj) -- >\( objectFile)<")
         // Trim off junk at end of compile command
         if sourceFile.hasSuffix(".swift") {
             compileCommand = compileCommand

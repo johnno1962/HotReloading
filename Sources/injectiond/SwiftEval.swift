@@ -406,7 +406,7 @@ public class SwiftEval: NSObject {
         let sourceName = URL(fileURLWithPath:
             sourceFile).deletingPathExtension().lastPathComponent
             .replacingOccurrences(of: " ", with: "\\ ")
-        let findObj = #"(?: -o ("?)(/[^\s\\]+((\s(?!-o)|\\.)[^\s\\]+)*/\Q\#(sourceName).o\E)\1)+"#
+        let findObj = #"(?: -o ("?)(/[^\s\\]+((\s(?!-o)|\\.)[^\s\\]+)*/\w+\Q.o\E)\1)+"#
         guard
             let regex = try? NSRegularExpression(pattern: findObj, options: []),
             let match = regex.firstMatch(in: compileCommand, options: [],

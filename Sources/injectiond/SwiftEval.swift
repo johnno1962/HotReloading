@@ -406,12 +406,12 @@ public class SwiftEval: NSObject {
         let sourceName = URL(fileURLWithPath:
             sourceFile).deletingPathExtension().lastPathComponent
             .replacingOccurrences(of: " ", with: "\\ ")
-        let findObj = #" -o ("?)(/[^\s\\]+((\s(?!-o)|\\.)[^\s\\]+)*/\Q\#(sourceName).o\E)\1"#
+        let findObj = #"(?: -o ("?)(/[^\s\\]+((\s(?!-o)|\\.)[^\s\\]+)*/\Q\#(sourceName).o\E)\1)+"#
         guard
             let regex = try? NSRegularExpression(pattern: findObj, options: []),
             let match = regex.firstMatch(in: compileCommand, options: [],
                       range: NSMakeRange(0, compileCommand.utf16.count)),
-            let range = Range(match.range(at: 2), in: compileCommand) else {
+            let range = Range(match.range(at: 0), in: compileCommand) else {
             throw evalError("Could not determine object file for \(sourceName):\n\(findObj)\n\(compileCommand)")
         }
         let objectFile = compileCommand[range]
@@ -464,8 +464,12 @@ public class SwiftEval: NSObject {
             osSpecific = "-mmacosx-version-min=10.11"
         }
 
+        let objectFiles = objectFile
+            .components(separatedBy: " -o ").dropFirst()
+            .map { #""\#($0)""# }.joined(separator: " ")
+
         guard shell(command: """
-            "\(xcodeDev)/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang" -arch "\(arch)" -bundle -isysroot "\(xcodeDev)/Platforms/\(platform).platform/Developer/SDKs/\(platform).sdk" -L"\(toolchain)/usr/lib/swift/\(platform.lowercased())" \(osSpecific) -undefined dynamic_lookup -dead_strip -Xlinker -objc_abi_version -Xlinker 2 -fobjc-arc -fprofile-instr-generate \"\(objectFile)\" -L "\(frameworks)" -F "\(frameworks)" -rpath "\(frameworks)" -o \"\(tmpfile).dylib\" >>\"\(logfile)\" 2>&1
+            "\(xcodeDev)/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang" -arch "\(arch)" -bundle -isysroot "\(xcodeDev)/Platforms/\(platform).platform/Developer/SDKs/\(platform).sdk" -L"\(toolchain)/usr/lib/swift/\(platform.lowercased())" \(osSpecific) -undefined dynamic_lookup -dead_strip -Xlinker -objc_abi_version -Xlinker 2 -fobjc-arc -fprofile-instr-generate \(objectFiles) -L "\(frameworks)" -F "\(frameworks)" -rpath "\(frameworks)" -o \"\(tmpfile).dylib\" >>\"\(logfile)\" 2>&1
             """) else {
             throw scriptError("Linking")
         }

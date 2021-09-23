@@ -5,14 +5,14 @@
 //  Created by User on 20/10/2020.
 //  Copyright © 2020 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#19 $
+//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#20 $
 //
 
 import Cocoa
-import SwiftRegex
 #if SWIFT_PACKAGE
 import HotReloadingGuts
 import injectiondGuts
+import SwiftRegex
 import XprobeUI
 #endif
 

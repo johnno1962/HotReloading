@@ -30,7 +30,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "HotReloading", dependencies: ["HotReloadingGuts",
-                                 "SwiftTrace", "Xprobe", "DLKit"]),
+                                 "SwiftTrace", "Xprobe", "DLKit", "SwiftRegex"]),
         .target(name: "HotReloadingGuts", dependencies: []),
         .target(name: "injectiondGuts", dependencies: []),
         .target(name: "injectiond", dependencies: ["HotReloadingGuts",

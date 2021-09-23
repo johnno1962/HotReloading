@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/UnhidingEval.swift#12 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#4 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -123,11 +123,13 @@ public class UnhidingEval: SwiftEval {
         let objectFile = tmpfile+".o"
         NSLog(compileCommand)
         let hasFileList = compileCommand[" -filelist "]
+        // ensure there is only ever one -primary-file
         compileCommand[#" -primary-file (\#(filePath+fileName))"#] = {
             (groups: [String], stop) -> String in
             NSLog("PF: \(sourceName) \(groups)")
             return groups[2] == sourceName || groups[3] == sourceName ? groups[0] : hasFileList ? "" : " "+groups[1]
         }
+        // Strip out specification of any object files
         compileCommand[#" -o (\#(filePath))"#] = {
             (groups: [String], stop) -> String in
             NSLog("OF: \(groups)")

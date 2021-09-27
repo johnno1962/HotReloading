@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#6 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#7 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -400,23 +400,14 @@ public class SwiftEval: NSObject {
             }
         }
 
-        let projectDir = projectFile.deletingLastPathComponent().path
-
         // Extract object file path (Xcode 13)
         let objectFile = xcode13Fix(sourceFile: sourceFile,
                                     compileCommand: &compileCommand)
-        NSLog("\(compileCommand) -- >\( objectFile)<")
-        // Trim off junk at end of compile command
-        if sourceFile.hasSuffix(".swift") {
-            compileCommand = compileCommand
-                .components(separatedBy: " -index-system-modules")[0]
-        } else {
-            compileCommand = compileCommand
-                .components(separatedBy: " -o ")[0]
-        }
-        compileCommand += " -o " + objectFile
+//        NSLog("\(compileCommand) -- >\( objectFile)<")
 
         _ = evalError("Compiling \(sourceFile)")
+
+        let projectDir = projectFile.deletingLastPathComponent().path
 
         guard shell(command: """
                 (cd "\(projectDir.escaping("$"))" && \(compileCommand) >\"\(logfile)\" 2>&1)
@@ -494,8 +485,24 @@ public class SwiftEval: NSObject {
         return tmpfile
     }
 
+    static let fileNameRegex = #"/([^ \\/]*(?:\\.[^ \\/]*)*)\.\w+"#
+    static let filePathRegex =
+            #""/[^"]*\#(fileNameRegex)"|/[^ \\]*(?:\\.[^ \\]*)*"#
+
+    // Overridden in  UnhidingEval.swift
     func xcode13Fix(sourceFile: String,
                     compileCommand: inout String) -> String {
+        // Trim off junk at end of compile command
+        if sourceFile.hasSuffix(".swift") {
+            compileCommand = compileCommand
+                .replacingOccurrences(of: " -o (\(Self.filePathRegex))",
+                                      with: "", options: .regularExpression)
+                .components(separatedBy: " -index-system-modules")[0]
+        } else {
+            compileCommand = compileCommand
+                .components(separatedBy: " -o ")[0]
+        }
+        compileCommand += " -o "+tmpfile+".o"
         return tmpfile+".o"
     }
 

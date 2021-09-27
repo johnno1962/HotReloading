@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#4 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#5 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -114,27 +114,18 @@ public class UnhidingEval: SwiftEval {
 
     override func xcode13Fix(sourceFile: String,
                     compileCommand: inout String) -> String {
-        let fileName = #"/([^ \\/]*(?:\\.[^ \\/]*)*)\.\w+"#
-        let filePath =
-            #""/[^"]*\#(fileName)"|/[^ \\]*(?:\\.[^ \\]*)*"#
         let sourceName = URL(fileURLWithPath:
             sourceFile).deletingPathExtension().lastPathComponent
             .replacingOccurrences(of: " ", with: "\\ ")
-        let objectFile = tmpfile+".o"
-        NSLog(compileCommand)
         let hasFileList = compileCommand[" -filelist "]
         // ensure there is only ever one -primary-file
-        compileCommand[#" -primary-file (\#(filePath+fileName))"#] = {
+        compileCommand[#" -primary-file (\#(Self.filePathRegex+Self.fileNameRegex))"#] = {
             (groups: [String], stop) -> String in
-            NSLog("PF: \(sourceName) \(groups)")
+//            NSLog("PF: \(sourceName) \(groups)")
             return groups[2] == sourceName || groups[3] == sourceName ? groups[0] : hasFileList ? "" : " "+groups[1]
         }
-        // Strip out specification of any object files
-        compileCommand[#" -o (\#(filePath))"#] = {
-            (groups: [String], stop) -> String in
-            NSLog("OF: \(groups)")
-            return ""
-        }
-        return objectFile
+        // Replace object file(s) path.
+        return super.xcode13Fix(sourceFile: sourceFile,
+                                compileCommand: &compileCommand)
     }
 }

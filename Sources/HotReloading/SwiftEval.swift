@@ -168,6 +168,13 @@ public class SwiftEval: NSObject {
     @objc public var arch = "i386"
     #endif
 
+    /// Additional logging to /tmp/hot\_reloading.log for "HotReloading" version of injection.
+    func HRLog(_ what: Any...) {
+        #if SWIFT_PACKAGE
+        NSLog("***** %@", what.map {"\($0)"}.joined(separator: " "))
+        #endif
+    }
+
     // Xcode related info
     @objc public var xcodeDev = "/Applications/Xcode.app/Contents/Developer"
 
@@ -400,10 +407,10 @@ public class SwiftEval: NSObject {
             }
         }
 
-        // Extract object file path (Xcode 13)
+        // Extract object path (overidden in UnhidingEval.swift for Xcode 13)
         let objectFile = xcode13Fix(sourceFile: sourceFile,
                                     compileCommand: &compileCommand)
-//        NSLog("\(compileCommand) -- >\( objectFile)<")
+        HRLog("Final command:", compileCommand, "-->", objectFile)
 
         _ = evalError("Compiling \(sourceFile)")
 
@@ -485,9 +492,14 @@ public class SwiftEval: NSObject {
         return tmpfile
     }
 
-    static let fileNameRegex = #"/([^ \\/]*(?:\\.[^ \\/]*)*)\.\w+"#
+
+    /// Regex for path argument, perhaps containg escaped spaces
+    static let argumentRegex = #"[^ \\]*(?:\\.[^ \\]*)*"#
+    /// Regex to extract filename base, perhaps containg escaped spaces
+    static let fileNameRegex = #"/(\#(argumentRegex))\.\w+"#
+    /// Extract full file path and name either quoted or escaped
     static let filePathRegex =
-            #""/[^"]*\#(fileNameRegex)"|/[^ \\]*(?:\\.[^ \\]*)*"#
+            #""/[^"]*\#(fileNameRegex)"|/\#(argumentRegex)"#
 
     // Overridden in  UnhidingEval.swift
     func xcode13Fix(sourceFile: String,
@@ -616,8 +628,7 @@ public class SwiftEval: NSObject {
                         if ($line =~ /^\s*cd /) {
                             $realPath = $line;
                         }
-                        elsif ($line =~ m@\#(regexp.escaping("\"$"))@oi and $line =~ " \#(arch)" and
-                            (my @a = $line =~ / -emit-module-path /g) < 2) {
+                        elsif ($line =~ m@\#(regexp.escaping("\"$"))@oi and $line =~ " \#(arch)") {
                             # found compile command
                             # may need to extract file list
                             if ($line =~ / -filelist /) {
@@ -679,15 +690,17 @@ public class SwiftEval: NSObject {
                 """)
         }
 
-        // remove excess escaping in new build system
 //            // escape ( & ) outside quotes
 //            .replacingOccurrences(of: "[()](?=(?:(?:[^\"]*\"){2})*[^\"]$)", with: "\\\\$0", options: [.regularExpression])
             // (logs of new build system escape ', $ and ")
+        HRLog("Found command:", compileCommand)
         compileCommand = compileCommand
+            // remove excess escaping in new build system
             .replacingOccurrences(of: #"\\([\"'\\])"#, with: "$1", options: [.regularExpression])
-            // pch file may no longer exist
+            // these files may no longer exist
             .replacingOccurrences(of: " -pch-output-dir \\S+ ", with: " ", options: [.regularExpression])
             .replacingOccurrences(of: " -supplementary-output-file-map \\S+ ", with: " ", options: [.regularExpression])
+        HRLog("Replaced command:", compileCommand)
 
         if isFile {
             return (compileCommand, classNameOrFile)

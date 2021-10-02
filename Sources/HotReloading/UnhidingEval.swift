@@ -112,19 +112,28 @@ public class UnhidingEval: SwiftEval {
         return (project, logs)
     }
 
+    // This was required for Xcode13's new "optimisation" to compile
+    // more than one primary file in a single compiler invocation.
     override func xcode13Fix(sourceFile: String,
-                    compileCommand: inout String) -> String {
+                             compileCommand: inout String) -> String {
         let sourceName = URL(fileURLWithPath:
             sourceFile).deletingPathExtension().lastPathComponent
             .replacingOccurrences(of: " ", with: "\\ ")
-        let hasFileList = compileCommand[" -filelist "]
-        // ensure there is only ever one -primary-file
+        let hasFileList = compileCommand.contains(" -filelist ")
+        // ensure there is only ever one -primary-file argument and object file
+        // avoids shuffling of object files due to how the compiler is coded
         compileCommand[#" -primary-file (\#(Self.filePathRegex+Self.fileNameRegex))"#] = {
             (groups: [String], stop) -> String in
-//            NSLog("PF: \(sourceName) \(groups)")
-            return groups[2] == sourceName || groups[3] == sourceName ? groups[0] : hasFileList ? "" : " "+groups[1]
+//            HRLog("PF: \(sourceName) \(groups)")
+            return groups[2] == sourceName || groups[3] == sourceName ?
+                groups[0] : hasFileList ? "" : " "+groups[1]
         }
-        // Replace object file(s) path.
+        // the number of these options must match the number of -primary-file arguments
+        // which has just been changed to only ever be one so, strip them out
+        compileCommand = compileCommand
+            .replacingOccurrences(of: #" -(serialize-diagnostics|emit-(module(-doc|-source-info)?|(reference-)?dependencies))-path \#(Self.argumentRegex)"#, with: "", options: .regularExpression)
+        HRLog("Uniqued command:", compileCommand)
+        // Replace path(s) of all object files to a single one
         return super.xcode13Fix(sourceFile: sourceFile,
                                 compileCommand: &compileCommand)
     }

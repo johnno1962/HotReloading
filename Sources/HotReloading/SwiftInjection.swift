@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#101 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#102 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -543,7 +543,10 @@ public class SwiftInjection: NSObject {
         let main = dlopen(nil, RTLD_NOW)
         var interposes = [dyld_interpose_tuple]()
 
-        for suffix in SwiftTrace.swiftFunctionSuffixes {
+        let suffixesToInterpose = SwiftTrace.swiftFunctionSuffixes
+            // Oh alright, interpose all property getters..
+            .map { $0 == "Qrvg" ? "g" : $0 }
+        for suffix in suffixesToInterpose {
             findSwiftSymbols(dylib, suffix) { (loadedFunc, symbol, _, _) in
                 guard let existing = dlsym(main, symbol), existing != loadedFunc/*,
                     let current = SwiftTrace.interposed(replacee: existing)*/ else {

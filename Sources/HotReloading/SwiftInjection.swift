@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#104 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#105 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -242,9 +242,10 @@ public class SwiftInjection: NSObject {
             if let existing: Any.Type =
                 autoBitCast(dlsym(SwiftMeta.RTLD_DEFAULT, symbol)) {
                 log("Injected value type '\(_typeName(existing))'")
-                if SwiftMeta.sizeof(anyType: autoBitCast(typePtr)) !=
-                   SwiftMeta.sizeof(anyType: existing) {
-                    log("⚠️ Size of value type \(_typeName(existing)) has changed. You cannot inject changes to memory layout. This will likely just crash. ⚠️")
+                let newSize = SwiftMeta.sizeof(anyType: autoBitCast(typePtr))
+                if newSize != 0 &&
+                    newSize != SwiftMeta.sizeof(anyType: existing) {
+                    log("⚠️ Size of value type \(_typeName(existing)) has changed (\(newSize) != \(SwiftMeta.sizeof(anyType: existing))). You cannot inject changes to memory layout. This will likely just crash. ⚠️")
                 }
             }
         }

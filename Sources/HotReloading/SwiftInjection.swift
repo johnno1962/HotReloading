@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#105 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#106 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -263,6 +263,8 @@ public class SwiftInjection: NSObject {
             log("Interposed \(interposed.count) function references.")
         }
 
+        DynamicCast.hook_lastInjected()
+
         // Support for re-initialising "The Composable Architecture", "Reducer"
         // variables declared at the top level. Requires custom version of:
         // https://github.com/pointfreeco/swift-composable-architecture
@@ -414,7 +416,7 @@ public class SwiftInjection: NSObject {
         return autoBitCast(replacement)
     }
 
-    /// All implementatoin replacents go through this function which can also apply a trace
+    /// All implementation replacements go through this function which can also apply a trace
     /// - Parameters:
     ///   - existing: implementation being replaced
     ///   - replacement: new implementation

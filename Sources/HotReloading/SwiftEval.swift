@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#10 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#11 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -347,7 +347,7 @@ public class SwiftEval: NSObject {
                 This could be due to one of the following:
                 1. Injection does not work with Whole Module Optimization.
                 2. There are restrictions on characters allowed in paths.
-                3. File paths in the simulator paths are case sensitive.
+                3. File paths in the simulator are case sensitive.
                 Try a build clean then rebuild to make logs available or
                 consult: "\(cmdfile)".
                 """)

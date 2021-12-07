@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#106 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#108 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -263,11 +263,12 @@ public class SwiftInjection: NSObject {
             log("Interposed \(interposed.count) function references.")
         }
 
+        // Cater for dynamic cast (i.e. as?) to types that have been injected.
         DynamicCast.hook_lastInjected()
 
         // Support for re-initialising "The Composable Architecture", "Reducer"
-        // variables declared at the top level. Requires custom version of:
-        // https://github.com/pointfreeco/swift-composable-architecture
+        // variables declared at the top level. Requires custom version of TCA:
+        // https://github.com/thebrowsercompany/swift-composable-architecture/tree/develop
         var totalReducers = 0
         if !injectableReducerSymbols.isEmpty {
             findHiddenSwiftSymbols("\(tmpfile).dylib", "_WZ",

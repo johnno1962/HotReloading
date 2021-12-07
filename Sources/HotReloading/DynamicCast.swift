@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DynamicCast.swift#3 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DynamicCast.swift#4 $
 //
 //  Code relating to injecting types in an "as?" expression.
 //
@@ -20,7 +20,7 @@ public func injection_dynamicCast(inp: UnsafeRawPointer,
     out: UnsafeMutablePointer<UnsafeRawPointer>,
     from: Any.Type, to: Any.Type, size: size_t) -> Bool {
 //    print("HERE \(inp) \(out) \(_typeName(from)) \(_typeName(to)) \(size)")
-    let to = SwiftMeta.lookupType(named: _typeName(to)) ?? to
+    let to = SwiftMeta.lookupType(named: _typeName(to), protocols: true) ?? to
     return DynamicCast.original_dynamicCast?(inp, out,
         autoBitCast(from), autoBitCast(to), size) ?? false
 }

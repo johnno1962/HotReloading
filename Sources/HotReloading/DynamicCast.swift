@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DynamicCast.swift#1 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DynamicCast.swift#2 $
 //
 //  Code relating to injecting types in an "as?" expression.
 //
@@ -60,6 +60,7 @@ class DynamicCast {
     }()
 
     static func hook_lastInjected() {
+        _ = DynamicCast.hook_appDynamicCast
         let lastLoaded = _dyld_image_count()-1
         rebind_symbols_image(
             autoBitCast(_dyld_get_image_header(lastLoaded)),

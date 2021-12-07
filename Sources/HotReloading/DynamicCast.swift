@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DynamicCast.swift#2 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DynamicCast.swift#3 $
 //
 //  Code relating to injecting types in an "as?" expression.
 //
@@ -33,10 +33,11 @@ class DynamicCast {
      _ from: UnsafeRawPointer, _ to: UnsafeRawPointer,
      _ size: size_t) -> Bool
 
-    static var original_dynamicCast: injection_dynamicCast_t?
+    static let swift_dynamicCast = strdup("swift_dynamicCast")!
+    static let original_dynamicCast: injection_dynamicCast_t? =
+        autoBitCast(dlsym(SwiftMeta.RTLD_DEFAULT, swift_dynamicCast))
     static var hooked_dynamicCast: UnsafeMutableRawPointer? = {
-        let module =
-            _typeName(InjectionClient.self)
+        let module = _typeName(DynamicCast.self)
             .components(separatedBy: ".")[0]
         return dlsym(SwiftMeta.RTLD_DEFAULT,
                      "$s\(module.count)\(module)" +
@@ -45,12 +46,11 @@ class DynamicCast {
                      "SpySVGypXpypXpSitF")
     }()
 
-    static var rebinds = hooked_dynamicCast != nil ? [
-        rebinding(name: strdup("swift_dynamicCast"),
+    static var rebinds = original_dynamicCast != nil &&
+                           hooked_dynamicCast != nil ? [
+        rebinding(name: swift_dynamicCast,
                   replacement: hooked_dynamicCast!,
-                  replaced: UnsafeMutablePointer<
-                    UnsafeMutableRawPointer>(mutating:
-                    &original_dynamicCast))] : []
+                  replaced: nil)] : []
 
     static var hook_appDynamicCast: Void = {
         appBundleImages { imageName, header, slide in

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#108 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#112 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -187,7 +187,11 @@ public class SwiftInjection: NSObject {
 
                 // Old mechanism for Swift equivalent of "Swizzling".
                 if classMetadata.pointee.ClassSize != existingClass.pointee.ClassSize {
-                    log("⚠️ Adding or [re]moving methods on non-final classes is not supported. Your application will likely crash. ⚠️")
+                    log("""
+                        ⚠️ Adding or [re]moving methods on non-final classes is not supported. \
+                        Your application will likely crash. Paradoxically, you can avoid this by \
+                        making the class you are trying to inject and add methods to "final". ⚠️
+                        """)
                 }
             }
 

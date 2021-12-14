@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#112 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#123 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -267,30 +267,25 @@ public class SwiftInjection: NSObject {
             log("Interposed \(interposed.count) function references.")
         }
 
+        // Prevent statics from re-initializing on injection
+        let reverseInterposed = reverseInterposeStaticsAccessors(tmpfile)
+        if injectionDetail {
+            for symname in reverseInterposed {
+                log("Reverse interposed \(symname.demangled ?? String(cString: symname))")
+            }
+        }
+
         // Cater for dynamic cast (i.e. as?) to types that have been injected.
         DynamicCast.hook_lastInjected()
 
-        // Support for re-initialising "The Composable Architecture", "Reducer"
-        // variables declared at the top level. Requires custom version of TCA:
-        // https://github.com/thebrowsercompany/swift-composable-architecture/tree/develop
-        var totalReducers = 0
+        var reducers = [SymbolName]()
         if !injectableReducerSymbols.isEmpty {
-            findHiddenSwiftSymbols("\(tmpfile).dylib", "_WZ",
-                                   ST_LOCAL_VISIBILITY) {
-                accessor, symname, _, _ in
-                if injectableReducerSymbols.contains(String(cString: symname)) {
-                    typealias OneTimeInitialiser = @convention(c) () -> Void
-                    let reinitialise: OneTimeInitialiser = autoBitCast(accessor)
-                    reinitialise()
-                    totalReducers += 1
-                }
-            }
-
-            let s = totalReducers == 1 ? "" : "s"
-            log("Overrode \(totalReducers) reducer"+s)
+            reinitializeInjectedReducers(tmpfile, reinitialized: &reducers)
+            let s = reducers.count == 1 ? "" : "s"
+            log("Overrode \(reducers.count) reducer"+s)
         }
 
-        if totalPatched + totalSwizzled + interposed.count + totalReducers == 0 {
+        if totalPatched + totalSwizzled + interposed.count + reducers.count == 0 {
             log("⚠️ Injection may have failed. Have you added -Xlinker -interposable to the \"Other Linker Flags\" of the executable/framework? ⚠️")
         }
 
@@ -402,6 +397,42 @@ public class SwiftInjection: NSObject {
         }
 
         return patched
+    }
+
+    /// Support for re-initialising "The Composable Architecture", "Reducer"
+    /// variables declared at the top level. Requires custom version of TCA:
+    /// https://github.com/thebrowsercompany/swift-composable-architecture/tree/develop
+    static func reinitializeInjectedReducers(_ tmpfile: String,
+                 reinitialized: UnsafeMutablePointer<[SymbolName]>) {
+        findHiddenSwiftSymbols("\(tmpfile).dylib", "_WZ",
+                               ST_LOCAL_VISIBILITY) {
+            accessor, symname, _, _ in
+            if injectableReducerSymbols.contains(String(cString: symname)) {
+                typealias OneTimeInitialiser = @convention(c) () -> Void
+                let reinitialise: OneTimeInitialiser = autoBitCast(accessor)
+                reinitialise()
+                reinitialized.pointee.append(symname)
+            }
+        }
+    }
+
+    /// Interpose references to statics to those in main bundle
+    /// to have them not re-initialise again on each injection.
+    static func reverseInterposeStaticsAccessors(_ tmpfile: String) -> [SymbolName] {
+        var staticsAccessors = [rebinding]()
+        findSwiftSymbols("\(tmpfile).dylib", "vau") {
+            accessor, symname, _, _ in
+            guard let original = dlsym(SwiftMeta.RTLD_DEFAULT, symname) else {
+                return
+            }
+            staticsAccessors.append(rebinding(name: symname,
+                       replacement: original, replaced: nil))
+        }
+        let imageIndex = _dyld_image_count()-1 // last injected
+        return SwiftTrace.apply(
+            rebindings: &staticsAccessors, count: staticsAccessors.count,
+            header: autoBitCast(_dyld_get_image_header(imageIndex)),
+            slide: _dyld_get_image_vmaddr_slide(imageIndex))
     }
 
     /// Pop a trace on a newly injected method and convert the pointer type while you're at it

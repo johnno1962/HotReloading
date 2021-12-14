@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#12 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#16 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -452,7 +452,7 @@ public class SwiftEval: NSObject {
         }
 
         guard shell(command: """
-            "\(xcodeDev)/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang" -arch "\(arch)" -bundle -isysroot "\(xcodeDev)/Platforms/\(platform).platform/Developer/SDKs/\(platform).sdk" -L"\(toolchain)/usr/lib/swift/\(platform.lowercased())" \(osSpecific) -undefined dynamic_lookup -dead_strip -Xlinker -objc_abi_version -Xlinker 2 -fobjc-arc -fprofile-instr-generate "\(objectFile)" -L "\(frameworks)" -F "\(frameworks)" -rpath "\(frameworks)" -o \"\(tmpfile).dylib\" >>\"\(logfile)\" 2>&1
+            "\(xcodeDev)/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang" -arch "\(arch)" -bundle -isysroot "\(xcodeDev)/Platforms/\(platform).platform/Developer/SDKs/\(platform).sdk" -L"\(toolchain)/usr/lib/swift/\(platform.lowercased())" \(osSpecific) -undefined dynamic_lookup -dead_strip -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -interposable -fobjc-arc -fprofile-instr-generate "\(objectFile)" -L "\(frameworks)" -F "\(frameworks)" -rpath "\(frameworks)" -o \"\(tmpfile).dylib\" >>\"\(logfile)\" 2>&1
             """) else {
             throw scriptError("Linking")
         }

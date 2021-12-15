@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#123 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#124 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -18,12 +18,20 @@
 //  flag. This meant we were able to support injecting final methods of classes
 //  and methods of structs and enums. The code still updates the vtable though.
 //
-//  The most recent change is to better supprt injection of generic classes
+//  A more recent change is to better supprt injection of generic classes
 //  and classes that inherit from generics which causes problems (crashes) in
 //  the Objective-C runtime. As one can't anticipate the specialisation of
 //  a generic in use from the object file (.dylib) alone, the patching of the
 //  vtable has been moved to the being a part of the sweep which means you need
-//  to have a live object of that specialisation for injection to work.
+//  to have a live object of that specialisation for class injection to work.
+//
+//  Support was also added to use injection with projects using "The Composable
+//  Architecture" (TCA) though you need to use a modified version of the repo:
+//  https://github.com/thebrowsercompany/swift-composable-architecture/tree/develop
+//
+//  Finally, InjectionIII.app now supports injection of class methods and will
+//  maintain the values of (non-instance) top level and static variables over
+//  an injection instead of their being reinitialised when reloaded.
 //
 
 #if arch(x86_64) || arch(i386) || arch(arm64) // simulator/macOS only
@@ -188,9 +196,9 @@ public class SwiftInjection: NSObject {
                 // Old mechanism for Swift equivalent of "Swizzling".
                 if classMetadata.pointee.ClassSize != existingClass.pointee.ClassSize {
                     log("""
-                        ⚠️ Adding or [re]moving methods on non-final classes is not supported. \
+                        ⚠️ Adding or [re]moving methods of non-final classes is not supported. \
                         Your application will likely crash. Paradoxically, you can avoid this by \
-                        making the class you are trying to inject and add methods to "final". ⚠️
+                        making the class you are trying to inject (and add methods to) "final". ⚠️
                         """)
                 }
             }

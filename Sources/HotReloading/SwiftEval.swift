@@ -698,6 +698,7 @@ public class SwiftEval: NSObject {
             // (logs of new build system escape ', $ and ")
         HRLog("Found command:", compileCommand)
         compileCommand = compileCommand
+            .replacingOccurrences(of: #"builtin-swiftDriverJobExecution --"#, with: "")
             // remove excess escaping in new build system
             .replacingOccurrences(of: #"\\([\"'\\])"#, with: "$1", options: [.regularExpression])
             // these files may no longer exist

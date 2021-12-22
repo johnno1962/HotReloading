@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#34 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#38 $
 //
 
 import Cocoa
@@ -122,7 +122,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
 
     func versionSpecific() {
         #if SWIFT_PACKAGE
-        statusItem.toolTip = "Hot Reloading"
+        let appName = "Hot Reloading"
         statusMenu.item(at: 0)?.isEnabled = false
         var arguments = CommandLine.arguments.dropFirst()
         let projectURL = URL(fileURLWithPath: arguments.removeFirst())
@@ -137,7 +137,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
             appDelegate.watchedDirectories.insert(dir)
         }
         #else
-        statusItem.toolTip = "InjectionIII"
+        let appName = "InjectionIII"
         DDHotKeyCenter.shared()?
             .registerHotKey(withKeyCode: UInt16(kVK_ANSI_Equal),
                modifierFlags: NSEvent.ModifierFlags.control.rawValue,
@@ -163,9 +163,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
             }
         }
         #endif
-        if let appName = statusItem.toolTip {
-            statusMenu.item(at: statusMenu.items.count-1)?.title = "Quit "+appName
-        }
+        statusMenu.item(at: statusMenu.items.count-1)?.title = "Quit "+appName
     }
 
     func application(_ theApplication: NSApplication, openFile filename: String) -> Bool {
@@ -184,7 +182,41 @@ class AppDelegate : NSObject, NSApplicationDelegate {
             filesWithExtension("xcodeproj", inFiles: fileList)
 
         selectedProject = nil
-        if projectFiles == nil || projectFiles!.count > 1 {
+        if url.path.hasSuffix(".swiftpm") {
+            selectedProject = url.path
+            let pkg = url.appendingPathComponent("Package.swift")
+            if let manifest = try? String(contentsOf: pkg),
+                !manifest.contains("-interposable") {
+                var modified = manifest
+                modified[#"""
+                    (
+                            \)
+                        ]
+                    \)
+                    )\Z
+                    """#] = """
+                    ,
+                                linkerSettings: [
+                                    .unsafeFlags(["-Xlinker", "-interposable"],
+                                                 .when(configuration: .debug))
+                                ]$1
+                    """
+                if modified != manifest {
+                    do {
+                        try modified.write(to: pkg, atomically: true, encoding: .utf8)
+                        let alert: NSAlert = NSAlert()
+                        alert.messageText = "InjectionIII"
+                        alert.informativeText = """
+                            InjectionIII has patched Package.swift to indlude the -interposable linker flag. Use Menu item "Prepare Project" to complete conversion.
+                            """
+                        alert.alertStyle = NSAlert.Style.warning
+                        alert.addButton(withTitle: "OK")
+                        _ = alert.runModal()
+                    } catch {
+                    }
+                }
+            }
+        } else if projectFiles == nil || projectFiles!.count > 1 {
             for lastProjectFile in [UserDefaultsProjectFile,
                                     UserDefaultsLastProject]
                 .compactMap({ defaults.string(forKey: $0) }) {
@@ -282,7 +314,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
                 open.directoryURL = URL(fileURLWithPath: path)
             }
             open.canChooseDirectories = true
-            open.canChooseFiles = false
+            open.canChooseFiles = true
             // open.showsHiddenFiles = TRUE;
             if open.runModal() == .OK,
                 let url = open.url {

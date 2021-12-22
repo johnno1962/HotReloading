@@ -5,7 +5,7 @@
 //  Created by User on 20/10/2020.
 //  Copyright © 2020 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#20 $
+//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#21 $
 //
 
 import Cocoa
@@ -319,7 +319,7 @@ extension AppDelegate {
                 var patched = original
                 patched[#"""
                     ^((\s+)(public )?(var body:|func body\([^)]*\) -\>) some View \{\n\#
-                    (\2(?!    (if|switch) )\s+(?!\.eraseToAnyView|ForEach)\S.*\n|\n)+)(?<!#endif\n)\2\}\n
+                    (\2(?!    (if|switch|ForEach) )\s+(?!\.eraseToAnyView)\S.*\n|\s*\n)+)(?<!#endif\n)\2\}\n
                     """#.anchorsMatchLines] = """
                     $1$2    .eraseToAnyView()
                     $2}

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#18 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#19 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -352,9 +352,11 @@ public class SwiftEval: NSObject {
                 consult: "\(cmdfile)".
                 """)
         }
+        sourceFile += "" // remove warning
 
-        // normalise paths in compile command with the actual casing of files
-
+        #if targetEnvironment(simulator)
+        // Normalise paths in compile command with the actual casing
+        // of files as the simulator has a case-sensitive file system.
         for filepath in detectFilepaths.matches(in: compileCommand, options: [],
                                 range: NSMakeRange(0, compileCommand.utf16.count))
             .compactMap({ compileCommand[$0.range(at: 1)] }) {
@@ -372,7 +374,7 @@ public class SwiftEval: NSObject {
                 }
             }
         }
-        sourceFile += "" // remove warning
+        #endif
 
         // load and patch class source if there is an extension to add
 

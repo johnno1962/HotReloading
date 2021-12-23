@@ -1,7 +1,7 @@
 // swift-tools-version:5.0
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
-//  $Id: //depot/HotReloading/Package.swift#80 $
+//  $Id: //depot/HotReloading/Package.swift#82 $
 //
 
 import PackageDescription
@@ -18,13 +18,13 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/johnno1962/SwiftTrace",
-                 .upToNextMinor(from: "7.6.13")),
+                 .upToNextMinor(from: "7.6.14")),
         .package(url: "https://github.com/johnno1962/SwiftRegex5",
                  .upToNextMinor(from: "5.2.1")),
         .package(url: "https://github.com/johnno1962/XprobePlugin",
                  .upToNextMinor(from: "2.6.2")),
         .package(url: "https://github.com/johnno1962/Remote",
-                 .upToNextMinor(from: "2.3.2")),
+                 .upToNextMinor(from: "2.3.5")),
         .package(url: "https://github.com/johnno1962/DLKit",
                  .upToNextMinor(from: "1.2.1")),
     ],

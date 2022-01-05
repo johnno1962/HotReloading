@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#124 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#125 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -29,9 +29,14 @@
 //  Architecture" (TCA) though you need to use a modified version of the repo:
 //  https://github.com/thebrowsercompany/swift-composable-architecture/tree/develop
 //
-//  Finally, InjectionIII.app now supports injection of class methods and will
-//  maintain the values of (non-instance) top level and static variables over
-//  an injection instead of their being reinitialised when reloaded.
+//  InjectionIII.app now supports injection of class methods, getters and setters
+//  and will maintain the values of top level and static variables when they are
+//  injected instead of their being reinitialised as the object file is reloaded.
+//
+//  Which Swift symbols can be patched or interposed is now centralised and
+//  configurable using the closure SwiftTrace.injectableSymbol which has been
+//  extended to include async functions which, while they can be injected, can
+//  never be traced due to changes in the stack layout when using co-routines.
 //
 
 #if arch(x86_64) || arch(i386) || arch(arm64) // simulator/macOS only
@@ -396,11 +401,11 @@ public class SwiftInjection: NSObject {
                     (replacement: UnsafeMutableRawPointer) -> String? in
                     vtableSlot.pointee = autoBitCast(replacement)
                     if autoBitCast(vtableSlot.pointee) == replacement {
+                        patched += 1
                         return "Patched"
                     }
                     return nil
                 }
-                patched += 1
             }
         }
 
@@ -483,7 +488,7 @@ public class SwiftInjection: NSObject {
             let demangled = info.dli_sname.demangled ?? String(cString: info.dli_sname)
             let imageURL = URL(fileURLWithPath: String(cString: info.dli_fname))
 
-            log("\(success) \(demangled) \(existing) -> \(replacement) \(imageURL.lastPathComponent)")
+            log("\(success) \(demangled) \(existing) -> \(replacement) \(imageURL.lastPathComponent):\(String(cString: info.dli_sname))")
         }
     }
 
@@ -590,6 +595,7 @@ public class SwiftInjection: NSObject {
         let main = dlopen(nil, RTLD_NOW)
         var interposes = [dyld_interpose_tuple]()
 
+        #if false
         let suffixesToInterpose = SwiftTrace.swiftFunctionSuffixes
             // Oh alright, interpose all property getters..
             .map { $0 == "Qrvg" ? "g" : $0 }
@@ -597,6 +603,13 @@ public class SwiftInjection: NSObject {
             .flatMap { [$0, $0+"Z"] }
         for suffix in suffixesToInterpose {
             findSwiftSymbols(dylib, suffix) { (loadedFunc, symbol, _, _) in
+                // interposing was here ...
+            }
+        }
+        #endif
+        let lastImage = _dyld_image_count()-1
+        filterImageSymbols(lastImage, .global, SwiftTrace.injectableSymbol) {
+                (loadedFunc, symbol, _, _) in
                 guard let existing = dlsym(main, symbol), existing != loadedFunc/*,
                     let current = SwiftTrace.interposed(replacee: existing)*/ else {
                     return
@@ -615,7 +628,6 @@ public class SwiftInjection: NSObject {
                 SwiftTrace.interposed[existing] = loadedFunc
                 SwiftTrace.interposed[current] = loadedFunc
                 #endif
-            }
         }
 
         #if !ORIGINAL_2_2_0_CODE
@@ -781,7 +793,8 @@ public class SwiftInjection: NSObject {
                     if class_replaceMethod(oldClass, selector, replacement,
                         method_getTypeEncoding(methods[i])) != nil {
                         swizzled += 1
-                        return "Sizzled [\(oldClass!) \(selector)]"
+                        let which = class_isMetaClass(oldClass) ? "+" : "-"
+                        return "Sizzled \(which)[\(_typeName(oldClass!)) \(selector)]"
                     }
                     return nil
                 }

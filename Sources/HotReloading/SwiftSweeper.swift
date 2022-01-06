@@ -7,12 +7,28 @@
 //  instance of classes that have been injected in order
 //  to be able to send them the @objc injected message.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#2 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#3 $
 //
 
 import Foundation
+#if SWIFT_PACKAGE
+import HotReloadingGuts
+#endif
 
 private let debugSweep = getenv("DEBUG_SWEEP") != nil
+private let sweepExclusions = { () -> NSRegularExpression? in
+    if let exclusions = getenv("SWEEP_EXCLUDE") {
+        let pattern = String(cString: exclusions)
+        do {
+            let filter = try NSRegularExpression(pattern: pattern, options: [])
+            print(APP_PREFIX+"⚠️ Excluding types matching '\(pattern)' from sweep")
+            return filter
+        } catch {
+            print(APP_PREFIX+"⚠️ Invalid sweep filter pattern \(error): \(pattern)")
+        }
+    }
+    return nil
+}()
 
 @objc public protocol SwiftInjected {
     @objc optional func injected()
@@ -72,6 +88,14 @@ class SwiftSweeper {
         let reference = unsafeBitCast(instance, to: UnsafeRawPointer.self)
         if seen[reference] == nil {
             seen[reference] = true
+            if let filter = sweepExclusions {
+                let typeName = _typeName(type(of: instance))
+                if filter.firstMatch(in: typeName,
+                    range: NSMakeRange(0, typeName.utf16.count)) != nil {
+                    return
+                }
+            }
+
             if debugSweep {
                 print("Sweeping instance \(reference) of class \(type(of: instance))")
             }

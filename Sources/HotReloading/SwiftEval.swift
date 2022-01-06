@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#19 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#20 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -223,12 +223,15 @@ public class SwiftEval: NSObject {
         // Largely obsolete section used find Xcode paths from source file being injected.
 
         let sourceURL = URL(fileURLWithPath: classNameOrFile.hasPrefix("/") ? classNameOrFile : #file)
-        guard let derivedData = findDerivedData(url: URL(fileURLWithPath: NSHomeDirectory()), ideProcPath: self.lastIdeProcPath) ??
+        HRLog("Project file:", projectFile ?? "nil")
+        guard let derivedData =
             (self.projectFile != nil ?
                 findDerivedData(url: URL(fileURLWithPath: self.projectFile!), ideProcPath: self.lastIdeProcPath) :
-                findDerivedData(url: sourceURL, ideProcPath: self.lastIdeProcPath)) else {
+                findDerivedData(url: sourceURL, ideProcPath: self.lastIdeProcPath)) ??
+                findDerivedData(url: URL(fileURLWithPath: NSHomeDirectory()), ideProcPath: self.lastIdeProcPath) else {
                 throw evalError("Could not locate derived data. Is the project under your home directory?")
         }
+        HRLog("DerivedData:", derivedData.path)
         guard let (projectFile, logsDir) =
 //            self.derivedLogs
 //                .flatMap({ (URL(fileURLWithPath: self.projectFile!), URL(fileURLWithPath: $0)) }) ??
@@ -820,11 +823,12 @@ public class SwiftEval: NSObject {
                                     options: .regularExpression, range: nil)
         let relativeDerivedData = derivedData
             .appendingPathComponent("\(projectPrefix)/Logs/Build")
+        HRLog("Relative DerivedData:", relativeDerivedData.path)
 
-        return ((try? filemgr.contentsOfDirectory(atPath: derivedData.path))?
+        return (((try? filemgr.contentsOfDirectory(atPath: derivedData.path))?
             .filter { $0.starts(with: projectPrefix + "-") }
             .map { derivedData.appendingPathComponent($0 + "/Logs/Build") }
-            ?? [] + [relativeDerivedData])
+            ?? []) + [relativeDerivedData])
             .filter { filemgr.fileExists(atPath: $0.path) }
             .sorted { mtime($0) > mtime($1) }
             .first

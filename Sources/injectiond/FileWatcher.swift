@@ -11,7 +11,7 @@ import Foundation
 import HotReloadingGuts
 #endif
 
-let INJECTABLE_PATTERN = "[^~]\\.(mm?|swift|storyboard|xib)$"
+let INJECTABLE_PATTERN = "[^~]\\.(mm?|cpp|swift|storyboard|xib)$"
 
 public typealias InjectionCallback = (_ filesChanged: NSArray, _ ideProcPath: String) -> Void
 

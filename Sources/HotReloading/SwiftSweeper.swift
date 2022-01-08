@@ -7,7 +7,7 @@
 //  instance of classes that have been injected in order
 //  to be able to send them the @objc injected message.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#3 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#7 $
 //
 
 import Foundation
@@ -34,7 +34,7 @@ private let sweepExclusions = { () -> NSRegularExpression? in
     @objc optional func injected()
 }
 
-class SwiftSweeper {
+class SwiftSweeper: NSObject {
 
     static var current: SwiftSweeper?
 
@@ -43,13 +43,15 @@ class SwiftSweeper {
 
     init(instanceTask: @escaping (AnyObject) -> Void) {
         self.instanceTask = instanceTask
+        super.init()
         SwiftSweeper.current = self
     }
 
-    func sweepValue(_ value: Any) {
+    func sweepValue(_ value: Any, _ containsType: Bool = false) {
         /// Skip values that cannot be cast into `AnyObject` because they end up being `nil`
         /// Fixes a potential crash that the value is not accessible during injection.
-        guard value as? AnyObject != nil else { return }
+//        print(value)
+        guard !containsType && value as? AnyObject != nil else { return }
 
         let mirror = Mirror(reflecting: value)
         if var style = mirror.displayStyle {
@@ -58,8 +60,12 @@ class SwiftSweeper {
             }
             switch style {
             case .set, .collection:
+                let containsType = _typeName(type(of: value)).contains(".Type")
+                if debugSweep {
+                    print("Sweeping collection:", _typeName(type(of: value)))
+                }
                 for (_, child) in mirror.children {
-                    sweepValue(child)
+                    sweepValue(child, containsType)
                 }
                 return
             case .dictionary:
@@ -131,10 +137,14 @@ extension NSObject {
             if let ivars = class_copyIvarList(cls, &icnt) {
                 let object = UInt8(ascii: "@")
                 for i in 0 ..< Int(icnt) {
-                    if let type = ivar_getTypeEncoding(ivars[i]), type[0] == object {
+                    if /*let name = ivar_getName(ivars[i])
+                        .flatMap({ String(cString: $0)}),
+                       sweepExclusions?.firstMatch(in: name,
+                           range: NSMakeRange(0, name.utf16.count)) == nil,*/
+                       let type = ivar_getTypeEncoding(ivars[i]), type[0] == object {
                         (unsafeBitCast(self, to: UnsafePointer<Int8>.self) + ivar_getOffset(ivars[i]))
                             .withMemoryRebound(to: AnyObject?.self, capacity: 1) {
-//                                print("\(self) \(String(cString: ivar_getName(ivars[i])!))")
+//                                print("\($0.pointee) \(self) \(name):  \(String(cString: type))")
                                 if let obj = $0.pointee {
                                     SwiftSweeper.current?.sweepInstance(obj)
                                 }

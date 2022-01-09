@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#21 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#23 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -224,10 +224,10 @@ public class SwiftEval: NSObject {
 
         let sourceURL = URL(fileURLWithPath: classNameOrFile.hasPrefix("/") ? classNameOrFile : #file)
         HRLog("Project file:", projectFile ?? "nil")
-        guard let derivedData = (self.projectFile != nil ?
+        guard let derivedData = findDerivedData(url: URL(fileURLWithPath: NSHomeDirectory()), ideProcPath: self.lastIdeProcPath) ??
+            (self.projectFile != nil ?
                 findDerivedData(url: URL(fileURLWithPath: self.projectFile!), ideProcPath: self.lastIdeProcPath) :
-                findDerivedData(url: sourceURL, ideProcPath: self.lastIdeProcPath)) ??
-                findDerivedData(url: URL(fileURLWithPath: NSHomeDirectory()), ideProcPath: self.lastIdeProcPath) else {
+                findDerivedData(url: sourceURL, ideProcPath: self.lastIdeProcPath)) else {
                 throw evalError("Could not locate derived data. Is the project under your home directory?")
         }
         HRLog("DerivedData:", derivedData.path)
@@ -820,14 +820,15 @@ public class SwiftEval: NSObject {
         let projectPrefix = project.deletingPathExtension()
             .lastPathComponent.replacingOccurrences(of: "\\s+", with: "_",
                                     options: .regularExpression, range: nil)
-        let relativeDerivedData = derivedData
-            .appendingPathComponent("\(projectPrefix)/Logs/Build")
-        HRLog("Relative DerivedData:", relativeDerivedData.path)
-
-        return (((try? filemgr.contentsOfDirectory(atPath: derivedData.path))?
+        var possibleDerivedData = (try? filemgr.contentsOfDirectory(atPath: derivedData.path))?
             .filter { $0.starts(with: projectPrefix + "-") }
-            .map { derivedData.appendingPathComponent($0 + "/Logs/Build") }
-            ?? []) + [relativeDerivedData])
+            .map { derivedData.appendingPathComponent($0 + "/Logs/Build") } ?? []
+        possibleDerivedData.append(project.deletingLastPathComponent()
+            .appendingPathComponent("DerivedData/\(projectPrefix)/Logs/Build"))
+        HRLog("Possible DerivedDatas: \(possibleDerivedData)")
+
+        // use most recentry modified
+        return possibleDerivedData
             .filter { filemgr.fileExists(atPath: $0.path) }
             .sorted { mtime($0) > mtime($1) }
             .first

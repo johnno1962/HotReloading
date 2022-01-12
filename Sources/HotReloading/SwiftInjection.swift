@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#126 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#127 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -288,8 +288,10 @@ public class SwiftInjection: NSObject {
             }
         }
 
-//        // Cater for dynamic cast (i.e. as?) to types that have been injected.
-//        DynamicCast.hook_lastInjected()
+        if getenv("INJECTION_CAST") != nil {
+            // Cater for dynamic cast (i.e. as?) to types that have been injected.
+            DynamicCast.hook_lastInjected()
+        }
 
         var reducers = [SymbolName]()
         if !injectableReducerSymbols.isEmpty {

@@ -283,8 +283,10 @@ public class SwiftInjection: NSObject {
             }
         }
 
-        // Cater for dynamic cast (i.e. as?) to types that have been injected.
-        DynamicCast.hook_lastInjected()
+        if getenv("INJECTION_CAST") != nil {
+            // Cater for dynamic cast (i.e. as?) to types that have been injected.
+            DynamicCast.hook_lastInjected()
+        }
 
         var reducers = [SymbolName]()
         if !injectableReducerSymbols.isEmpty {

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#15 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#16 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -151,6 +151,8 @@
 
 - (BOOL)readBytes:(void *)buffer length:(size_t)length cmd:(SEL)cmd {
     size_t rd, ptr = 0;
+    SLog(@"#%d <- %lu [%p] %s",
+         clientSocket, length, buffer, sel_getName(cmd));
     while (ptr < length &&
        (rd = read(clientSocket, (char *)buffer+ptr, length-ptr)) > 0)
         ptr += rd;
@@ -168,6 +170,14 @@
         return ~0;
     SLog(@"#%d <- %d", clientSocket, anint);
     return anint;
+}
+
+- (void *)readPointer {
+    void *aptr = (void *)~0;
+    if (![self readBytes:&aptr length:sizeof aptr cmd:_cmd])
+        return aptr;
+    SLog(@"#%d <- %p", clientSocket, aptr);
+    return aptr;
 }
 
 - (NSData *)readData {
@@ -188,6 +198,11 @@
 - (BOOL)writeInt:(int)length {
     SLog(@"#%d %d ->", clientSocket, length);
     return write(clientSocket, &length, sizeof length) == sizeof length;
+}
+
+- (BOOL)writePointer:(void *)ptr {
+    SLog(@"#%d %p ->", clientSocket, ptr);
+    return write(clientSocket, &ptr, sizeof ptr) == sizeof ptr;
 }
 
 - (BOOL)writeData:(NSData *)data {

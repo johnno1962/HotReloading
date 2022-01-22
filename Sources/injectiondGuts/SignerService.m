@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiondGuts/SignerService.m#9 $
+//  $Id: //depot/HotReloading/Sources/injectiondGuts/SignerService.m#10 $
 //
 
 #import "SignerService.h"
@@ -20,7 +20,7 @@
         "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain";
     if (envIdentity && strlen(envIdentity)) {
         identity = [NSString stringWithUTF8String:envIdentity];
-        NSLog(@"Signing identity: %@", identity);
+        NSLog(@"Signing identity from environment: %@", identity);
     }
     NSString *command = [NSString stringWithFormat:@""
                          "(export CODESIGN_ALLOCATE=\"%s/usr/bin/codesign_allocate\"; "

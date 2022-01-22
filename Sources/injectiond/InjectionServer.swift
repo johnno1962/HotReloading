@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#26 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#27 $
 //
 
 import Cocoa
@@ -24,15 +24,20 @@ let MIN_INJECTION_INTERVAL = 1.0
 public class InjectionServer: SimpleSocket {
     var fileChangeHandler: ((_ changed: NSArray, _ ideProcPath:String) -> Void)!
     var fileWatchers = [FileWatcher]()
+    var pause: TimeInterval = 0.0
     var pending = [String]()
     var builder: SwiftEval!
     var lastIdeProcPath = ""
+
+    open func log(_ msg: String) {
+        NSLog("\(APP_PREFIX)\(APP_NAME) \(msg)")
+    }
 
     override public class func error(_ message: String) -> Int32 {
         let saveno = errno
         DispatchQueue.main.async {
             let alert: NSAlert = NSAlert()
-            alert.messageText = "Injection Error"
+            alert.messageText = "\(self)"
             alert.informativeText = String(format:message, strerror(saveno))
             alert.alertStyle = NSAlert.Style.warning
             alert.addButton(withTitle: "OK")
@@ -45,6 +50,10 @@ public class InjectionServer: SimpleSocket {
         commandQueue.sync {
             _ = writeCommand(command.rawValue, with: string)
         }
+    }
+
+    func validateConnection() -> Bool {
+        return readInt() == INJECTION_SALT && readString() == INJECTION_KEY
     }
 
     @objc override public func runInBackground() {
@@ -61,10 +70,10 @@ public class InjectionServer: SimpleSocket {
         }
 
         // tell client app the inferred project being watched
-        NSLog("Connection for project file: \(projectFile)")
+        log("Connection for project file: \(projectFile)")
 
-        if readInt() != INJECTION_SALT || readString() != INJECTION_KEY && true {
-            NSLog("*** Error: SALT or KEY invalid. Are you running start_daemon.sh or InjectionIII.app from the right directory?")
+        guard validateConnection() else {
+            log("*** Error: SALT or KEY invalid. Are you running start_daemon.sh or InjectionIII.app from the right directory?")
             write("/tmp")
             write(InjectionCommand.invalid.rawValue)
             return
@@ -91,12 +100,12 @@ public class InjectionServer: SimpleSocket {
             builder.tmpDir = builder.frameworks
         }
         write(builder.tmpDir)
-        NSLog("Using tmp dir: \(builder.tmpDir)")
+        log("Using tmp dir: \(builder.tmpDir)")
 
         // log errors to client
         builder.evalError = {
             (message: String) in
-            NSLog("evalError: %@", message)
+            self.log("evalError: \(message)")
             self.sendCommand(.log, with:
                 (message.hasPrefix("Compiling") ?"":"⚠️ ")+message)
             return NSError(domain:"SwiftEval", code:-1,
@@ -106,10 +115,21 @@ public class InjectionServer: SimpleSocket {
         builder.signer = {
             let identity = appDelegate.defaults.string(forKey: projectFile)
             if identity != nil {
-                NSLog("Signing with identity: \(identity!)")
+                self.log("Signing with identity: \(identity!)")
             }
             return SignerService.codesignDylib(
                 self.builder.tmpDir+"/eval"+$0, identity: identity)
+        }
+
+        builder.unhider = { object_file in
+            let logfile = "/tmp/unhide_object.log"
+            if let log = fopen(logfile, "w") {
+                self.log("Unhiding: \(object_file)")
+                setbuf(log, nil)
+                unhide_object(object_file, nil, log)
+            } else {
+                self.log("Could not log to \(logfile)")
+            }
         }
 
         // Xcode specific config
@@ -119,7 +139,7 @@ public class InjectionServer: SimpleSocket {
 
         builder.projectFile = projectFile
 
-        appDelegate.setMenuIcon("InjectionOK")
+        appDelegate.setMenuIcon(.ok)
         appDelegate.lastConnection = self
         pending = []
 
@@ -146,7 +166,6 @@ public class InjectionServer: SimpleSocket {
             }
         }
 
-        var pause: TimeInterval = 0.0
         var testCache = [String: [String]]()
 
         fileChangeHandler = {
@@ -172,7 +191,7 @@ public class InjectionServer: SimpleSocket {
             let automatic = appDelegate.enableWatcher.state == .on
             for swiftSource in changed {
                 if !self.pending.contains(swiftSource) {
-                    if (now > (lastInjected?[swiftSource] ?? 0.0) + MIN_INJECTION_INTERVAL && now > pause) {
+                    if (now > (lastInjected?[swiftSource] ?? 0.0) + MIN_INJECTION_INTERVAL && now > self.pause) {
                         lastInjected![swiftSource] = now
                         projectInjected[projectFile] = lastInjected!
                         self.pending.append(swiftSource)
@@ -205,15 +224,27 @@ public class InjectionServer: SimpleSocket {
             appDelegate.toggleLookup(nil)
         }
 
-        // read status requests from client app
-        commandLoop:
+        // read status responses from client app
         while true {
             let commandInt = readInt()
-            guard let command = InjectionResponse(rawValue: commandInt) else {
-                NSLog("InjectionServer: Unexpected case \(commandInt)")
+            guard let response = InjectionResponse(rawValue: commandInt) else {
+                log("InjectionServer: Unexpected case \(commandInt)")
                 break
             }
-            switch command {
+            if response == .exit {
+                break
+            }
+            process(response: response, executable: executable)
+        }
+
+        // client app disconnected
+        fileWatchers.removeAll()
+        appDelegate.traceItem.state = .off
+        appDelegate.setMenuIcon(.idle)
+    }
+
+    func process(response: InjectionResponse, executable: String) {
+            switch response {
             case .frameworkList:
                 appDelegate.setFrameworks(readString() ?? "",
                                           menuTitle: "Trace Framework")
@@ -222,7 +253,7 @@ public class InjectionServer: SimpleSocket {
                 appDelegate.setFrameworks(readString() ?? "",
                                           menuTitle: "Trace Package")
             case .complete:
-                appDelegate.setMenuIcon("InjectionOK")
+                appDelegate.setMenuIcon(.ok)
                 if appDelegate.frontItem.state == .on {
                     print(executable)
                     let appToOrderFront: URL
@@ -258,25 +289,17 @@ public class InjectionServer: SimpleSocket {
                 }
                 break
             case .error:
-                appDelegate.setMenuIcon("InjectionError")
-                NSLog("Injection error: \(readString() ?? "Uknown")")
+                appDelegate.setMenuIcon(.error)
+                log("Injection error: \(readString() ?? "Uknown")")
                 break;
-            case .exit:
-                break commandLoop
             default:
                 break
             }
-        }
-
-        // client app disconnected
-        fileWatchers.removeAll()
-        appDelegate.traceItem.state = .off
-        appDelegate.setMenuIcon("InjectionIdle")
     }
 
     func recompileAndInject(source: String) {
         sendCommand(.ideProcPath, with: lastIdeProcPath)
-        appDelegate.setMenuIcon("InjectionBusy")
+        appDelegate.setMenuIcon(.busy)
         if appDelegate.isSandboxed ||
             source.hasSuffix(".storyboard") || source.hasSuffix(".xib") {
             #if SWIFT_PACKAGE
@@ -301,7 +324,7 @@ public class InjectionServer: SimpleSocket {
                     self.sendCommand(.load, with: dylib)
                     #endif
                 } else {
-                    appDelegate.setMenuIcon("InjectionError")
+                    appDelegate.setMenuIcon(.error)
                 }
             }
         }
@@ -386,7 +409,7 @@ public class InjectionServer: SimpleSocket {
                     }
                 }
             }
-    }
+        }
 
         return matchedTests
     }
@@ -399,6 +422,6 @@ public class InjectionServer: SimpleSocket {
     }
 
     deinit {
-        NSLog("\(self).deinit()")
+        log("\(self).deinit()")
     }
 }

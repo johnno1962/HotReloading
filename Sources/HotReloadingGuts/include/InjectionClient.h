@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#23 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#25 $
 //
 //  Shared definitions between server and client.
 //
@@ -17,6 +17,9 @@
 #import <libproc.h>
 #endif
 
+#define HOTRELOADING_PORT ":8899"
+#define HOTRELOADING_SALT 2122172543
+
 #ifdef INJECTION_III_APP
 #define INJECTION_ADDRESS ":8898"
 #import "/tmp/InjectionIIISalt.h"
@@ -24,15 +27,25 @@
 #define APP_NAME "InjectionIII"
 #define APP_PREFIX "💉 "
 #else
-#define INJECTION_ADDRESS ":8899"
-#define INJECTION_SALT 2122172543
+#define INJECTION_ADDRESS HOTRELOADING_PORT
+#define INJECTION_SALT HOTRELOADING_SALT
 extern NSString *INJECTION_KEY;
 #define APP_NAME "HotReloading"
 #define APP_PREFIX "🔥 "
+#if DEBUG
+@interface NSObject(InjectionTester)
+- (void)swiftTraceInjectionTest:(NSString *)sourceFile
+                         source:(NSString *)source;
+@end
+#endif
 #endif
 
 #define FRAMEWORK_DELIMITER @","
 #define CALLORDER_DELIMITER @"---"
+
+@protocol InjectionReader <NSObject>
+- (BOOL)readBytes:(void *)buffer length:(size_t)length cmd:(SEL)cmd;
+@end
 
 @interface InjectionClientLegacy
 @property BOOL vaccineEnabled;
@@ -80,6 +93,8 @@ typedef NS_ENUM(int, InjectionCommand) {
     InjectionLookup,
     InjectionCounts,
     InjectionCopy,
+    InjectionPseudoUnlock,
+    InjectionPseudoInject,
 
     InjectionInvalid = 1000,
 
@@ -94,10 +109,13 @@ typedef NS_ENUM(int, InjectionResponse) {
     InjectionError,
     InjectionFrameworkList,
     InjectionCallOrderList,
+    InjectionScratchPointer,
+    InjectionTestInjection,
 
     InjectionExit = ~0
 };
 
 extern int unhide_symbols(const char *framework, const char *linkFileList, FILE *log, time_t since);
+extern int unhide_object(const char *object_file, const char *framework, FILE *log);
 extern int unhide_framework(const char *framework, FILE *log);
 extern void unhide_reset(void);

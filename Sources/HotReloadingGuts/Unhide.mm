@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#19 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#20 $
 //
 
 #import <Foundation/Foundation.h>
@@ -37,21 +37,29 @@ int unhide_symbols(const char *framework, const char *linkFileList, FILE *log, t
     }
 
     char buffer[PATH_MAX];
-    int totalExported = 0;
+    __block int totalExported = 0;
 
     while (fgets(buffer, sizeof buffer, linkFiles)) {
         buffer[strlen(buffer)-1] = '\000';
-
         @autoreleasepool {
+            totalExported += unhide_object(buffer, framework, log);
+        }
+    }
+
+    fclose(linkFiles);
+    return totalExported;
+}
+
+int unhide_object(const char *object_file, const char *framework, FILE *log) {
 //            struct stat info;
 //            if (stat(buffer, &info) || info.st_mtimespec.tv_sec < since)
 //                continue;
-            NSString *file = [NSString stringWithUTF8String:buffer];
+            NSString *file = [NSString stringWithUTF8String:object_file];
             NSData *patched = [[NSMutableData alloc] initWithContentsOfFile:file];
 
             if (!patched) {
                 fprintf(log, "unhide: Could not read %s\n", [file UTF8String]);
-                continue;
+                return 0;
             }
 
             struct mach_header_64 *object = (struct mach_header_64 *)[patched bytes];
@@ -60,7 +68,7 @@ int unhide_symbols(const char *framework, const char *linkFileList, FILE *log, t
             if (object->magic != MH_MAGIC_64) {
                 fprintf(log, "unhide: Invalid magic 0x%x != 0x%x (bad arch?)\n",
                         object->magic, MH_MAGIC_64);
-                continue;
+                return 0;
             }
 
             struct symtab_command *symtab = NULL;
@@ -79,7 +87,7 @@ int unhide_symbols(const char *framework, const char *linkFileList, FILE *log, t
             if (!symtab || !dylib) {
                 fprintf(log, "unhide: Missing symtab or dylib cmd %s: %p & %p\n",
                         filename, symtab, dylib);
-                continue;
+                return 0;
             }
             struct nlist_64 *all_symbols64 = (struct nlist_64 *)((char *)object + symtab->symoff);
 #if 1
@@ -96,27 +104,31 @@ int unhide_symbols(const char *framework, const char *linkFileList, FILE *log, t
                     continue; // not definition
                 const char *symname = (char *)object + symtab->stroff + symbol.n_un.n_strx;
 
-//                printf("symbol: #%d 0%lo 0x%x 0x%x %3d %s\n", i,
-//                       (char *)&symbol.n_type - (char *)object,
-//                       symbol.n_type, symbol.n_desc,
-//                       symbol.n_sect, symname);
+                BOOL isReverseInterpose = !framework;
                 if (strncmp(symname, "_$s", 3) != 0)
                     continue; // not swift symbol
 
                 // Default argument generators have a suffix ANN_
                 // Covers a few other cases encountred now as well.
                 const char *symend = symname + strlen(symname) - 1;
+                BOOL isMutableAddressor = strcmp(symend-2, "vau") == 0;
                 BOOL isDefaultArgument = (*symend == '_' &&
                     (symend[-1] == 'A' || (isdigit(symend[-1]) &&
                     (symend[-2] == 'A' || (isdigit(symend[-2]) &&
-                     symend[-3] == 'A'))))) || strcmp(symend-2, "vau") == 0 ||
+                     symend[-3] == 'A'))))) || isMutableAddressor ||
                     strcmp(symend-1, "FZ") == 0 || (symend[-1] == 'M' && (
                     *symend == 'c' || *symend == 'g' || *symend == 'n'));
+
+//                fprintf(log, "symbol: #%d 0%lo 0x%x 0x%x %3d %s %d\n",
+//                       i, (char *)&symbol.n_type - (char *)object,
+//                       symbol.n_type, symbol.n_desc,
+//                       symbol.n_sect, symname, isDefaultArgument);
 
                 // The following reads: If symbol is for a default argument
                 // and it is the definition (not a reference) and we've not
                 // seen it before and it hadsn't already been "unhidden"...
-                if (isDefaultArgument && !seen[symname]++ &&
+                if (isReverseInterpose ? isMutableAddressor :
+                    isDefaultArgument && !seen[symname]++ &&
                     symbol.n_type & N_PEXT) {
                     symbol.n_type |= N_EXT;
                     symbol.n_type &= ~N_PEXT;
@@ -144,12 +156,7 @@ int unhide_symbols(const char *framework, const char *linkFileList, FILE *log, t
 
             if (exported && ![patched writeToFile:file atomically:YES])
                 fprintf(log, "unhide: Could not write %s\n", [file UTF8String]);
-            totalExported += exported;
-        }
-    }
-
-    fclose(linkFiles);
-    return totalExported;
+            return exported;
 }
 
 int unhide_framework(const char *framework, FILE *log) {

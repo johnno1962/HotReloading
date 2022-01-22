@@ -5,7 +5,7 @@ available as a Swift Package. i.e.:
 
 ![Icon](http://johnholdsworth.com/HotAdding.png)
 
-Then you can do this (using the simulator)...
+Then you can do this ...
 ![Icon](http://johnholdsworth.com/HotReloading.png)
 
 To try out an example project that is already set-up, clone this fork of
@@ -40,16 +40,52 @@ If you want to work on the hot reloading code, clone this repo and drag
 its directory into your project in Xcode and it will take the place of the
 configured HotReloading Swift Package when you build your app.
 
+### Device Injection
+
+This version of the HotReloading project and it's dependencies now support
+injection on a real iOS or tvOS device. It's early days and this version
+should be considered very much beta software. The binary framework from
+the InjectionScratch repo that makes this possible is time limited for 
+now to expire on April 13th 2022 until I find a more reasonable licensing 
+solution should people find it useful. If your device doesn't connect, 
+clone this project and configure your mac's WiFi IP address into the 
+`hostname` variable in Package.swift. Then drag the clone onto your 
+project to have it take the place of the configured Swift Package.
+
+As Swift plays its cards pretty close to its chest it's not possible
+to initialise type meta data entirely correctly so your milage may vary
+more than using HotReloading in the simulator. In particular if injected
+code crashes, the debugger will not display the line number but an address
+under symbol  "injection_scratch" instead. If you get stuck, use an 
+`@_exported import HotReloading` in a source file and you should be 
+able to type `p HotReloading.stack()` to at least get a stack trace.
+
+Also note that, as the HotReloading package needs to connect a socket
+to your Mac to receive commands and new versions of code, expect a
+message the first time you run your app after adding the package
+asking you to "Trust" that your app should be allowed to do this.
+Likewise, at the Mac end as the HotReloading deamon needs to open
+a network port to accept this connection you may be prompted for
+permission if you have the macOS firewall turned on.
+
+In testing it's been performing well but one problem I did encounter was 
+using SwiftUI where you inject two structs conforming to View in the same 
+file which currently crashes. If you avoid this however and use the 
+conventions outlined in the [HotSwiftUI](https://github.com/johnno1962/HotSwiftUI) 
+project you can experience interactive screen updates something like
+"Xcode Previews", except for a fully functional app on an actual device!
+
 ### Thanks to...
 
 The App Tracing functionality uses the [OliverLetterer/imp_implementationForwardingToSelector](https://github.com/OliverLetterer/imp_implementationForwardingToSelector) trampoline implementation
 via the [SwiftTrace](https://github.com/johnno1962/SwiftTrace) project under an MIT license.
 
 SwiftTrace uses the very handy [https://github.com/facebook/fishhook](https://github.com/facebook/fishhook)
-as an alternative to dyld_dynamic_interpose. See the project source and header
-file included in the app bundle for licensing details.
+as an alternative to the dyld_dynamic_interpose dynamic loader private api. See the
+ project source and header file included in the framework for licensing details.
 
-This project includes code for video capture adapted from
+The ["Remote"](https://github.com/johnno1962/Remote) server in this project which
+allows you to capture videos from your device includes code adapted from
 [acj/TimeLapseBuilder-Swift](https://github.com/acj/TimeLapseBuilder-Swift)
 
 This release includes a very slightly modified version of the excellent
@@ -62,4 +98,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2021/05/05 $
+$Date: 2022/01/22 $

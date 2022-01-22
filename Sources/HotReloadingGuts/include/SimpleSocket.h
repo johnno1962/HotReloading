@@ -28,10 +28,13 @@
 - (void)runInBackground;
 
 - (int)readInt;
+- (void * _Nullable)readPointer;
 - (NSData *_Nullable)readData;
 - (NSString *_Nullable)readString;
+- (BOOL)readBytes:(void * _Nonnull)buffer length:(size_t)length cmd:(SEL _Nonnull)cmd;
 
 - (BOOL)writeInt:(int)length;
+- (BOOL)writePointer:(void * _Nullable)pointer;
 - (BOOL)writeData:(NSData *_Nonnull)data;
 - (BOOL)writeString:(NSString *_Nonnull)string;
 - (BOOL)writeCommand:(int)command withString:(NSString *_Nullable)string;

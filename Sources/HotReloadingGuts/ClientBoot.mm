@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#30 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#31 $
 //
 //  Initiate connection to server side of InjectionIII/HotReloading.
 //
@@ -38,7 +38,7 @@ NSString *injectionHost = @"127.0.0.1";
     injectionHost = @DEVELOPER_HOST;
     NSString *socketAddr = @DEVELOPER_HOST INJECTION_ADDRESS;
     printf(APP_PREFIX"Connecting to %s... (See HotReloading/Package.swift)\n",
-           socketAddr.UTF8String);
+           injectionHost.UTF8String);
 #else
     NSString *socketAddr = @INJECTION_ADDRESS;
 #endif

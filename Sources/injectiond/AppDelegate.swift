@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#39 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#45 $
 //
 
 import Cocoa
@@ -86,8 +86,31 @@ class AppDelegate : NSObject, NSApplicationDelegate {
 //            sponsorItem.isHidden = true
             updateItem.isHidden = true
         } else {
-            setenv("XPROBE_ANY", "1", 1)
-            DeviceServer.startServer("*"+HOTRELOADING_PORT)
+            var openPort = ""
+            if let platform = getenv("PLATFORM_NAME"),
+               strcmp(platform, "iphonesimulator") == 0 {
+            } else {
+                let deviceInform = "deviceInform"
+                if defaults.string(forKey: deviceInform) == nil {
+                    let alert: NSAlert = NSAlert()
+                    alert.messageText = "Device Injection"
+                    alert.informativeText = """
+                        This release supports injection on a real device \
+                        as well as in the simulator. In order to do this it \
+                        needs to open a port to receive socket connections \
+                        from a device which will provoke an OS warning if \
+                        your Mac's firewall is enabled. Decline the prompt \
+                        if you don't intend to use this feature.
+                        """
+                    alert.alertStyle = .critical
+                    alert.addButton(withTitle: "OK")
+                    _ = alert.runModal()
+                    defaults.set("Informed", forKey: deviceInform)
+                }
+                openPort = "*"
+                setenv("XPROBE_ANY", "1", 1)
+            }
+            DeviceServer.startServer(openPort+HOTRELOADING_PORT)
         }
 
         #if !SWIFT_PACKAGE
@@ -172,6 +195,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
             }
         }
         #endif
+        statusItem.title = appName
         statusMenu.item(at: statusMenu.items.count-1)?.title = "Quit "+appName
     }
 

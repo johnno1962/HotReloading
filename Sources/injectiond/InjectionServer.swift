@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#27 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#28 $
 //
 
 import Cocoa
@@ -119,17 +119,6 @@ public class InjectionServer: SimpleSocket {
             }
             return SignerService.codesignDylib(
                 self.builder.tmpDir+"/eval"+$0, identity: identity)
-        }
-
-        builder.unhider = { object_file in
-            let logfile = "/tmp/unhide_object.log"
-            if let log = fopen(logfile, "w") {
-                self.log("Unhiding: \(object_file)")
-                setbuf(log, nil)
-                unhide_object(object_file, nil, log)
-            } else {
-                self.log("Could not log to \(logfile)")
-            }
         }
 
         // Xcode specific config

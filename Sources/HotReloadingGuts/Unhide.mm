@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#20 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#24 $
 //
 
 #import <Foundation/Foundation.h>
@@ -98,24 +98,27 @@ int unhide_object(const char *object_file, const char *framework, FILE *log) {
 //            dylib->nextdefsym += dylib->nlocalsym;
 //            dylib->nlocalsym = 0;
 #endif
+            size_t isReverseInterpose = framework[0] == '$' ? strlen(framework) : 0;
             for (int i=0 ; i<symtab->nsyms ; i++) {
                 struct nlist_64 &symbol = all_symbols64[i];
                 if (symbol.n_sect == NO_SECT)
                     continue; // not definition
                 const char *symname = (char *)object + symtab->stroff + symbol.n_un.n_strx;
 
-                BOOL isReverseInterpose = !framework;
                 if (strncmp(symname, "_$s", 3) != 0)
                     continue; // not swift symbol
 
                 // Default argument generators have a suffix ANN_
                 // Covers a few other cases encountred now as well.
                 const char *symend = symname + strlen(symname) - 1;
-                BOOL isMutableAddressor = strcmp(symend-2, "vau") == 0;
+                BOOL isMutableAddressor = strcmp(symend-2, "vau") == 0 ||
+                    // sometimes useful to unhide witness table accessors
+                    (strcmp(symend-1, "Wl") == 0 &&
+                     strncmp(symname+1, framework, isReverseInterpose) == 0);
                 BOOL isDefaultArgument = (*symend == '_' &&
                     (symend[-1] == 'A' || (isdigit(symend[-1]) &&
                     (symend[-2] == 'A' || (isdigit(symend[-2]) &&
-                     symend[-3] == 'A'))))) || isMutableAddressor ||
+                     symend[-3] == 'A'))))) ||// isMutableAddressor ||
                     strcmp(symend-1, "FZ") == 0 || (symend[-1] == 'M' && (
                     *symend == 'c' || *symend == 'g' || *symend == 'n'));
 

@@ -2,7 +2,7 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
 //  Repo: https://github.com/johnno1962/HotReloading
-//  $Id: //depot/HotReloading/Package.swift#89 $
+//  $Id: //depot/HotReloading/Package.swift#94 $
 //
 
 import PackageDescription
@@ -30,11 +30,11 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/johnno1962/SwiftTrace",
-                 .upToNextMinor(from: "8.0.0")),
+                 .upToNextMinor(from: "8.1.1")),
         .package(url: "https://github.com/johnno1962/SwiftRegex5",
                  .upToNextMinor(from: "5.2.1")),
         .package(url: "https://github.com/johnno1962/XprobePlugin",
-                 .upToNextMinor(from: "2.7.0")),
+                 .upToNextMinor(from: "2.8.0")),
         .package(url: "https://github.com/johnno1962/Remote",
                  .upToNextMinor(from: "2.3.5")),
         .package(url: "https://github.com/johnno1962/DLKit",
@@ -43,7 +43,9 @@ let package = Package(
     targets: [
         .target(name: "HotReloading", dependencies: ["HotReloadingGuts",
              "SwiftTrace", .product(name: "Xprobe", package: "XprobePlugin"), "DLKit",
-             .product(name: "SwiftRegex", package: "SwiftRegex5"), "InjectionScratch"]),
+                 .product(name: "SwiftRegex", package: "SwiftRegex5"),
+                 .target(name: "InjectionScratch",
+                         condition: .when(platforms: [.iOS, .tvOS]))]),
         .target(name: "HotReloadingGuts",
                 cSettings: [.define("DEVELOPER_HOST", to: "\"\(hostname)\"")]),
         .target(name: "injectiondGuts"),
@@ -53,8 +55,8 @@ let package = Package(
                                    .product(name: "RemoteUI", package: "Remote")]),
         .binaryTarget(
             name: "InjectionScratch",
-            url: "https://raw.githubusercontent.com/johnno1962/InjectionScratch/master/InjectionScratch-1.1.0.zip",
-            checksum: "385d4ed4bb8bc466b63799037232dc2580dedf0b9faffbe32dee52ef7fd61de3"
+            url: "https://raw.githubusercontent.com/johnno1962/InjectionScratch/master/InjectionScratch-1.1.1.zip",
+            checksum: "92ab402fdbbd8b1d234409a30a479a8b10d2dabf2a3b93a35f8dae356561b5f2"
         ),
     ]
 )

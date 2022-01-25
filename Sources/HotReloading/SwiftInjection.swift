@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#130 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#131 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -282,9 +282,7 @@ public class SwiftInjection: NSObject {
         }
 
         // Prevent statics from re-initializing on injection
-        for symname in reverseInterposeStaticsAccessors(tmpfile) {
-            detail("Reverse interposed "+describeImageSymbol(symname))
-        }
+        reverseInterposeStaticsAccessors(tmpfile)
 
         // log any value types being injected
         var ntypes = 0, npreview = 0
@@ -293,8 +291,8 @@ public class SwiftInjection: NSObject {
             if let existing: Any.Type =
                 autoBitCast(dlsym(SwiftMeta.RTLD_DEFAULT, symbol)) {
                 let name = _typeName(existing)
-                log("Injected type '\(name)'")
                 ntypes += 1
+                log("Injected type #\(ntypes) '\(name)'")
                 if name.hasSuffix("_Previews") {
                     npreview += 1
                 }
@@ -462,8 +460,7 @@ public class SwiftInjection: NSObject {
     /// https://github.com/thebrowsercompany/swift-composable-architecture/tree/develop
     static func reinitializeInjectedReducers(_ tmpfile: String,
                  reinitialized: UnsafeMutablePointer<[SymbolName]>) {
-        findHiddenSwiftSymbols(searchLastLoaded(), "_WZ",
-                               ST_LOCAL_VISIBILITY) {
+        findHiddenSwiftSymbols(searchLastLoaded(), "_WZ", .local) {
             accessor, symname, _, _ in
             if injectableReducerSymbols.contains(String(cString: symname)) {
                 typealias OneTimeInitialiser = @convention(c) () -> Void
@@ -476,11 +473,11 @@ public class SwiftInjection: NSObject {
 
     /// Interpose references to statics to those in main bundle
     /// to have them not re-initialise again on each injection.
-    static func reverseInterposeStaticsAccessors(_ tmpfile: String) -> [SymbolName] {
+    static func reverseInterposeStaticsAccessors(_ tmpfile: String) {
         var staticsAccessors = [rebinding]()
         var already = Set<UnsafeRawPointer>()
-        for suffix in ["vau"] {
-        findHiddenSwiftSymbols(searchLastLoaded(), suffix, ST_ANY_VISIBILITY) {
+        for suffix in ["vau", "Wl"] {
+        findHiddenSwiftSymbols(searchLastLoaded(), suffix, .any) {
             accessor, symname, _, _ in
             var original = dlsym(SwiftMeta.RTLD_MAIN_ONLY, symname)
             if original == nil {
@@ -500,11 +497,24 @@ public class SwiftInjection: NSObject {
         }
         }
         let injectedImage = _dyld_image_count()-1 // last injected
-        return SwiftTrace.apply(
+        let interposed = SwiftTrace.apply(
             rebindings: &staticsAccessors, count: staticsAccessors.count,
             header: lastPseudoImage() ?? _dyld_get_image_header(injectedImage),
             slide: lastPseudoImage() != nil ? 0 :
                 _dyld_get_image_vmaddr_slide(injectedImage))
+        for symname in interposed {
+            detail("Reverse interposed "+describeImageSymbol(symname))
+        }
+        if interposed.count != staticsAccessors.count && injectionDetail {
+            let succeeded = Set<String>(interposed.map({ String(cString: $0) }))
+            print(succeeded)
+            for attemped in staticsAccessors
+                    .map({ String(cString: $0.name) }) {
+                if !succeeded.contains(attemped) {
+                    log("Reverse interposing \(interposed.count)/\(staticsAccessors.count) failed for \(describeImageSymbol(attemped))")
+                }
+            }
+        }
     }
 
     /// Pop a trace on a newly injected method and convert the pointer type while you're at it

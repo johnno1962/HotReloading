@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#28 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#29 $
 //
 //  Client app side of HotReloading started by +load
 //  method in HotReloadingGuts/ClientBoot.mm
@@ -41,7 +41,11 @@ public class InjectionClient: SimpleSocket, InjectionReader {
         write(INJECTION_KEY)
 
         let frameworksPath = Bundle.main.privateFrameworksPath!
+        #if targetEnvironment(simulator) || os(macOS)
         write(builder.tmpDir)
+        #else
+        write(frameworksPath)
+        #endif
         write(builder.arch)
         write(Bundle.main.executablePath!)
 
@@ -270,12 +274,11 @@ public class InjectionClient: SimpleSocket, InjectionReader {
         if command == .pseudoInject,
            let imagePointer = self.readPointer() {
             var percent = 0.0
+            pushPseudoImage(changed, imagePointer)
             guard let imageEnd = loadPseudoImage(imagePointer,
                 self.readInt(), self, &percent) else { return }
 
             DispatchQueue.main.async {
-                pushPseudoImage(changed, imagePointer)
-
                 do {
                     builder.injectionNumber += 1
                     let tmpfile = String(cString: searchLastLoaded())

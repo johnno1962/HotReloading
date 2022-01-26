@@ -2,7 +2,7 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
 //  Repo: https://github.com/johnno1962/HotReloading
-//  $Id: //depot/HotReloading/Package.swift#95 $
+//  $Id: //depot/HotReloading/Package.swift#99 $
 //
 
 import PackageDescription
@@ -11,7 +11,7 @@ import Foundation
 // This package is configured to use a time limited
 // binary framework that allows iOS and tvOS device
 // injection until April 13th 2022 after which I'll
-// have to find some form of licensing mechanisim.
+// have to find some form of licensing mechanism.
 // It should still work fine with the simulator.
 
 // If this doesn't work, setup the IP address in a
@@ -31,11 +31,13 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/johnno1962/SwiftTrace",
                  .upToNextMinor(from: "8.1.2")),
-        .package(url: "https://github.com/johnno1962/SwiftRegex5",
+        .package(name: "SwiftRegex",
+                 url: "https://github.com/johnno1962/SwiftRegex5",
                  .upToNextMinor(from: "5.2.1")),
         .package(url: "https://github.com/johnno1962/XprobePlugin",
                  .upToNextMinor(from: "2.8.0")),
-        .package(url: "https://github.com/johnno1962/Remote",
+        .package(name: "RemotePlugin",
+                 url: "https://github.com/johnno1962/Remote",
                  .upToNextMinor(from: "2.3.5")),
         .package(url: "https://github.com/johnno1962/DLKit",
                  .upToNextMinor(from: "1.2.1")),
@@ -43,16 +45,16 @@ let package = Package(
     targets: [
         .target(name: "HotReloading", dependencies: ["HotReloadingGuts",
              "SwiftTrace", .product(name: "Xprobe", package: "XprobePlugin"), "DLKit",
-                 .product(name: "SwiftRegex", package: "SwiftRegex5"),
+                 .product(name: "SwiftRegex", package: "SwiftRegex"),
                  .target(name: "InjectionScratch",
                          condition: .when(platforms: [.iOS, .tvOS]))]),
         .target(name: "HotReloadingGuts",
                 cSettings: [.define("DEVELOPER_HOST", to: "\"\(hostname)\"")]),
         .target(name: "injectiondGuts"),
         .target(name: "injectiond", dependencies: ["HotReloadingGuts", "injectiondGuts",
-                                   .product(name: "SwiftRegex", package: "SwiftRegex5"),
+                                   .product(name: "SwiftRegex", package: "SwiftRegex"),
                                    .product(name: "XprobeUI", package: "XprobePlugin"),
-                                   .product(name: "RemoteUI", package: "Remote")]),
+                                   .product(name: "RemoteUI", package: "RemotePlugin")]),
         .binaryTarget(
             name: "InjectionScratch",
             url: "https://raw.githubusercontent.com/johnno1962/InjectionScratch/master/InjectionScratch-1.1.1.zip",

@@ -1,4 +1,4 @@
-# Yes, HotReloading for Swift & Objective-C
+# Yes, HotReloading for Swift, Objective-C & C++!
 
 The [InjectionIII](https://github.com/johnno1962/InjectionIII) app
 available as a Swift Package. i.e.:
@@ -56,7 +56,7 @@ As Swift plays its cards pretty close to its chest it's not possible
 to initialise type meta data entirely correctly so your milage may vary
 more than using HotReloading in the simulator. In particular if injected
 code crashes, the debugger will not display the line number but an address
-under symbol  "injection_scratch" instead. If you get stuck, use an 
+under symbol  "injected_code" instead. If you get stuck, use an 
 `@_exported import HotReloading` in a source file and you should be 
 able to type `p HotReloading.stack()` to at least get a stack trace.
 
@@ -98,4 +98,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2022/01/22 $
+$Date: 2022/01/27 $

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 13/01/2022.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#2 $
+//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#3 $
 //
 
 import Foundation
@@ -51,7 +51,11 @@ class DeviceServer: InjectionServer {
         case .testInjection:
             if let file = readString(), let source = readString() {
                 do {
-                    try source.write(toFile: file, atomically: true, encoding: .utf8)
+                    if let projectRoot = appDelegate.selectedProject.flatMap({
+                        URL(fileURLWithPath: $0).deletingLastPathComponent()}),
+                        file.hasPrefix(projectRoot.path) {
+                        try source.write(toFile: file, atomically: true, encoding: .utf8)
+                    }
                 } catch {
                     log("Error writing test source file: \(error)")
                 }

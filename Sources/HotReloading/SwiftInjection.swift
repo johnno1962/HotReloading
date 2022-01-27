@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#131 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#132 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -507,7 +507,6 @@ public class SwiftInjection: NSObject {
         }
         if interposed.count != staticsAccessors.count && injectionDetail {
             let succeeded = Set<String>(interposed.map({ String(cString: $0) }))
-            print(succeeded)
             for attemped in staticsAccessors
                     .map({ String(cString: $0.name) }) {
                 if !succeeded.contains(attemped) {
@@ -660,7 +659,7 @@ public class SwiftInjection: NSObject {
         var interposes = [dyld_interpose_tuple]()
 
         #if false
-        let suffixesToInterpose = SwiftTrace.swiftFunctionSuffixes
+        let suffixesToInterpose = SwiftTrace.traceableFunctionSuffixes
             // Oh alright, interpose all property getters..
             .map { $0 == "Qrvg" ? "g" : $0 }
             // and class/static members
@@ -924,7 +923,7 @@ public class SwiftInjection: NSObject {
 
     @objc open class func packageNames() -> [String] {
         var packages = Set<String>()
-        for suffix in SwiftTrace.swiftFunctionSuffixes {
+        for suffix in SwiftTrace.traceableFunctionSuffixes {
             findSwiftSymbols(Bundle.main.executablePath!, suffix) {
                 (_, symname: UnsafePointer<Int8>, _, _) in
                 if let sym = SwiftMeta.demangle(symbol: String(cString: symname)),

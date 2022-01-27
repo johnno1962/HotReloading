@@ -20,3 +20,4 @@ static NSString *const UserDefaultsFeedback = @"feedback";
 static NSString *const UserDefaultsLookup = @"typeLookup";
 static NSString *const UserDefaultsRemote = @"appRemote";
 static NSString *const UserDefaultsReplay = @"replayInjections";
+static NSString *const UserDefaultsUnlock = @"deviceUnlock";

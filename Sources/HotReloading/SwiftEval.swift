@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#23 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#24 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -168,10 +168,13 @@ public class SwiftEval: NSObject {
     @objc public var arch = "i386"
     #endif
 
+    var unhider: ((String) -> Void)?
+    var linkerOptions = ""
+
     /// Additional logging to /tmp/hot\_reloading.log for "HotReloading" version of injection.
     func HRLog(_ what: Any...) {
         #if SWIFT_PACKAGE
-        NSLog("***** %@", what.map {"\($0)"}.joined(separator: " "))
+        NSLog("\(APP_PREFIX)***** %@", what.map {"\($0)"}.joined(separator: " "))
         #endif
     }
 
@@ -435,6 +438,7 @@ public class SwiftEval: NSObject {
         }
 
         // link resulting object file to create dynamic library
+        _ = unhider?(objectFile)
 
         let toolchain = ((try! NSRegularExpression(pattern: "\\s*(\\S+?\\.xctoolchain)", options: []))
             .firstMatch(in: compileCommand, options: [], range: NSMakeRange(0, compileCommand.utf16.count))?
@@ -456,7 +460,7 @@ public class SwiftEval: NSObject {
         }
 
         guard shell(command: """
-            "\(xcodeDev)/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang" -arch "\(arch)" -bundle -isysroot "\(xcodeDev)/Platforms/\(platform).platform/Developer/SDKs/\(platform).sdk" -L"\(toolchain)/usr/lib/swift/\(platform.lowercased())" \(osSpecific) -undefined dynamic_lookup -dead_strip -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -interposable -fobjc-arc -fprofile-instr-generate "\(objectFile)" -L "\(frameworks)" -F "\(frameworks)" -rpath "\(frameworks)" -o \"\(tmpfile).dylib\" >>\"\(logfile)\" 2>&1
+            "\(xcodeDev)/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang" -arch "\(arch)" -bundle -isysroot "\(xcodeDev)/Platforms/\(platform).platform/Developer/SDKs/\(platform).sdk" -L"\(toolchain)/usr/lib/swift/\(platform.lowercased())" \(osSpecific) -undefined dynamic_lookup -dead_strip -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -interposable\(linkerOptions) -fobjc-arc -fprofile-instr-generate "\(objectFile)" -L "\(frameworks)" -F "\(frameworks)" -rpath "\(frameworks)" -o \"\(tmpfile).dylib\" >>\"\(logfile)\" 2>&1
             """) else {
             throw scriptError("Linking")
         }
@@ -636,7 +640,7 @@ public class SwiftEval: NSObject {
                         if ($line =~ /^\s*cd /) {
                             $realPath = $line;
                         }
-                        elsif ($line =~ m@\#(regexp.escaping("\"$"))@oi and $line =~ " \#(arch)"\#(swiftpm)) {
+                        elsif ($line =~ m{\#(regexp.escaping("\"$"))}oi and $line =~ " \#(arch)"\#(swiftpm)) {
                             # found compile command
                             # may need to extract file list
                             if ($line =~ / -filelist /) {

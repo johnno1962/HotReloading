@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#27 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#31 $
 //
 //  Initiate connection to server side of InjectionIII/HotReloading.
 //
@@ -30,12 +30,23 @@ NSString *INJECTION_KEY = @__FILE__;
                                withObject:clientClass];
 }
 
+static SimpleSocket *injectionClient;
+NSString *injectionHost = @"127.0.0.1";
+
 + (void)tryConnect:(Class)clientClass {
-    for (int i=0, retrys=3; i<retrys; i++) {
-        if (i)
+#if defined(DEVELOPER_HOST) && !TARGET_IPHONE_SIMULATOR
+    injectionHost = @DEVELOPER_HOST;
+    NSString *socketAddr = @DEVELOPER_HOST INJECTION_ADDRESS;
+    printf(APP_PREFIX"Connecting to %s... (See HotReloading/Package.swift)\n",
+           injectionHost.UTF8String);
+#else
+    NSString *socketAddr = @INJECTION_ADDRESS;
+#endif
+    for (int retry=0, retrys=3; retry<retrys; retry++) {
+        if (retry)
             [NSThread sleepForTimeInterval:1.0];
-        if (SimpleSocket *client = [clientClass connectTo:@INJECTION_ADDRESS]) {
-            [client run];
+        if ((injectionClient = [clientClass connectTo:socketAddr])) {
+            [injectionClient run];
             return;
         }
     }
@@ -43,25 +54,38 @@ NSString *INJECTION_KEY = @__FILE__;
 #ifdef INJECTION_III_APP
     printf(APP_PREFIX"⚠️ Injection bundle loaded but could not connect. Is InjectionIII.app running?\n");
 #else
-    printf(APP_PREFIX"⚠️ HotReloading loaded but could not connect. Is injectiond running? ⚠️\n"
+    printf(APP_PREFIX"⚠️ HotReloading loaded but could not connect to %s. Is injectiond running? ⚠️\n"
        APP_PREFIX"Have you added the following \"Run Script\" build phase to your project to start injectiond?\n"
         "if [ -d $SYMROOT/../../SourcePackages ]; then\n"
         "    $SYMROOT/../../SourcePackages/checkouts/HotReloading/start_daemon.sh\n"
         "elif [ -d \"$SYMROOT\"/../../../../../SourcePackages ]; then\n"
         "    \"$SYMROOT\"/../../../../../SourcePackages/checkouts/HotReloading/fix_previews.sh\n"
-        "fi\n");
+        "fi\n", injectionHost.UTF8String);
 #endif
 #ifndef __IPHONE_OS_VERSION_MIN_REQUIRED
     printf(APP_PREFIX"⚠️ For a macOS app you need to turn off the sandbox to connect. ⚠️\n");
 #elif !TARGET_IPHONE_SIMULATOR
-    printf(APP_PREFIX"⚠️ For iOS, HotReloading only works in the simulator. ⚠️\n");
+    printf(APP_PREFIX"⚠️ For iOS, HotReloading used to only work in the simulator. ⚠️\n");
 #endif
 }
 
 + (const char *)connectedAddress {
-    return "127.0.0.1";
+    return injectionHost.UTF8String;
 }
 @end
+
+#if DEBUG && !defined(INJECTION_III_APP)
+@implementation NSObject(InjectionTester)
+- (void)swiftTraceInjectionTest:(NSString * _Nonnull)sourceFile
+                         source:(NSString * _Nonnull)source {
+    if (!injectionClient)
+        NSLog(@"swiftTraceInjectionTest: Too early.");
+    [injectionClient writeCommand:InjectionTestInjection
+                           withString:sourceFile];
+    [injectionClient writeString:source];
+}
+@end
+#endif
 
 @implementation NSObject (RunXCTestCase)
 + (void)runXCTestCase:(Class)aTestCase {

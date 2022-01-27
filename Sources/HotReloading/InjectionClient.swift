@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#27 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#30 $
 //
 //  Client app side of HotReloading started by +load
 //  method in HotReloadingGuts/ClientBoot.mm
@@ -16,11 +16,22 @@ import SwiftTrace
 #if SWIFT_PACKAGE
 import SwiftTraceGuts
 import HotReloadingGuts
+#if canImport(InjectionScratch)
+import InjectionScratch
+#endif
 import Xprobe
+
+public func stack() {
+    injection_stack()
+}
 #endif
 
 @objc(InjectionClient)
-public class InjectionClient: SimpleSocket {
+public class InjectionClient: SimpleSocket, InjectionReader {
+
+    open func log(_ msg: String) {
+        print(APP_PREFIX+msg)
+    }
 
     public override func runInBackground() {
         let builder = SwiftInjectionEval.sharedInstance()
@@ -30,9 +41,21 @@ public class InjectionClient: SimpleSocket {
         write(INJECTION_KEY)
 
         let frameworksPath = Bundle.main.privateFrameworksPath!
+        #if targetEnvironment(simulator) || os(macOS)
         write(builder.tmpDir)
+        #else
+        write(frameworksPath)
+        #endif
         write(builder.arch)
         write(Bundle.main.executablePath!)
+
+        #if canImport(InjectionScratch)
+        if let scratch = loadPseudoImage(nil, 0, self, nil) {
+            writeCommand(InjectionResponse
+                            .scratchPointer.rawValue, with: nil)
+            writePointer(scratch)
+        }
+        #endif
 
         builder.tmpDir = readString() ?? "/tmp"
 
@@ -80,12 +103,12 @@ public class InjectionClient: SimpleSocket {
         while true {
             let commandInt = readInt()
             guard let command = InjectionCommand(rawValue: commandInt) else {
-                print("\(APP_PREFIX)Invalid commandInt: \(commandInt)")
+                log("Invalid commandInt: \(commandInt)")
                 break
             }
             switch command {
             case .EOF:
-                print("\(APP_PREFIX)EOF received from server..")
+                log("EOF received from server..")
                 break commandLoop
             case .signed:
                 writer.write(readString() ?? "0")
@@ -97,7 +120,7 @@ public class InjectionClient: SimpleSocket {
                                                     packageName: nil)
                     SwiftTrace.trace(bundlePath:frameworkPath)
                 } else {
-                    print("\(APP_PREFIX)Tracing package \(frameworkName)")
+                    log("Tracing package \(frameworkName)")
                     let mainBundlePath = Bundle.main.executablePath ?? "Missing"
                     _ = SwiftTrace.interposeMethods(inBundlePath: mainBundlePath,
                                                     packageName: frameworkName)
@@ -108,7 +131,7 @@ public class InjectionClient: SimpleSocket {
             }
         }
 
-        print("\(APP_PREFIX)\(APP_NAME) disconnected.")
+        log("\(APP_NAME) disconnected.")
     }
 
     func process(command: InjectionCommand, builder: SwiftEval) {
@@ -121,15 +144,15 @@ public class InjectionClient: SimpleSocket {
         case .connected:
             builder.projectFile = readString() ?? "Missing project"
             builder.derivedLogs = nil;
-            print("\(APP_PREFIX)\(APP_NAME) connected \(builder.projectFile ?? "Missing Project")")
+            log("\(APP_NAME) connected \(builder.projectFile ?? "Missing Project")")
         case .watching:
-            print("\(APP_PREFIX)Watching files under \(readString() ?? "Missing directory")")
+            log("Watching files under \(readString() ?? "Missing directory")")
         case .log:
-            print(APP_PREFIX+(readString() ?? "Missing log message"))
+            log(readString() ?? "Missing log message")
         case .ideProcPath:
             builder.lastIdeProcPath = readString() ?? ""
         case .invalid:
-            print("\(APP_PREFIX)⚠️ Server has rejected your connection. Are you running InjectionIII.app or start_daemon.sh from the right directory? ⚠️")
+            log("⚠️ Server has rejected your connection. Are you running InjectionIII.app or start_daemon.sh from the right directory? ⚠️")
         case .quietInclude:
             SwiftTrace.traceFilterInclude = readString()
         case .include:
@@ -143,45 +166,45 @@ public class InjectionClient: SimpleSocket {
         case .lookup:
             SwiftTrace.typeLookup = readString() == "1"
             if SwiftTrace.swiftTracing {
-                print("\(APP_PREFIX)Discovery of target app's types switched \(SwiftTrace.typeLookup ? "on" : "off")");
+                log("Discovery of target app's types switched \(SwiftTrace.typeLookup ? "on" : "off")");
             }
         case .trace:
             if SwiftTrace.traceMainBundleMethods() == 0 {
-                print("\(APP_PREFIX)⚠️ Tracing Swift methods can only work if you have -Xlinker -interposable to your project's \"Other Linker Flags\"")
+                log("⚠️ Tracing Swift methods can only work if you have -Xlinker -interposable to your project's \"Other Linker Flags\"")
             } else {
-                print("\(APP_PREFIX)Added trace to methods in main bundle")
+                log("Added trace to methods in main bundle")
             }
             filteringChanged()
         case .untrace:
             SwiftTrace.removeAllTraces()
         case .traceUI:
             if SwiftTrace.traceMainBundleMethods() == 0 {
-                print("\(APP_PREFIX)⚠️ Tracing Swift methods can only work if you have -Xlinker -interposable to your project's \"Other Linker Flags\"")
+                log("⚠️ Tracing Swift methods can only work if you have -Xlinker -interposable to your project's \"Other Linker Flags\"")
             }
             SwiftTrace.traceMainBundle()
-            print("\(APP_PREFIX)Added trace to methods in main bundle")
+            log("Added trace to methods in main bundle")
             filteringChanged()
         case .traceUIKit:
             DispatchQueue.main.sync {
                 let OSView: AnyClass = (objc_getClass("UIView") ??
                     objc_getClass("NSView")) as! AnyClass
-                print("\(APP_PREFIX)Adding trace to the framework containg \(OSView), this will take a while...")
+                log("Adding trace to the framework containg \(OSView), this will take a while...")
                 SwiftTrace.traceBundle(containing: OSView)
-                print("\(APP_PREFIX)Completed adding trace.")
+                log("Completed adding trace.")
             }
             filteringChanged()
         case .traceSwiftUI:
             if let bundleOfAnyTextStorage = swiftUIBundlePath() {
-                print("\(APP_PREFIX)Adding trace to SwiftUI calls.")
+                log("Adding trace to SwiftUI calls.")
                 _ = SwiftTrace.interposeMethods(inBundlePath: bundleOfAnyTextStorage, packageName:nil)
                 filteringChanged()
             } else {
-                print("\(APP_PREFIX)Your app doesn't seem to use SwiftUI.")
+                log("Your app doesn't seem to use SwiftUI.")
             }
         case .uninterpose:
             SwiftTrace.revertInterposes()
             SwiftTrace.removeAllTraces()
-            print("\(APP_PREFIX)Removed all traces (and injections).")
+            log("Removed all traces (and injections).")
             break;
         case .stats:
             let top = 200;
@@ -229,10 +252,14 @@ public class InjectionClient: SimpleSocket {
                         try data.write(to: URL(fileURLWithPath: "\(builder.tmpfile).dylib"))
                         try SwiftInjection.inject(tmpfile: builder.tmpfile)
                     } catch {
-                        print("\(APP_PREFIX)⚠️ Injection error: \(error)")
+                        self.log("⚠️ Injection error: \(error)")
                     }
                 }
             }
+        case .pseudoUnlock:
+            #if canImport(InjectionScratch)
+            presentInjectionScratch(readString() ?? "")
+            #endif
         default:
             processOnMainThread(command: command, builder: builder)
         }
@@ -240,9 +267,35 @@ public class InjectionClient: SimpleSocket {
 
     func processOnMainThread(command: InjectionCommand, builder: SwiftEval) {
         guard let changed = self.readString() else {
-            print("\(APP_PREFIX)⚠️ Could not read changed filename?")
+            log("⚠️ Could not read changed filename?")
             return
         }
+        #if canImport(InjectionScratch)
+        if command == .pseudoInject,
+           let imagePointer = self.readPointer() {
+            var percent = 0.0
+            pushPseudoImage(changed, imagePointer)
+            guard let imageEnd = loadPseudoImage(imagePointer,
+                self.readInt(), self, &percent) else { return }
+
+            DispatchQueue.main.async {
+                do {
+                    builder.injectionNumber += 1
+                    let tmpfile = String(cString: searchLastLoaded())
+                    let newClasses = try SwiftEval.instance.extractClasses(dl: UnsafeMutableRawPointer(bitPattern: ~0)!, tmpfile: tmpfile)
+                    try SwiftInjection.inject(tmpfile: tmpfile, newClasses: newClasses)
+                } catch {
+                    NSLog("Pseudo: \(error)")
+                }
+                if percent > 75 {
+                    print(String(format: "\(APP_PREFIX)You have used %.1f%% of InjectionScratch space.", percent))
+                }
+                self.writeCommand(InjectionResponse.scratchPointer.rawValue, with: nil)
+                self.writePointer(imageEnd)
+            }
+            return
+        }
+        #endif
         DispatchQueue.main.async {
             var err: String?
             switch command {
@@ -277,11 +330,11 @@ public class InjectionClient: SimpleSocket {
                    let code = (parts[3] as NSString).removingPercentEncoding,
                    object.swiftEval(code: code) {
                 } else {
-                    print("\(APP_PREFIX)Xprobe: Eval only works on NSObject subclasses where the source file has the same name as the class and is in your project.")
+                    self.log("Xprobe: Eval only works on NSObject subclasses where the source file has the same name as the class and is in your project.")
                 }
                 Xprobe.write("$('BUSY\(pathID)').hidden = true; ")
             default:
-                print("\(APP_PREFIX)Unimplemented command: \(command.rawValue)")
+                self.log("Unimplemented command: \(command.rawValue)")
             }
             let response: InjectionResponse = err != nil ? .error : .complete
             self.writeCommand(response.rawValue, with: err)
@@ -290,7 +343,7 @@ public class InjectionClient: SimpleSocket {
 
     func needsTracing() {
         if !SwiftTrace.swiftTracing {
-            print("\(APP_PREFIX)⚠️ You need to have traced something to gather stats.")
+            log("⚠️ You need to have traced something to gather stats.")
         }
     }
 

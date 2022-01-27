@@ -2,7 +2,7 @@
 #
 # Start up daemon process to rebuild changed sources
 #
-# $Id: //depot/HotReloading/start_daemon.sh#33 $
+# $Id: //depot/HotReloading/start_daemon.sh#34 $
 #
 
 cd "$(dirname "$0")"
@@ -40,4 +40,6 @@ rsync -at Contents .build/debug &&
 
 # run in background passing project file, logs directory
 # followed by a list of additional directories to watch.
+# when working with a .xcworkspace set PROJECT_FILE_PATH
+# to the path to the workspace file in the build phase.
 (.build/debug/injectiond "$PROJECT_FILE_PATH" "$DERIVED_LOGS" `gunzip <$LAST_LOG | tr '\r' '\n' | grep -e '  cd ' | sort -u | grep -v DerivedData | awk '{ print $2 }'` >/tmp/hot_reloading.log 2>&1 &)

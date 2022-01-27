@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#38 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#45 $
 //
 
 import Cocoa
@@ -22,6 +22,13 @@ class WebView : WKWebView {}
 
 let XcodeBundleID = "com.apple.dt.Xcode"
 var appDelegate: AppDelegate!
+
+enum InjectionState: String {
+    case ok = "OK"
+    case idle = "Idle"
+    case busy = "Busy"
+    case error = "Error"
+}
 
 @objc(AppDelegate)
 class AppDelegate : NSObject, NSApplicationDelegate {
@@ -78,11 +85,36 @@ class AppDelegate : NSObject, NSApplicationDelegate {
         if isSandboxed {
 //            sponsorItem.isHidden = true
             updateItem.isHidden = true
+        } else {
+            var openPort = ""
+            if let platform = getenv("PLATFORM_NAME"),
+               strcmp(platform, "iphonesimulator") == 0 {
+            } else {
+                let deviceInform = "deviceInform"
+                if defaults.string(forKey: deviceInform) == nil {
+                    let alert: NSAlert = NSAlert()
+                    alert.messageText = "Device Injection"
+                    alert.informativeText = """
+                        This release supports injection on a real device \
+                        as well as in the simulator. In order to do this it \
+                        needs to open a port to receive socket connections \
+                        from a device which will provoke an OS warning if \
+                        your Mac's firewall is enabled. Decline the prompt \
+                        if you don't intend to use this feature.
+                        """
+                    alert.alertStyle = .critical
+                    alert.addButton(withTitle: "OK")
+                    _ = alert.runModal()
+                    defaults.set("Informed", forKey: deviceInform)
+                }
+                openPort = "*"
+                setenv("XPROBE_ANY", "1", 1)
+            }
+            DeviceServer.startServer(openPort+HOTRELOADING_PORT)
         }
 
-        InjectionServer.startServer(INJECTION_ADDRESS)
-
         #if !SWIFT_PACKAGE
+        InjectionServer.startServer(INJECTION_ADDRESS)
         if !FileManager.default.fileExists(atPath:
             "/Applications/Xcode.app/Contents/Developer") {
             let alert: NSAlert = NSAlert()
@@ -116,7 +148,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
             startRemote(remoteItem)
         }
 
-        setMenuIcon("InjectionIdle")
+        setMenuIcon(.idle)
         versionSpecific()
     }
 
@@ -163,6 +195,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
             }
         }
         #endif
+        statusItem.title = appName
         statusMenu.item(at: statusMenu.items.count-1)?.title = "Quit "+appName
     }
 
@@ -326,8 +359,9 @@ class AppDelegate : NSObject, NSApplicationDelegate {
         return nil
     }
 
-    func setMenuIcon(_ tiffName: String) {
+    func setMenuIcon(_ state: InjectionState) {
         DispatchQueue.main.async {
+            let tiffName = "Injection"+state.rawValue
             if let path = Bundle.main.path(forResource: tiffName, ofType: "tif"),
                 let image = NSImage(contentsOfFile: path) {
     //            image.template = TRUE;

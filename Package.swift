@@ -2,7 +2,7 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
 //  Repo: https://github.com/johnno1962/HotReloading
-//  $Id: //depot/HotReloading/Package.swift#101 $
+//  $Id: //depot/HotReloading/Package.swift#103 $
 //
 
 import PackageDescription
@@ -30,7 +30,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/johnno1962/SwiftTrace",
-                 .upToNextMinor(from: "8.1.4")),
+                 .upToNextMinor(from: "8.1.5")),
         .package(name: "SwiftRegex",
                  url: "https://github.com/johnno1962/SwiftRegex5",
                  .upToNextMinor(from: "5.2.1")),
@@ -41,13 +41,14 @@ let package = Package(
                  .upToNextMinor(from: "2.3.5")),
         .package(url: "https://github.com/johnno1962/DLKit",
                  .upToNextMinor(from: "1.2.1")),
+        .package(url: "https://github.com/johnno1962/InjectionScratch",
+                 .upToNextMinor(from: "1.2.6")),
     ],
     targets: [
         .target(name: "HotReloading", dependencies: ["HotReloadingGuts",
-             "SwiftTrace", .product(name: "Xprobe", package: "XprobePlugin"), "DLKit",
-                 .product(name: "SwiftRegex", package: "SwiftRegex"),
-                 .target(name: "InjectionScratch",
-                         condition: .when(platforms: [.iOS, .tvOS]))]),
+             "SwiftTrace", .product(name: "Xprobe", package: "XprobePlugin"),
+                 "DLKit", .product(name: "SwiftRegex", package: "SwiftRegex"),
+                 "InjectionScratch"]),
         .target(name: "HotReloadingGuts",
                 cSettings: [.define("DEVELOPER_HOST", to: "\"\(hostname)\"")]),
         .target(name: "injectiondGuts"),
@@ -55,10 +56,5 @@ let package = Package(
                                    .product(name: "SwiftRegex", package: "SwiftRegex"),
                                    .product(name: "XprobeUI", package: "XprobePlugin"),
                                    .product(name: "RemoteUI", package: "RemotePlugin")]),
-        .binaryTarget(
-            name: "InjectionScratch",
-            url: "https://raw.githubusercontent.com/johnno1962/InjectionScratch/master/InjectionScratch-1.1.1.zip",
-            checksum: "92ab402fdbbd8b1d234409a30a479a8b10d2dabf2a3b93a35f8dae356561b5f2"
-        ),
     ]
 )

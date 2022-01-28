@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#132 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#133 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -506,7 +506,7 @@ public class SwiftInjection: NSObject {
             detail("Reverse interposed "+describeImageSymbol(symname))
         }
         if interposed.count != staticsAccessors.count && injectionDetail {
-            let succeeded = Set<String>(interposed.map({ String(cString: $0) }))
+            let succeeded = Set(interposed.map({ String(cString: $0) }))
             for attemped in staticsAccessors
                     .map({ String(cString: $0.name) }) {
                 if !succeeded.contains(attemped) {

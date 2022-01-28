@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#7 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#11 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -50,15 +50,19 @@ public class UnhidingEval: SwiftEval {
     static var lastProcessed = [URL: time_t]()
 
     var unhidden = false
+    var buildDir: URL?
 
     public override func determineEnvironment(classNameOrFile: String) throws -> (URL, URL) {
         let (project, logs) =
             try super.determineEnvironment(classNameOrFile: classNameOrFile)
+        buildDir = logs.deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Build")
+        return (project, logs)
+    }
 
-        if !unhidden {
+    func startUnhide() {
+        if !unhidden, let buildDir = buildDir {
             unhidden = true
-            let buildDir = logs.deletingLastPathComponent()
-                .deletingLastPathComponent().appendingPathComponent("Build")
             if let enumerator = FileManager.default
                     .enumerator(atPath: buildDir.path),
                 let log = fopen("/tmp/unhide.log", "w") {
@@ -108,8 +112,6 @@ public class UnhidingEval: SwiftEval {
                 }
             }
         }
-
-        return (project, logs)
     }
 
     // This was required for Xcode13's new "optimisation" to compile
@@ -120,15 +122,22 @@ public class UnhidingEval: SwiftEval {
             sourceFile).deletingPathExtension().lastPathComponent
             .replacingOccurrences(of: " ", with: "\\ ")
         let hasFileList = compileCommand.contains(" -filelist ")
+        var nPrimaries = 0
         // ensure there is only ever one -primary-file argument and object file
         // avoids shuffling of object files due to how the compiler is coded
         compileCommand[#" -primary-file (\#(Self.filePathRegex+Self.fileNameRegex))"#] = {
             (groups: [String], stop) -> String in
 //            HRLog("PF: \(sourceName) \(groups)")
+            nPrimaries += 1
             return groups[2] == sourceName || groups[3] == sourceName ?
                 groups[0] : hasFileList ? "" : " "+groups[1]
         }
-        // the number of these options must match the number of -primary-file arguments
+        // Xcode 13 can have multiple primary files but implements default
+        // arguments in a way that no longer requires they be "unhidden".
+        if nPrimaries < 2 {
+            startUnhide()
+        }
+        // The number of these options must match the number of -primary-file arguments
         // which has just been changed to only ever be one so, strip them out
         compileCommand = compileCommand
             .replacingOccurrences(of: #" -(serialize-diagnostics|emit-(module(-doc|-source-info)?|(reference-)?dependencies)|index-unit-output)-path \#(Self.argumentRegex)"#, with: "", options: .regularExpression)

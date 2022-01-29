@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#45 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#46 $
 //
 
 import Cocoa
@@ -86,6 +86,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
 //            sponsorItem.isHidden = true
             updateItem.isHidden = true
         } else {
+            #if SWIFT_PACKAGE
             var openPort = ""
             if let platform = getenv("PLATFORM_NAME"),
                strcmp(platform, "iphonesimulator") == 0 {
@@ -111,6 +112,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
                 setenv("XPROBE_ANY", "1", 1)
             }
             DeviceServer.startServer(openPort+HOTRELOADING_PORT)
+            #endif
         }
 
         #if !SWIFT_PACKAGE

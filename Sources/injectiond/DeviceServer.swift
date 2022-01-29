@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 13/01/2022.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#3 $
+//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#4 $
 //
 
 import Foundation
@@ -27,25 +27,8 @@ class DeviceServer: InjectionServer {
     override func process(response: InjectionResponse, executable: String) {
         switch response {
         case .scratchPointer:
-            if scratchPointer == nil {
-                let appBundle = URL(fileURLWithPath: builder.frameworks)
-                    .deletingLastPathComponent()
-                let appModule = appBundle.deletingPathExtension()
-                    .lastPathComponent.replacingOccurrences(of: " ", with: "_")
-                let appPrefix = "$s\(appModule.count)\(appModule)"
-                builder.unhider = { object_file in
-                    let logfile = "/tmp/unhide_object.log"
-                    if let log = fopen(logfile, "w") {
-                        setbuf(log, nil)
-                        self.log("Unhiding: \(object_file) -- \(appPrefix)")
-                        unhide_object(object_file, appPrefix, log)
-                    } else {
-                        self.log("Could not log to \(logfile)")
-                    }
-                }
-                builder.tmpDir = NSTemporaryDirectory()
-            }
             scratchPointer = readPointer()
+            builder.tmpDir = NSTemporaryDirectory()
             appDelegate.setMenuIcon(scratchPointer != nil ? .ok : .error)
         #if DEBUG
         case .testInjection:

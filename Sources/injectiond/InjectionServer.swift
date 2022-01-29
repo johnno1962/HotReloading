@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#28 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#29 $
 //
 
 import Cocoa
@@ -131,6 +131,22 @@ public class InjectionServer: SimpleSocket {
         appDelegate.setMenuIcon(.ok)
         appDelegate.lastConnection = self
         pending = []
+
+        let appBundle = URL(fileURLWithPath: builder.frameworks)
+            .deletingLastPathComponent()
+        let appModule = appBundle.deletingPathExtension()
+            .lastPathComponent.replacingOccurrences(of: " ", with: "_")
+        let appPrefix = "$s\(appModule.count)\(appModule)"
+        builder.unhider = { object_file in
+            let logfile = "/tmp/unhide_object.log"
+            if let log = fopen(logfile, "w") {
+                setbuf(log, nil)
+                self.log("Unhiding: \(object_file) -- \(appPrefix)")
+                unhide_object(object_file, appPrefix, log)
+            } else {
+                self.log("Could not log to \(logfile)")
+            }
+        }
 
         var lastInjected = projectInjected[projectFile]
         if lastInjected == nil {

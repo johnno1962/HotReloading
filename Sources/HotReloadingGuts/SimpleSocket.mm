@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#16 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#19 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -225,6 +225,92 @@
 
 - (void)dealloc {
     close(clientSocket);
+}
+
+/// Hash used to differentiate HotReloading users on network.
+/// Derived from path to source file in project's DerivedData.
++ (int)multicastHash {
+    const char *key = __FILE__;
+    int hash = 0;
+    for (size_t i=0, len = strlen(key); i<len; i++)
+        hash += (i+3)%15*key[i];
+    return hash;
+}
+
+/// Used for HotReloading clients to find their controlling Mac.
+/// @param multicast MULTICAST address to use
+/// @param port Port identifier of form ":NNNN"
++ (void)multicastServe:(const char *)multicast port:(const char *)port {
+    #ifdef DEVELOPER_HOST
+    if (isdigit(DEVELOPER_HOST[0]))
+        return;
+    #endif
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_ANY); /* N.B.: differs from sender */
+    if (const char *colon = index(port, ':'))
+        port = colon+1;
+    addr.sin_port = htons(atoi(port));
+
+    u_int yes = 1;
+//    u_char ttl = 3;
+
+    /* use setsockopt() to request that the kernel join a multicast group */
+    struct ip_mreq mreq;
+    mreq.imr_multiaddr.s_addr = inet_addr(multicast);
+    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+
+    /* create what looks like an ordinary UDP socket */
+    int multicastSocket;
+    if ((multicastSocket = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+        [self error:@"Could not get mutlicast socket: %s"];
+    else if (fcntl(multicastSocket, F_SETFD, FD_CLOEXEC) < 0)
+        [self error:@"Could not set close exec: %s"];
+    else if (setsockopt(multicastSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0)
+        [self error:@"Could not reuse mutlicast socket addr: %s"];
+    else if (bind(multicastSocket, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+        [self error:@"Could not bind mutlicast socket addr: %s. "
+         "Once this starts occuring, a reboot may be necessary. "
+         "Or, you can hardcode the IP address of your Mac as the "
+         "the value for 'hostname' in HotReloading/Package.swift."];
+//    else if (setsockopt(multicastSocket, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl)) < 0)
+//        [self error:@"%s: Could set multicast socket ttl: %s", INJECTION_APPNAME, strerror(errno)];
+    else if (setsockopt(multicastSocket, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0)
+        [self error:@"Could not add membersip of multicast socket: %s"];
+    else
+        [self performSelectorInBackground:@selector(multicastListen:)
+                               withObject:[NSNumber numberWithInt:multicastSocket]];
+}
+
+/// Listens for clients looking to connect and if the hash matches, replies.
+/// @param socket Multicast socket as NSNumber
++ (void)multicastListen:(NSNumber *)socket {
+    int multicastSocket = [socket intValue];
+    while (multicastSocket) {
+        struct sockaddr_in addr;
+        unsigned addrlen = sizeof(addr);
+        struct multicast_socket_identifier msgbuf;
+
+        if (recvfrom(multicastSocket, &msgbuf, sizeof msgbuf, 0,
+                     (struct sockaddr *) &addr, &addrlen) < sizeof msgbuf) {
+            [self error:@"Could not receive from multicast: %s"];
+            sleep(10);
+            continue;
+        }
+
+        NSLog(@"%@: Multicast recvfrom %s (%s)\n",
+              self, msgbuf.host, inet_ntoa(addr.sin_addr));
+
+        gethostname(msgbuf.host, sizeof msgbuf.host);
+        if ([self multicastHash] == msgbuf.hash) {
+            if (sendto(multicastSocket, &msgbuf, sizeof msgbuf, 0,
+                       (struct sockaddr *) &addr, addrlen) < sizeof msgbuf) {
+                [self error:@"Could not send to multicast: %s"];
+                sleep(10);
+            }
+        }
+    }
 }
 
 @end

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#29 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#32 $
 //
 
 import Cocoa
@@ -35,10 +35,12 @@ public class InjectionServer: SimpleSocket {
 
     override public class func error(_ message: String) -> Int32 {
         let saveno = errno
+        let msg = String(format:message, strerror(saveno))
+        NSLog("\(APP_PREFIX)\(APP_NAME) \(msg)")
         DispatchQueue.main.async {
             let alert: NSAlert = NSAlert()
             alert.messageText = "\(self)"
-            alert.informativeText = String(format:message, strerror(saveno))
+            alert.informativeText = msg
             alert.alertStyle = NSAlert.Style.warning
             alert.addButton(withTitle: "OK")
             _ = alert.runModal()

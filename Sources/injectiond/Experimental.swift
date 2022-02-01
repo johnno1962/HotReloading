@@ -5,7 +5,7 @@
 //  Created by User on 20/10/2020.
 //  Copyright © 2020 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#21 $
+//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#24 $
 //
 
 import Cocoa
@@ -259,11 +259,20 @@ extension AppDelegate {
                                             encoding: projectEncoding)
                 }
                 do {
-                    try newProjectSource.write(to: pbxprojURL, atomically: true,
-                                               encoding: projectEncoding)
                     let alert = NSAlert()
-                    alert.messageText = "\(APP_NAME) has patched your project slightly to add the required -Xlinker -interposable \"Other Linker Flags\". Restart the app to have these changes take effect. A backup has been saved at: \(backup)"
-                    _ = alert.runModal()
+                    alert.messageText = "injectiond"
+                    alert.informativeText = """
+                        \(APP_NAME) can patch your project slightly to add the \
+                        required -Xlinker -interposable \"Other Linker Flags\". \
+                        Restart the app to have these changes take effect. \
+                        A backup has been saved at: \(backup)
+                        """
+                    alert.addButton(withTitle: "Go ahead")
+                    alert.addButton(withTitle: "Cancel")
+                    if alert.runModal() == .alertFirstButtonReturn {
+                        try newProjectSource.write(to: pbxprojURL, atomically: true,
+                                                   encoding: projectEncoding)
+                    }
                 } catch {
                     NSLog("Could not patch project \(pbxprojURL): \(error)")
                     let alert = NSAlert()

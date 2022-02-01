@@ -2,20 +2,19 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
 //  Repo: https://github.com/johnno1962/HotReloading
-//  $Id: //depot/HotReloading/Package.swift#104 $
+//  $Id: //depot/HotReloading/Package.swift#112 $
 //
 
 import PackageDescription
 import Foundation
 
-// This package is configured to use a time limited
-// binary framework that allows iOS and tvOS device
-// injection until April 13th 2022 after which I'll
-// have to find some form of licensing mechanism.
-// It should still work fine with the simulator.
-
-// If this doesn't work, setup the IP address in a
-// clone of the repo and drag it onto your project.
+// This means of locating the IP address of developer's
+// Mac has been replaced by a multicast implementation.
+// If the multicast implementation fails to connect,
+// clone the HotReloading project and hardcode the IP
+// address of your Mac into the hostname value below.
+// Then drag the clone onto your project to have it
+// take precedence over the configured version.
 var hostname = Host.current().name ?? "localhost"
 // hostname = "192.168.0.252" // for example
 
@@ -41,6 +40,11 @@ let package = Package(
                  .upToNextMinor(from: "2.3.5")),
         .package(url: "https://github.com/johnno1962/DLKit",
                  .upToNextMinor(from: "1.2.1")),
+        // This package is configured to use a time limited
+        // binary framework that allows iOS and tvOS device
+        // injection until April 13th 2022 after which I'll
+        // have to find a sustainable licensing mechanism.
+        // It should still work fine with the simulator.
         .package(url: "https://github.com/johnno1962/InjectionScratch",
                  .upToNextMinor(from: "1.2.6")),
     ],

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#25 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#28 $
 //
 //  Shared definitions between server and client.
 //
@@ -19,6 +19,7 @@
 
 #define HOTRELOADING_PORT ":8899"
 #define HOTRELOADING_SALT 2122172543
+#define HOTRELOADING_MULTICAST "239.255.255.239"
 
 #ifdef INJECTION_III_APP
 #define INJECTION_ADDRESS ":8898"

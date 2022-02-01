@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#31 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#37 $
 //
 //  Initiate connection to server side of InjectionIII/HotReloading.
 //
@@ -34,11 +34,60 @@ static SimpleSocket *injectionClient;
 NSString *injectionHost = @"127.0.0.1";
 
 + (void)tryConnect:(Class)clientClass {
-#if defined(DEVELOPER_HOST) && !TARGET_IPHONE_SIMULATOR
-    injectionHost = @DEVELOPER_HOST;
-    NSString *socketAddr = @DEVELOPER_HOST INJECTION_ADDRESS;
-    printf(APP_PREFIX"Connecting to %s... (See HotReloading/Package.swift)\n",
-           injectionHost.UTF8String);
+#if TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+    if (isdigit(DEVELOPER_HOST[0])) {
+        injectionHost = @DEVELOPER_HOST;
+        [self performSelectorInBackground:@selector(finishConnect:)
+                               withObject:clientClass];
+        return;
+    }
+
+    // For a real device, we have to use multicast
+    // to locate the developer's Mac to connect to.
+    static struct sockaddr_in addr;
+    addr.sin_family=AF_INET;
+    addr.sin_addr.s_addr=inet_addr(HOTRELOADING_MULTICAST);
+    addr.sin_port=htons(atoi(&HOTRELOADING_PORT[0]+1));
+
+    int multicastSocket;
+    if ((multicastSocket=socket(AF_INET,SOCK_DGRAM,0)) < 0)
+        [clientClass error:@"Could not get multicast socket: %s"];
+    else {
+        [self performSelectorInBackground:@selector(multicastConnect:)
+                               withObject:[NSNumber numberWithInt:multicastSocket]];
+
+        struct multicast_socket_identifier msg;
+        msg.version = 1;
+        msg.hash = [clientClass multicastHash];
+        gethostname(msg.host, sizeof msg.host);
+
+        if (sendto(multicastSocket, &msg, sizeof msg, 0,
+                   (struct sockaddr *) &addr, sizeof(addr)) < 0)
+            [clientClass error:@"Could not send multicast ping: %s"];
+    }
+}
+
++ (void)multicastConnect:(NSNumber *)socket {
+    Class clientClass = objc_getClass("InjectionClient");
+    int multicastSocket = socket.intValue;
+    struct sockaddr_in addr;
+    unsigned addrlen = sizeof(addr);
+    struct multicast_socket_identifier msgbuf;
+
+    while (recvfrom(multicastSocket, &msgbuf, sizeof msgbuf, 0,
+                 (struct sockaddr *) &addr, &addrlen) < sizeof msgbuf) {
+        [clientClass error:@"%s: Error receiving from multicast: %s"];
+        sleep(1);
+    }
+
+    injectionHost = [NSString stringWithUTF8String:inet_ntoa(addr.sin_addr)];
+    [self performSelectorInBackground:@selector(finishConnect:)
+                           withObject:clientClass];
+}
+
++ (void)finishConnect:(Class)clientClass {
+    NSString *socketAddr = [injectionHost stringByAppendingString:@INJECTION_ADDRESS];
+    printf(APP_PREFIX"Connecting to %s...\n", injectionHost.UTF8String);
 #else
     NSString *socketAddr = @INJECTION_ADDRESS;
 #endif

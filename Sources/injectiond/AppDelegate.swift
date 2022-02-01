@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#46 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#49 $
 //
 
 import Cocoa
@@ -110,6 +110,8 @@ class AppDelegate : NSObject, NSApplicationDelegate {
                 }
                 openPort = "*"
                 setenv("XPROBE_ANY", "1", 1)
+                DeviceServer.multicastServe(HOTRELOADING_MULTICAST,
+                                            port: HOTRELOADING_PORT)
             }
             DeviceServer.startServer(openPort+HOTRELOADING_PORT)
             #endif
@@ -161,7 +163,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
         var arguments = CommandLine.arguments.dropFirst()
         let projectURL = URL(fileURLWithPath: arguments.removeFirst())
         let projectRoot = projectURL.deletingLastPathComponent()
-//        AppDelegate.ensureInterposable(project: projectURL.path)
+        AppDelegate.ensureInterposable(project: projectURL.path)
         NSDocumentController.shared.noteNewRecentDocumentURL(projectRoot)
         derivedLogs = arguments.removeFirst()
 

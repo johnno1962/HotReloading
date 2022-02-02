@@ -2,8 +2,10 @@
 #
 # Start up daemon process to rebuild changed sources
 #
-# $Id: //depot/HotReloading/start_daemon.sh#34 $
+# $Id: //depot/HotReloading/start_daemon.sh#35 $
 #
+
+export PROJECT_FILE_PATH="${PROJECT_FILE_PATH:-"$PWD/Package.swift"}" # Vapour
 
 cd "$(dirname "$0")"
 
@@ -17,6 +19,7 @@ if [ -f "/tmp/injecting_storyboard.txt" ]; then
     exit 0
 fi
 
+export SYMROOT="${SYMROOT:-$(dirname "$PWD")}" # Vapour
 
 DERIVED_DATA="$(dirname $(dirname $SYMROOT))"
 export DERIVED_LOGS="$DERIVED_DATA/Logs/Build"

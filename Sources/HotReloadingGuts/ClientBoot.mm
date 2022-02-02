@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#37 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#38 $
 //
 //  Initiate connection to server side of InjectionIII/HotReloading.
 //
@@ -14,6 +14,7 @@
 #import <XCTest/XCTest.h>
 #import <objc/runtime.h>
 #import "SimpleSocket.h"
+#import <dlfcn.h>
 
 #ifndef INJECTION_III_APP
 NSString *INJECTION_KEY = @__FILE__;
@@ -100,6 +101,12 @@ NSString *injectionHost = @"127.0.0.1";
         }
     }
 
+    if (dlsym(RTLD_DEFAULT, "$s10RoutingKit10ParametersVN")) {
+       printf(APP_PREFIX"Unable to connect to HotReloading server, please run %s/start_daemon.sh\n",
+              @__FILE__.stringByDeletingLastPathComponent.stringByDeletingLastPathComponent
+              .stringByDeletingLastPathComponent.UTF8String);
+       return;
+    }
 #ifdef INJECTION_III_APP
     printf(APP_PREFIX"⚠️ Injection bundle loaded but could not connect. Is InjectionIII.app running?\n");
 #else

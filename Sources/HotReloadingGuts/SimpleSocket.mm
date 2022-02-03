@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#19 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#20 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -299,11 +299,17 @@
             continue;
         }
 
-        NSLog(@"%@: Multicast recvfrom %s (%s)\n",
-              self, msgbuf.host, inet_ntoa(addr.sin_addr));
+        NSLog(@"%@: Multicast recvfrom %s (%s) %d c.f. %d\n",
+              self, msgbuf.host, inet_ntoa(addr.sin_addr),
+              [self multicastHash], msgbuf.hash);
 
         gethostname(msgbuf.host, sizeof msgbuf.host);
         if ([self multicastHash] == msgbuf.hash) {
+            if (sendto(multicastSocket, &msgbuf, sizeof msgbuf, 0,
+                       (struct sockaddr *) &addr, addrlen) < sizeof msgbuf) {
+                [self error:@"Could not send to multicast: %s"];
+                sleep(10);
+            }
             if (sendto(multicastSocket, &msgbuf, sizeof msgbuf, 0,
                        (struct sockaddr *) &addr, addrlen) < sizeof msgbuf) {
                 [self error:@"Could not send to multicast: %s"];

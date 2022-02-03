@@ -75,6 +75,22 @@ conventions outlined in the [HotSwiftUI](https://github.com/johnno1962/HotSwiftU
 project you can experience interactive screen updates something like
 "Xcode Previews", except for a fully functional app on an actual device!
 
+### Vapour injection
+
+To use injection with Vapour web server, add this Swift package as a
+dependency to its Package.swift and as dependency of the "App" target
+then run vapour from inside Xcode. It will ask you to run a script to start
+the associated daemon processes which watches for source file changes
+from inside project directory. It's not possible to inject closures that have
+already been registered with routes but if you delegate their implementation
+to the method of a class it can be injected. If you want to delegate to a top
+level method or the method of a struct you'll need to add the following to
+the executable target to enable "interposing":
+
+```
+    , linkerSettings: [
+        .unsafeFlags(["-Xlinker", "-interposable"])]
+```
 ### Thanks to...
 
 The App Tracing functionality uses the [OliverLetterer/imp_implementationForwardingToSelector](https://github.com/OliverLetterer/imp_implementationForwardingToSelector) trampoline implementation
@@ -98,4 +114,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2022/01/27 $
+$Date: 2022/02/03 $

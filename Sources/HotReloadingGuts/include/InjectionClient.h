@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#28 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#29 $
 //
 //  Shared definitions between server and client.
 //
@@ -41,6 +41,7 @@ extern NSString *INJECTION_KEY;
 #endif
 #endif
 
+#define VAPOUR_SYMBOL "$s10RoutingKit10ParametersVN"
 #define FRAMEWORK_DELIMITER @","
 #define CALLORDER_DELIMITER @"---"
 

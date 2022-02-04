@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#133 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#134 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -311,7 +311,7 @@ public class SwiftInjection: NSObject {
             log("⚠️ Device injection may fail if you have more than one type from the injected file referred to in a SwiftUI View.")
         }
 
-        if getenv("INJECTION_CAST") != nil {
+        if getenv("INJECTION_DYNAMIC_CAST") != nil {
             // Cater for dynamic cast (i.e. as?) to types that have been injected.
             DynamicCast.hook_lastInjected()
         }
@@ -471,12 +471,16 @@ public class SwiftInjection: NSObject {
         }
     }
 
-    /// Interpose references to statics to those in main bundle
-    /// to have them not re-initialise again on each injection.
+    /// Interpose references to witness tables, meta data and perhps static variables
+    /// to those in main bundle to have them not re-initialise again on each injection.
     static func reverseInterposeStaticsAccessors(_ tmpfile: String) {
         var staticsAccessors = [rebinding]()
         var already = Set<UnsafeRawPointer>()
-        for suffix in ["vau", "Wl"] {
+        var symbolSuffixes = ["Wl", "Ma"] // Witness table, meta data accessors
+        if SwiftTrace.preserveStatics {
+            symbolSuffixes.append("vau") // static variable "mutable addressors"
+        }
+        for suffix in symbolSuffixes {
         findHiddenSwiftSymbols(searchLastLoaded(), suffix, .any) {
             accessor, symname, _, _ in
             var original = dlsym(SwiftMeta.RTLD_MAIN_ONLY, symname)

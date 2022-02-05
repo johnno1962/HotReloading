@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#134 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#135 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -529,6 +529,7 @@ public class SwiftInjection: NSObject {
            let name = name ??
                 symname.flatMap({ SwiftMeta.demangle(symbol: $0) }) ??
                 objcMethod.flatMap({ NSStringFromSelector(method_getName($0)) }),
+           !name.contains(".unsafeMutableAddressor :"),
            let tracer = SwiftTrace.trace(name: injectedPrefix + name,
                    objcMethod: objcMethod, objcClass: objcClass,
                    original: autoBitCast(replacement)) {
@@ -681,9 +682,7 @@ public class SwiftInjection: NSObject {
                     return
                 }
                 let current = existing
-                let method = SwiftMeta.demangle(symbol: symbol) ?? String(cString: symbol)
-
-                traceAndReplace(current, replacement: loadedFunc, name: method) {
+                traceAndReplace(current, replacement: loadedFunc, symname: symbol) {
                     (replacement: UnsafeMutableRawPointer) -> String? in
                     interposes.append(dyld_interpose_tuple(replacement: replacement,
                                                            replacee: current))

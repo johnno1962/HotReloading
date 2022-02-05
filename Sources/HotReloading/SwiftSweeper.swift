@@ -7,12 +7,18 @@
 //  instance of classes that have been injected in order
 //  to be able to send them the @objc injected message.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#7 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#8 $
 //
 
 import Foundation
 #if SWIFT_PACKAGE
 import HotReloadingGuts
+#endif
+
+#if os(iOS) || os(tvOS)
+import UIKit
+#else
+import Cocoa
 #endif
 
 private let debugSweep = getenv("DEBUG_SWEEP") != nil
@@ -32,6 +38,76 @@ private let sweepExclusions = { () -> NSRegularExpression? in
 
 @objc public protocol SwiftInjected {
     @objc optional func injected()
+}
+
+extension SwiftInjection {
+
+    static var sweepWarned = false
+
+    open class func performSweep(oldClasses: [AnyClass], _ tmpfile: String,
+                                 _ injectedGenerics: Set<String>) {
+        var injectedClasses = [AnyClass]()
+        typealias ClassIMP = @convention(c) (AnyClass, Selector) -> ()
+        for cls in oldClasses {
+            if let classMethod = class_getClassMethod(cls, injectedSEL) {
+                let classIMP = method_getImplementation(classMethod)
+                unsafeBitCast(classIMP, to: ClassIMP.self)(cls, injectedSEL)
+            }
+            if class_getInstanceMethod(cls, injectedSEL) != nil {
+                injectedClasses.append(cls)
+                if !sweepWarned {
+                    log("""
+                        As class \(cls) has an @objc injected() \
+                        method, \(APP_NAME) will perform a "sweep" of live \
+                        instances to determine which objects to message. \
+                        If this fails, subscribe to the notification \
+                        "INJECTION_BUNDLE_NOTIFICATION" instead.
+                        \(APP_PREFIX)(note: notification may not arrive on the main thread)
+                        """)
+                    sweepWarned = true
+                }
+                let kvoName = "NSKVONotifying_" + NSStringFromClass(cls)
+                if let kvoCls = NSClassFromString(kvoName) {
+                    injectedClasses.append(kvoCls)
+                }
+            }
+        }
+
+        // implement -injected() method using sweep of objects in application
+        if !injectedClasses.isEmpty || !injectedGenerics.isEmpty {
+            #if os(iOS) || os(tvOS)
+            let app = UIApplication.shared
+            #else
+            let app = NSApplication.shared
+            #endif
+            let seeds: [Any] =  [app.delegate as Any] + app.windows
+            var patched = Set<UnsafeRawPointer>()
+            SwiftSweeper(instanceTask: {
+                (instance: AnyObject) in
+                if let instanceClass = object_getClass(instance),
+                   injectedClasses.contains(where: { $0 == instanceClass }) ||
+                    !injectedGenerics.isEmpty &&
+                    patchGenerics(oldClass: instanceClass, tmpfile: tmpfile,
+                        injectedGenerics: injectedGenerics, patched: &patched) {
+                    let proto = unsafeBitCast(instance, to: SwiftInjected.self)
+                    if SwiftEval.sharedInstance().vaccineEnabled {
+                        performVaccineInjection(instance)
+                        proto.injected?()
+                        return
+                    }
+
+                    proto.injected?()
+
+                    #if os(iOS) || os(tvOS)
+                    if let vc = instance as? UIViewController {
+                        flash(vc: vc)
+                    }
+                    #endif
+                }
+            }).sweepValue(seeds)
+        }
+    }
+
 }
 
 class SwiftSweeper: NSObject {

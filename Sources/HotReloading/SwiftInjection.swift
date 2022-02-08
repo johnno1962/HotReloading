@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#139 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#140 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -269,6 +269,32 @@ public class SwiftInjection: NSObject {
             }
         }
 
+        // (Reverse) interposing, reducers, operation on a device etc.
+        let totalInterposed = newerProcessing(tmpfile: tmpfile)
+        if totalPatched + totalSwizzled + totalInterposed == 0 {
+            log("⚠️ Injection may have failed. Have you added -Xlinker -interposable to the \"Other Linker Flags\" of the executable/framework? ⚠️")
+        }
+
+        // Thanks https://github.com/johnno1962/injectionforxcode/pull/234
+        if !testClasses.isEmpty {
+            testQueue.async {
+                testQueue.suspend()
+                let timer = Timer(timeInterval: 0, repeats:false, block: { _ in
+                    for newClass in testClasses {
+                        NSObject.runXCTestCase(newClass)
+                    }
+                    testQueue.resume()
+                })
+                RunLoop.main.add(timer, forMode: RunLoop.Mode.common)
+            }
+        } else {
+            performSweep(oldClasses: oldClasses, tmpfile, injectedGenerics)
+
+            NotificationCenter.default.post(name: notification, object: oldClasses)
+        }
+    }
+
+    open class func newerProcessing(tmpfile: String) -> Int {
         // new mechanism for injection of Swift functions,
         // using "interpose" API from dynamic loader along
         // with -Xlinker -interposable "Other Linker Flags".
@@ -325,27 +351,7 @@ public class SwiftInjection: NSObject {
             log("Overrode \(reducers.count) reducer"+s)
         }
 
-        if totalPatched + totalSwizzled + interposed.count + reducers.count == 0 {
-            log("⚠️ Injection may have failed. Have you added -Xlinker -interposable to the \"Other Linker Flags\" of the executable/framework? ⚠️")
-        }
-
-        // Thanks https://github.com/johnno1962/injectionforxcode/pull/234
-        if !testClasses.isEmpty {
-            testQueue.async {
-                testQueue.suspend()
-                let timer = Timer(timeInterval: 0, repeats:false, block: { _ in
-                    for newClass in testClasses {
-                        NSObject.runXCTestCase(newClass)
-                    }
-                    testQueue.resume()
-                })
-                RunLoop.main.add(timer, forMode: RunLoop.Mode.common)
-            }
-        } else {
-            performSweep(oldClasses: oldClasses, tmpfile, injectedGenerics)
-
-            NotificationCenter.default.post(name: notification, object: oldClasses)
-        }
+        return interposed.count + reducers.count
     }
 
     #if true // Original version of vtable patch, headed for retirement..
@@ -461,7 +467,7 @@ public class SwiftInjection: NSObject {
     /// variables declared at the top level. Requires custom version of TCA:
     /// https://github.com/thebrowsercompany/swift-composable-architecture/tree/develop
     static func reinitializeInjectedReducers(_ tmpfile: String,
-                 reinitialized: UnsafeMutablePointer<[SymbolName]>) {
+                reinitialized: UnsafeMutablePointer<[SymbolName]>) {
         findHiddenSwiftSymbols(searchLastLoaded(), "_WZ", .local) {
             accessor, symname, _, _ in
             if injectableReducerSymbols.contains(String(cString: symname)) {

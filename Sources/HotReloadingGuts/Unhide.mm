@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#25 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#29 $
 //
 
 #import <Foundation/Foundation.h>
@@ -42,7 +42,7 @@ int unhide_symbols(const char *framework, const char *linkFileList, FILE *log, t
     while (fgets(buffer, sizeof buffer, linkFiles)) {
         buffer[strlen(buffer)-1] = '\000';
         @autoreleasepool {
-            totalExported += unhide_object(buffer, framework, log);
+            totalExported += unhide_object(buffer, framework, log, nil);
         }
     }
 
@@ -50,7 +50,8 @@ int unhide_symbols(const char *framework, const char *linkFileList, FILE *log, t
     return totalExported;
 }
 
-int unhide_object(const char *object_file, const char *framework, FILE *log) {
+int unhide_object(const char *object_file, const char *framework, FILE *log,
+                  NSMutableArray<NSString *> *class_references) {
 //            struct stat info;
 //            if (stat(buffer, &info) || info.st_mtimespec.tv_sec < since)
 //                continue;
@@ -98,12 +99,20 @@ int unhide_object(const char *object_file, const char *framework, FILE *log) {
 //            dylib->nextdefsym += dylib->nlocalsym;
 //            dylib->nlocalsym = 0;
 #endif
-            size_t isReverseInterpose = framework[0] == '$' ? strlen(framework) : 0;
+            size_t isReverseInterpose = class_references ? strlen(framework) : 0;
             for (int i=0 ; i<symtab->nsyms ; i++) {
                 struct nlist_64 &symbol = all_symbols64[i];
                 if (symbol.n_sect == NO_SECT)
                     continue; // not definition
                 const char *symname = (char *)object + symtab->stroff + symbol.n_un.n_strx;
+
+                if (class_references) {
+                    static char classRef[] = {"l_OBJC_CLASS_REF_$_"};
+                    int clasRefSize = sizeof classRef-1;
+                    if (strncmp(symname, classRef, clasRefSize) == 0)
+                        [class_references addObject:[NSString
+                         stringWithUTF8String:symname + clasRefSize]];
+                }
 
                 if (strncmp(symname, "_$s", 3) != 0)
                     continue; // not swift symbol

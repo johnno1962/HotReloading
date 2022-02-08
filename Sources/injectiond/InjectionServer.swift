@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#32 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#33 $
 //
 
 import Cocoa
@@ -28,6 +28,7 @@ public class InjectionServer: SimpleSocket {
     var pending = [String]()
     var builder: SwiftEval!
     var lastIdeProcPath = ""
+    let objcClassRefs = NSMutableArray()
 
     open func log(_ msg: String) {
         NSLog("\(APP_PREFIX)\(APP_NAME) \(msg)")
@@ -143,8 +144,9 @@ public class InjectionServer: SimpleSocket {
             let logfile = "/tmp/unhide_object.log"
             if let log = fopen(logfile, "w") {
                 setbuf(log, nil)
-                self.log("Unhiding: \(object_file) -- \(appPrefix)")
-                unhide_object(object_file, appPrefix, log)
+                self.objcClassRefs.removeAllObjects()
+                unhide_object(object_file, appPrefix, log, self.objcClassRefs)
+                self.log("Unhidden: \(object_file) -- \(appPrefix) -- \(self.objcClassRefs)")
             } else {
                 self.log("Could not log to \(logfile)")
             }

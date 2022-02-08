@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 13/01/2022.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#8 $
+//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#9 $
 //
 
 import Foundation
@@ -61,10 +61,13 @@ class DeviceServer: InjectionServer {
                 do {
                     let dylib = try self.builder.rebuildClass(oldClass: nil,
                                           classNameOrFile: source, extra: nil)
-                    if let data = NSData(contentsOfFile: "\(dylib).dylib") {
+                    if let refs = self.objcClassRefs as? [String],
+                        let data = NSData(contentsOfFile: "\(dylib).dylib") {
                         commandQueue.async {
-                            self.writeCommand(InjectionCommand.pseudoInject
-                                                .rawValue, with: source)
+                            self.writeCommand(InjectionCommand.objcClassRefs.rawValue,
+                                              with: refs.joined(separator: ","))
+                            self.writeCommand(InjectionCommand.pseudoInject.rawValue,
+                                              with: source)
                             self.writePointer(slide)
                             self.write(data as Data)
                         }

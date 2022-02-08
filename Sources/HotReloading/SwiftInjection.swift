@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#136 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#139 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -106,6 +106,7 @@ public class SwiftInjection: NSObject {
     static var installDLKitLogger: Void = {
         DLKit.logger = log
     }()
+    static var objcClassRefs: [String]?
 
     open class func log(_ msg: String) {
         print(APP_PREFIX+msg)
@@ -278,6 +279,9 @@ public class SwiftInjection: NSObject {
             }
             log("Interposed \(interposed.count) function references.")
         }
+
+        // Fixup references to Objective-C classes
+        fixupObjcClassReferences()
 
         // Prevent statics from re-initializing on injection
         reverseInterposeStaticsAccessors(tmpfile)
@@ -469,6 +473,29 @@ public class SwiftInjection: NSObject {
         }
     }
 
+    /// Fixup references to Objective-C classes on device
+    open class func fixupObjcClassReferences() {
+        var typeref_size: UInt64 = 0
+        if let pseudoImage = lastPseudoImage(), var refs = objcClassRefs, refs[0] != "",
+           let typeref_start = getsectdatafromheader_64(autoBitCast(pseudoImage),
+                                    SEG_DATA, "__objc_classrefs", &typeref_size) {
+            let classRefPtr: UnsafeMutablePointer<AnyClass?> = autoBitCast(typeref_start)
+            let nClassRefs = Int(typeref_size)/MemoryLayout<AnyClass>.size
+            if nClassRefs == refs.count {
+                for i in 0 ..< nClassRefs {
+                    let classSymbol = "OBJC_CLASS_$_"+refs.removeFirst()
+                    if let classRef = dlsym(SwiftMeta.RTLD_DEFAULT, classSymbol) {
+                        classRefPtr[i] = autoBitCast(classRef)
+                    } else {
+                        log("⚠️ Could not lookup class reference \(classSymbol)")
+                    }
+                }
+            } else {
+                log("⚠️ Number of class refs \(nClassRefs) does not equal \(refs.count)")
+            }
+        }
+    }
+
     /// Interpose references to witness tables, meta data and perhps static variables
     /// to those in main bundle to have them not re-initialise again on each injection.
     static func reverseInterposeStaticsAccessors(_ tmpfile: String) {
@@ -573,9 +600,8 @@ public class SwiftInjection: NSObject {
         if fast_dladdr(existing, &info) != 0 {
             return info.dli_sname
         } else if let swizzle = SwiftTrace.originalSwizzle(for: autoBitCast(existing)),
-                  let symfo = DLKit.appImages[unsafeBitCast(swizzle.implementation,
-                                              to: UnsafeMutableRawPointer.self)] {
-            return symfo.name
+                  fast_dladdr(autoBitCast(swizzle.implementation), &info) != 0 {
+            return info.dli_sname
         }
         return nil
     }
@@ -600,7 +626,7 @@ public class SwiftInjection: NSObject {
                     return nil
                 }
             } else {
-                log("⚠️ Swizzle failed "+describeImageSymbol(selsym))
+                detail("⚠️ Swizzle failed "+describeImageSymbol(selsym))
             }
         }
         return swizzled

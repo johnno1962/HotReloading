@@ -58,7 +58,7 @@ more than using HotReloading in the simulator. In particular if injected
 code crashes, the debugger will not display the line number but an address
 under symbol  "injected_code" instead. If you get stuck, use an 
 `@_exported import HotReloading` in a source file and you should be 
-able to type `p HotReloading.stack()` to at least get a stack trace.
+able to type `p HotReloading.stack` to at least get a stack trace.
 
 Also note that, as the HotReloading package needs to connect a socket
 to your Mac to receive commands and new versions of code, expect a
@@ -114,4 +114,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2022/02/03 $
+$Date: 2022/02/10 $

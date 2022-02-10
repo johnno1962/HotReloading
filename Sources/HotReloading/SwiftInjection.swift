@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#140 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#141 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -92,21 +92,27 @@ extension NSObject {
 public class SwiftInjection: NSObject {
 
     @objc static var traceInjection = false
+
+    // Constants for environment variables
+    static let INJECTION_DETAIL = "INJECTION_DETAIL"
+    static let INJECTION_DYNAMIC_CAST = "INJECTION_DYNAMIC_CAST"
+    static let INJECTION_PRESERVE_STATICS = "INJECTION_PRESERVE_STATICS"
+    static let INJECTION_SWEEP_DETAIL = "INJECTION_SWEEP_DETAIL"
+    static let INJECTION_SWEEP_EXCLUDE = "INJECTION_SWEEP_EXCLUDE"
+
     static let testQueue = DispatchQueue(label: "INTestQueue")
     static let injectedSEL = #selector(SwiftInjected.injected)
     #if os(iOS) || os(tvOS)
     static let viewDidLoadSEL = #selector(UIViewController.viewDidLoad)
     #endif
     static let notification = Notification.Name("INJECTION_BUNDLE_NOTIFICATION")
+
+    static var injectionDetail = getenv(INJECTION_DETAIL) != nil
     static var injectableReducerSymbols = Set<String>()
-    static var injectionDetail = getenv("INJECTION_DETAIL") != nil
+    static var objcClassRefs: [String]?
     static var injectedPrefix: String {
         return "Injection#\(SwiftEval.instance.injectionNumber)/"
     }
-    static var installDLKitLogger: Void = {
-        DLKit.logger = log
-    }()
-    static var objcClassRefs: [String]?
 
     open class func log(_ msg: String) {
         print(APP_PREFIX+msg)
@@ -179,9 +185,8 @@ public class SwiftInjection: NSObject {
         var totalPatched = 0, totalSwizzled = 0
         var injectedGenerics = Set<String>()
         var testClasses = [AnyClass]()
-        _ = installDLKitLogger
 
-        injectionDetail = getenv("INJECTION_DETAIL") != nil
+        injectionDetail = getenv(INJECTION_DETAIL) != nil
 
         // Determine any generic classes being injected.
         findSwiftSymbols(searchLastLoaded(), "CMa") {
@@ -253,7 +258,8 @@ public class SwiftInjection: NSObject {
                                      onto: object_getClass(oldClass)) +
                            injection(swizzle: newClass, onto: oldClass)
             } else {
-                swizzled = injection(swizzle: object_getClass(oldClass)!, tmpfile: tmpfile) +
+                swizzled = injection(swizzle: object_getClass(oldClass)!,
+                                     tmpfile: tmpfile) +
                            injection(swizzle: oldClass, tmpfile: tmpfile)
             }
             totalSwizzled += swizzled
@@ -339,7 +345,7 @@ public class SwiftInjection: NSObject {
             log("⚠️ Device injection may fail if you have more than one type from the injected file referred to in a SwiftUI View.")
         }
 
-        if getenv("INJECTION_DYNAMIC_CAST") != nil {
+        if getenv(INJECTION_DYNAMIC_CAST) != nil {
             // Cater for dynamic cast (i.e. as?) to types that have been injected.
             DynamicCast.hook_lastInjected()
         }
@@ -481,6 +487,7 @@ public class SwiftInjection: NSObject {
 
     /// Fixup references to Objective-C classes on device
     open class func fixupObjcClassReferences() {
+        #if !targetEnvironment(simulator)
         var typeref_size: UInt64 = 0
         if let pseudoImage = lastPseudoImage(), var refs = objcClassRefs, refs[0] != "",
            let typeref_start = getsectdatafromheader_64(autoBitCast(pseudoImage),
@@ -500,6 +507,7 @@ public class SwiftInjection: NSObject {
                 log("⚠️ Number of class refs \(nClassRefs) does not equal \(refs.count)")
             }
         }
+        #endif
     }
 
     /// Interpose references to witness tables, meta data and perhps static variables

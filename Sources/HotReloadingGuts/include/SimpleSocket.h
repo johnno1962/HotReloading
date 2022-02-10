@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/SimpleSocket.h#8 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/SimpleSocket.h#9 $
 //
 
 #import <Foundation/Foundation.h>
@@ -24,13 +24,10 @@
 + (instancetype _Nullable)connectTo:(NSString *_Nonnull)address;
 + (BOOL)parseV4Address:(NSString *_Nonnull)address into:(struct sockaddr_storage *_Nonnull)serverAddr;
 
-+ (int)multicastHash;
 + (void)multicastServe:(const char *_Nonnull)multicast port:(const char *_Nonnull)port;
-
-struct multicast_socket_identifier {
-    int version, hash;
-    char host[256];
-};
++ (const char *_Nonnull)getMulticastService:(const char *_Nonnull)multicast
+                                       port:(const char *_Nonnull)port
+                                    message:(const char *_Nonnull)format;
 
 - (instancetype _Nonnull)initSocket:(int)socket;
 

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#20 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#21 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -146,7 +146,7 @@
 }
 
 - (void)runInBackground {
-    [[self class] error:@"-[Networking run] not implemented in subclass"];
+    [[self class] error:@"-[SimpleSocket runInBackground] not implemented in subclass"];
 }
 
 - (BOOL)readBytes:(void *)buffer length:(size_t)length cmd:(SEL)cmd {
@@ -237,6 +237,11 @@
     return hash;
 }
 
+struct multicast_socket_packet {
+    int version, hash;
+    char host[256];
+};
+
 /// Used for HotReloading clients to find their controlling Mac.
 /// @param multicast MULTICAST address to use
 /// @param port Port identifier of form ":NNNN"
@@ -245,6 +250,7 @@
     if (isdigit(DEVELOPER_HOST[0]))
         return;
     #endif
+
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
@@ -290,12 +296,12 @@
     while (multicastSocket) {
         struct sockaddr_in addr;
         unsigned addrlen = sizeof(addr);
-        struct multicast_socket_identifier msgbuf;
+        struct multicast_socket_packet msgbuf;
 
         if (recvfrom(multicastSocket, &msgbuf, sizeof msgbuf, 0,
-                     (struct sockaddr *) &addr, &addrlen) < sizeof msgbuf) {
+                     (struct sockaddr *)&addr, &addrlen) < sizeof msgbuf) {
             [self error:@"Could not receive from multicast: %s"];
-            sleep(10);
+            sleep(1);
             continue;
         }
 
@@ -304,19 +310,66 @@
               [self multicastHash], msgbuf.hash);
 
         gethostname(msgbuf.host, sizeof msgbuf.host);
-        if ([self multicastHash] == msgbuf.hash) {
-            if (sendto(multicastSocket, &msgbuf, sizeof msgbuf, 0,
-                       (struct sockaddr *) &addr, addrlen) < sizeof msgbuf) {
-                [self error:@"Could not send to multicast: %s"];
-                sleep(10);
-            }
-            if (sendto(multicastSocket, &msgbuf, sizeof msgbuf, 0,
-                       (struct sockaddr *) &addr, addrlen) < sizeof msgbuf) {
-                [self error:@"Could not send to multicast: %s"];
-                sleep(10);
-            }
+        if ([self multicastHash] == msgbuf.hash &&
+            sendto(multicastSocket, &msgbuf, sizeof msgbuf, 0,
+                   (struct sockaddr *)&addr, addrlen) < sizeof msgbuf) {
+            [self error:@"Could not send to multicast: %s"];
+            sleep(1);
         }
     }
+}
+
+/// Client end of multicast means of determining address of server
+/// @param multicastAddress Multicast IP address to use.
+/// @param port Port number as string.
+/// @param message Format for connecting message.
++ (const char *)getMulticastService:(const char *)multicast
+    port:(const char *)port message:(const char *)format {
+    #ifdef DEVELOPER_HOST
+    if (isdigit(DEVELOPER_HOST[0]))
+        return DEVELOPER_HOST;
+    #else
+    #define DEVELOPER_HOST "127.0.0.1"
+    #endif
+
+    static struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = inet_addr(multicast);
+    if (const char *colon = index(port, ':'))
+        port = colon+1;
+    addr.sin_port = htons(atoi(port));
+
+    // For a real device, we have to use multicast
+    // to locate the developer's Mac to connect to.
+    int multicastSocket;
+    if ((multicastSocket = socket(addr.sin_family, SOCK_DGRAM, 0)) < 0) {
+        [self error:@"Could not get multicast socket: %s"];
+        return DEVELOPER_HOST;
+    }
+
+    struct multicast_socket_packet msgbuf;
+    msgbuf.version = 1;
+    msgbuf.hash = [self multicastHash];
+    gethostname(msgbuf.host, sizeof msgbuf.host);
+
+    for (int sent=0; sent<2; sent++)
+        if (sendto(multicastSocket, &msgbuf, sizeof msgbuf, 0,
+                   (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+            [self error:@"Could not send multicast ping: %s"];
+            return DEVELOPER_HOST;
+        }
+
+    unsigned addrlen = sizeof(addr);
+    while (recvfrom(multicastSocket, &msgbuf, sizeof msgbuf, 0,
+                    (struct sockaddr *)&addr, &addrlen) < sizeof msgbuf) {
+        [self error:@"%s: Error receiving from multicast: %s"];
+        sleep(1);
+    }
+
+    const char *ipaddr = inet_ntoa(addr.sin_addr);
+    printf(format, msgbuf.host, ipaddr);
+    close(multicastSocket);
+    return ipaddr;
 }
 
 @end

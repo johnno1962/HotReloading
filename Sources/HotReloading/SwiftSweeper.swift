@@ -7,7 +7,7 @@
 //  instance of classes that have been injected in order
 //  to be able to send them the @objc injected message.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#8 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#9 $
 //
 
 import Foundation
@@ -21,9 +21,9 @@ import UIKit
 import Cocoa
 #endif
 
-private let debugSweep = getenv("DEBUG_SWEEP") != nil
+private let debugSweep = getenv(SwiftInjection.INJECTION_SWEEP_DETAIL) != nil
 private let sweepExclusions = { () -> NSRegularExpression? in
-    if let exclusions = getenv("SWEEP_EXCLUDE") {
+    if let exclusions = getenv(SwiftInjection.INJECTION_SWEEP_EXCLUDE) {
         let pattern = String(cString: exclusions)
         do {
             let filter = try NSRegularExpression(pattern: pattern, options: [])

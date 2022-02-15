@@ -7,7 +7,7 @@
 //  instance of classes that have been injected in order
 //  to be able to send them the @objc injected message.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#9 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#10 $
 //
 
 import Foundation
@@ -21,26 +21,26 @@ import UIKit
 import Cocoa
 #endif
 
-private let debugSweep = getenv(SwiftInjection.INJECTION_SWEEP_DETAIL) != nil
-private let sweepExclusions = { () -> NSRegularExpression? in
-    if let exclusions = getenv(SwiftInjection.INJECTION_SWEEP_EXCLUDE) {
-        let pattern = String(cString: exclusions)
-        do {
-            let filter = try NSRegularExpression(pattern: pattern, options: [])
-            print(APP_PREFIX+"⚠️ Excluding types matching '\(pattern)' from sweep")
-            return filter
-        } catch {
-            print(APP_PREFIX+"⚠️ Invalid sweep filter pattern \(error): \(pattern)")
-        }
-    }
-    return nil
-}()
-
 @objc public protocol SwiftInjected {
     @objc optional func injected()
 }
 
 extension SwiftInjection {
+
+    static let debugSweep = getenv(INJECTION_SWEEP_DETAIL) != nil
+    static let sweepExclusions = { () -> NSRegularExpression? in
+        if let exclusions = getenv(INJECTION_SWEEP_EXCLUDE) {
+            let pattern = String(cString: exclusions)
+            do {
+                let filter = try NSRegularExpression(pattern: pattern, options: [])
+                print(APP_PREFIX+"⚠️ Excluding types matching '\(pattern)' from sweep")
+                return filter
+            } catch {
+                print(APP_PREFIX+"⚠️ Invalid sweep filter pattern \(error): \(pattern)")
+            }
+        }
+        return nil
+    }()
 
     static var sweepWarned = false
 
@@ -137,7 +137,7 @@ class SwiftSweeper: NSObject {
             switch style {
             case .set, .collection:
                 let containsType = _typeName(type(of: value)).contains(".Type")
-                if debugSweep {
+                if SwiftInjection.debugSweep {
                     print("Sweeping collection:", _typeName(type(of: value)))
                 }
                 for (_, child) in mirror.children {
@@ -170,7 +170,7 @@ class SwiftSweeper: NSObject {
         let reference = unsafeBitCast(instance, to: UnsafeRawPointer.self)
         if seen[reference] == nil {
             seen[reference] = true
-            if let filter = sweepExclusions {
+            if let filter = SwiftInjection.sweepExclusions {
                 let typeName = _typeName(type(of: instance))
                 if filter.firstMatch(in: typeName,
                     range: NSMakeRange(0, typeName.utf16.count)) != nil {
@@ -178,14 +178,14 @@ class SwiftSweeper: NSObject {
                 }
             }
 
-            if debugSweep {
+            if SwiftInjection.debugSweep {
                 print("Sweeping instance \(reference) of class \(type(of: instance))")
             }
 
-            instanceTask(instance)
-
             sweepMembers(instance)
             instance.legacySwiftSweep?()
+
+            instanceTask(instance)
         }
     }
 

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#141 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#142 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -181,12 +181,14 @@ public class SwiftInjection: NSObject {
     @objc
     open class func inject(tmpfile: String, newClasses: [AnyClass]) throws {
         let oldClasses = //oldClass != nil ? [oldClass!] :
-            newClasses.map { objc_getClass(class_getName($0)) as? AnyClass ?? $0 }
+            newClasses.map { objc_getClass(class_getName($0)) as? AnyClass ??
+                SwiftMeta.lookupType(named: _typeName($0)) as? AnyClass ?? $0 }
         var totalPatched = 0, totalSwizzled = 0
         var injectedGenerics = Set<String>()
         var testClasses = [AnyClass]()
 
         injectionDetail = getenv(INJECTION_DETAIL) != nil
+        SwiftTrace.preserveStatics = getenv(INJECTION_PRESERVE_STATICS) != nil
 
         // Determine any generic classes being injected.
         findSwiftSymbols(searchLastLoaded(), "CMa") {
@@ -202,8 +204,11 @@ public class SwiftInjection: NSObject {
             var oldClass: AnyClass = oldClasses[i], newClass: AnyClass = newClasses[i]
             injectedGenerics.remove(_typeName(oldClass))
 
+            #if true
             let patched = patchSwiftVtable(oldClass: oldClass, newClass: newClass)
-//            let patched = newPatchSwiftVtable(oldClass: oldClass, tmpfile: tmpfile)
+            #else
+            let patched = newPatchSwiftVtable(oldClass: oldClass, tmpfile: tmpfile)
+            #endif
 
             if patched != 0 {
                 totalPatched += patched
@@ -224,15 +229,7 @@ public class SwiftInjection: NSObject {
             }
 
             // Is there a generic superclass?
-            var inheritedGeneric: AnyClass? = oldClass
-            while let parent = inheritedGeneric {
-                if _typeName(parent).contains("<") {
-                    break
-                }
-                inheritedGeneric = parent.superclass()
-            }
-
-            if inheritedGeneric != nil {
+            if inheritedGeneric(anyType: oldClass) {
                 // fallback to limited processing avoiding objc runtime.
                 // (object_getClass() and class_copyMethodList() crash)
                 let swizzled = swizzleBasics(oldClass: oldClass, tmpfile: tmpfile)
@@ -298,6 +295,17 @@ public class SwiftInjection: NSObject {
 
             NotificationCenter.default.post(name: notification, object: oldClasses)
         }
+    }
+
+    open class func inheritedGeneric(anyType: Any.Type) -> Bool {
+        var inheritedGeneric: Any.Type? = anyType
+        while let parent = inheritedGeneric {
+            if _typeName(parent).hasSuffix(">") {
+                return true
+            }
+            inheritedGeneric = (parent as? AnyClass)?.superclass()
+        }
+        return false
     }
 
     open class func newerProcessing(tmpfile: String) -> Int {
@@ -377,11 +385,6 @@ public class SwiftInjection: NSObject {
         guard newSwiftCondition || oldSwiftCondition else { return 0 }
         var patched = 0
 
-        // Old mechanism for Swift equivalent of "Swizzling".
-        if classMetadata.pointee.ClassSize != existingClass.pointee.ClassSize {
-            log("⚠️ Adding or [re]moving methods on non-final classes is not supported. Your application will likely crash. ⚠️")
-        }
-
         #if true // supplimented by "interpose" code
         // vtable still needs to be patched though for non-final methods
         func byteAddr<T>(_ location: UnsafeMutablePointer<T>) -> UnsafeMutablePointer<UInt8> {
@@ -391,6 +394,11 @@ public class SwiftInjection: NSObject {
         let vtableOffset = byteAddr(&existingClass.pointee.IVarDestroyer) - byteAddr(existingClass)
 
         #if false
+        // Old mechanism for Swift equivalent of "Swizzling".
+        if classMetadata.pointee.ClassSize != existingClass.pointee.ClassSize {
+            log("⚠️ Adding or [re]moving methods on non-final classes is not supported. Your application will likely crash. ⚠️")
+        }
+
         // original injection implementaion for Swift.
         let vtableLength = Int(existingClass.pointee.ClassSize -
             existingClass.pointee.ClassAddressPoint) - vtableOffset
@@ -402,19 +410,16 @@ public class SwiftInjection: NSObject {
         let newTable = (byteAddr(classMetadata) + vtableOffset)
             .withMemoryRebound(to: SwiftTrace.SIMP?.self, capacity: 1) { $0 }
 
-        var info = Dl_info()
         SwiftTrace.iterateMethods(ofClass: oldClass) {
             (name, slotIndex, vtableSlot, stop) in
-            if unsafeBitCast(vtableSlot.pointee, to: UnsafeRawPointer.self) !=
-                autoBitCast(newTable[slotIndex]) {
-                let replacement =
-                    autoBitCast(newTable[slotIndex] ?? vtableSlot.pointee) as UnsafeMutableRawPointer
-                fast_dladdr(replacement, &info)
+            if let replacement = SwiftTrace.interposed(replacee:
+                autoBitCast(newTable[slotIndex] ?? vtableSlot.pointee)),
+               autoBitCast(vtableSlot.pointee) != replacement {
                 traceAndReplace(vtableSlot.pointee,
-                    replacement: replacement, symname: info.dli_sname) {
+                    replacement: replacement, name: name) {
                     (replacement: UnsafeMutableRawPointer) -> String? in
                     vtableSlot.pointee = autoBitCast(replacement)
-                    if autoBitCast(vtableSlot.pointee) == replacement {
+                    if autoBitCast(vtableSlot.pointee) == replacement { ////
                         patched += 1
                         return newTable[slotIndex] != nil ? "Patched" : "Populated"
                     }
@@ -431,24 +436,14 @@ public class SwiftInjection: NSObject {
     /// Newer way to patch vtable looking up existing entries individually in newly loaded dylib.
     open class func newPatchSwiftVtable(oldClass: AnyClass,// newClass: AnyClass?,
                                         tmpfile: String) -> Int {
-        var patched = 0//, lastImage = DLKit.lastImage // DLKit.imageMap[tmpfile]
-
-        #if false
-        let classMetadata = unsafeBitCast(newClass, to:
-            UnsafeMutablePointer<SwiftMeta.TargetClassMetadata>?.self)
-
-        func vtableAddr<T>(_ location: UnsafePointer<T>) -> UnsafePointer<T> {
-            return location
-        }
-
-        let newTable = classMetadata.flatMap { vtableAddr(&$0.pointee.IVarDestroyer) }
-        #endif
+        var patched = 0
 
         SwiftTrace.forEachVTableEntry(ofClass: oldClass) {
             (symname, slotIndex, vtableSlot, stop) in
             let existing: UnsafeMutableRawPointer = autoBitCast(vtableSlot.pointee)
-            guard let replacement =
-                findSwiftSymbol(searchLastLoaded(), symname, .any) else {
+            guard let replacement = fast_dlsym(lastLoadedImage(), symname) ??
+                    dlsym(SwiftMeta.RTLD_DEFAULT, symname).flatMap({
+                        autoBitCast(SwiftTrace.interposed(replacee: $0))}) else {
                 log("⚠️ Class patching failed to lookup " +
                     describeImageSymbol(symname))
                 return
@@ -594,6 +589,14 @@ public class SwiftInjection: NSObject {
         let traced = traceInjected(replacement: replacement, name: name,
            symname: symname, objcMethod: objcMethod, objcClass: objcClass)
 
+        // injecting getters returning generics best avoided for some reason.
+        if let getted = name?[safe: .last(of: ".getter : ", end: true)...] {
+            if getted.hasSuffix(">") { return }
+            if let type = SwiftMeta.lookupType(named: getted),
+               inheritedGeneric(anyType: type) {
+                return
+            }
+        }
         if let success = apply(autoBitCast(traced)) {
             detail("\(success) \(autoBitCast(existing) as UnsafeRawPointer) -> \(replacement) " +    describeImagePointer(replacement))
         }
@@ -628,9 +631,9 @@ public class SwiftInjection: NSObject {
             let existing = unsafeBitCast(method_getImplementation(method),
                                          to: UnsafeMutableRawPointer?.self),
             let selsym = originalSym(for: existing) {
-            if let replacement = findSwiftSymbol(searchLastLoaded(), selsym, .any) {
+            if let replacement = fast_dlsym(lastLoadedImage(), selsym) {
                 traceAndReplace(existing, replacement: replacement,
-                        objcMethod: method, objcClass: oldClass) {
+                                objcMethod: method, objcClass: oldClass) {
                     (replacement: IMP) -> String? in
                     if class_replaceMethod(oldClass, selector, replacement,
                                            method_getTypeEncoding(method)) != nil {
@@ -826,7 +829,7 @@ public class SwiftInjection: NSObject {
                     continue
                 }
                 traceAndReplace(existing, replacement: autoBitCast(replacement),
-                          objcMethod: methods[i], objcClass: newClass) {
+                                objcMethod: methods[i], objcClass: newClass) {
                     (replacement: IMP) -> String? in
                     if class_replaceMethod(oldClass, selector, replacement,
                         method_getTypeEncoding(methods[i])) != nil {

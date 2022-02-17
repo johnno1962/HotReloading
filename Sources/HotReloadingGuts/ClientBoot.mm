@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#41 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#42 $
 //
 //  Initiate connection to server side of InjectionIII/HotReloading.
 //
@@ -36,6 +36,8 @@ NSString *injectionHost = @"127.0.0.1";
 
 + (void)tryConnect:(Class)clientClass {
 #if TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR && !defined(INJECTION_III_APP)
+    printf(APP_PREFIX"Sending multicast packet to connect to your development host.\n"
+           APP_PREFIX"If this fails, hardcode your Mac's IP address in HotReloading/Package.swift\n");
     injectionHost = [NSString stringWithUTF8String:[clientClass
         getMulticastService:HOTRELOADING_MULTICAST port:HOTRELOADING_PORT
                     message:APP_PREFIX"Connecting to %s (%s)...\n"]];

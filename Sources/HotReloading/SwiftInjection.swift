@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#142 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#143 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -312,7 +312,7 @@ public class SwiftInjection: NSObject {
         // new mechanism for injection of Swift functions,
         // using "interpose" API from dynamic loader along
         // with -Xlinker -interposable "Other Linker Flags".
-        let interposed = interpose(functionsIn: "\(tmpfile).dylib")
+        let interposed = Set(interpose(functionsIn: "\(tmpfile).dylib"))
         if interposed.count != 0 {
             for symname in interposed {
                 detail("Interposed "+describeImageSymbol(symname))

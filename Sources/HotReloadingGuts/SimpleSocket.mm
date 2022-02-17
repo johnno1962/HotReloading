@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#22 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#23 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -322,7 +322,7 @@ struct multicast_socket_packet {
 /// Client end of multicast means of determining address of server
 /// @param multicast Multicast IP address to use.
 /// @param port Port number as string.
-/// @param message Format for connecting message.
+/// @param format Format for connecting message.
 + (const char *)getMulticastService:(const char *)multicast
     port:(const char *)port message:(const char *)format {
     #ifdef DEVELOPER_HOST

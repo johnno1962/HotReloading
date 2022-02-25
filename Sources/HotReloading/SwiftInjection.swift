@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#143 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#144 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -110,6 +110,7 @@ public class SwiftInjection: NSObject {
     static var injectionDetail = getenv(INJECTION_DETAIL) != nil
     static var injectableReducerSymbols = Set<String>()
     static var objcClassRefs: [String]?
+    static var descriptorRefs: [String]?
     static var injectedPrefix: String {
         return "Injection#\(SwiftEval.instance.injectionNumber)/"
     }
@@ -320,36 +321,38 @@ public class SwiftInjection: NSObject {
             log("Interposed \(interposed.count) function references.")
         }
 
-        // Fixup references to Objective-C classes
-        fixupObjcClassReferences()
+        #if !targetEnvironment(simulator)
+        if let pseudoImage = lastPseudoImage() {
+            onDeviceSpecificProcessing(for: pseudoImage)
+        }
+        #endif
 
-        // Prevent statics from re-initializing on injection
-        reverseInterposeStaticsAccessors(tmpfile)
+        // Can prevent statics from re-initializing on injection
+        reverseInterposeStaticsAddressors(tmpfile)
 
-        // log any value types being injected
-        var ntypes = 0, npreview = 0
+        // log any types being injected
+        var ntypes = 0, npreviews = 0
         findSwiftSymbols(searchLastLoaded(), "N") {
             (typePtr, symbol, _, _) in
             if let existing: Any.Type =
                 autoBitCast(dlsym(SwiftMeta.RTLD_DEFAULT, symbol)) {
                 let name = _typeName(existing)
+                if name.hasSuffix("_Previews") {
+                    npreviews += 1
+                }
                 ntypes += 1
                 log("Injected type #\(ntypes) '\(name)'")
-                if name.hasSuffix("_Previews") {
-                    npreview += 1
-                }
                 if lastPseudoImage() != nil {
                     SwiftMeta.cloneValueWitness(from: existing, onto: autoBitCast(typePtr))
                 }
                 let newSize = SwiftMeta.sizeof(anyType: autoBitCast(typePtr))
-                if newSize != 0 &&
-                    newSize != SwiftMeta.sizeof(anyType: existing) {
+                if newSize != 0 && newSize != SwiftMeta.sizeof(anyType: existing) {
                     log("⚠️ Size of value type \(_typeName(existing)) has changed (\(newSize) != \(SwiftMeta.sizeof(anyType: existing))). You cannot inject changes to memory layout. This will likely just crash. ⚠️")
                 }
             }
         }
 
-        if npreview > 0 && ntypes > 2 && lastPseudoImage() != nil {
+        if false && npreviews > 0 && ntypes > 2 && lastPseudoImage() != nil {
             log("⚠️ Device injection may fail if you have more than one type from the injected file referred to in a SwiftUI View.")
         }
 
@@ -464,6 +467,91 @@ public class SwiftInjection: NSObject {
         return patched
     }
 
+    #if !targetEnvironment(simulator)
+    /// Emulate remaining functions of the dynamic linker.
+    /// - Parameter pseudoImage: last "loaded" image
+    open class func onDeviceSpecificProcessing(for pseudoImage:
+                                               UnsafePointer<mach_header>) {
+        // register types, protocols, conformances...
+        var section_size: UInt64 = 0
+        for (section, regsiter) in [
+            ("types",  "swift_registerTypeMetadataRecords"),
+            ("protos", "swift_registerProtocols"),
+            ("proto",  "swift_registerProtocolConformances")] {
+            if let section_start =
+                getsectdatafromheader_64(autoBitCast(pseudoImage),
+                     SEG_TEXT, "__swift5_"+section, &section_size),
+               section_size != 0, let call: @convention(c)
+                (UnsafeRawPointer, UnsafeRawPointer) -> Void =
+                autoBitCast(dlsym(SwiftMeta.RTLD_DEFAULT, regsiter)) {
+                call(section_start, section_start+Int(section_size))
+            }
+        }
+        // Redirect symbolic type references to main bundle
+        reverse_symbolics(pseudoImage)
+        // Fixup references to Objective-C classes
+        fixupObjcClassReferences(in: pseudoImage)
+        // Populate "l_got.*" descriptor references
+        bindDescriptorReferences(in: pseudoImage)
+    }
+
+    /// Fixup references to Objective-C classes on device
+    open class func fixupObjcClassReferences(in pseudoImage:
+                                             UnsafePointer<mach_header>) {
+        var typeref_size: UInt64 = 0
+        if var refs = objcClassRefs, refs[0] != "",
+           let typeref_start = getsectdatafromheader_64(autoBitCast(pseudoImage),
+                                    SEG_DATA, "__objc_classrefs", &typeref_size) {
+            let classRefPtr:
+                UnsafeMutablePointer<AnyClass?> = autoBitCast(typeref_start)
+            let nClassRefs = Int(typeref_size)/MemoryLayout<AnyClass>.size
+            if nClassRefs == refs.count {
+                for i in 0 ..< nClassRefs {
+                    let classSymbol = "OBJC_CLASS_$_"+refs.removeFirst()
+                    if let classRef = dlsym(SwiftMeta.RTLD_DEFAULT, classSymbol) {
+                        classRefPtr[i] = autoBitCast(classRef)
+                    } else {
+                        log("⚠️ Could not lookup class reference \(classSymbol)")
+                    }
+                }
+            } else {
+                log("⚠️ Number of class refs \(nClassRefs) does not equal \(refs)")
+            }
+        }
+    }
+
+    /// Populate "l_got.*" external references to "descriptors"
+    /// - Parameter pseudoImage: lastLoadedImage
+    open class func bindDescriptorReferences(in pseudoImage:
+                                             UnsafePointer<mach_header>) {
+        if let descriptorSyms = descriptorRefs, descriptorSyms[0] != "" {
+            var forces: UnsafeRawPointer?
+            let forcePrefix = "__swift_FORCE_LOAD_$_"
+            let forcePrefixLen = strlen(forcePrefix)
+            fast_dlscan(pseudoImage, .any, { symname in
+                return strncmp(symname, forcePrefix, forcePrefixLen) == 0
+            }) { value, symname, _, _ in
+                forces = value
+            }
+
+            if var descriptorRefs:
+                UnsafeMutablePointer<UnsafeMutableRawPointer?> = autoBitCast(forces) {
+                for descriptorSym in descriptorSyms {
+                    descriptorRefs = descriptorRefs.advanced(by: 1)
+                    if let value = dlsym(SwiftMeta.RTLD_DEFAULT, descriptorSym),
+                       descriptorRefs.pointee == nil {
+                        descriptorRefs.pointee = value
+                    } else {
+                        log("⚠️ Could not bind " + describeImageSymbol(descriptorSym))
+                    }
+                }
+            } else {
+                log("⚠️ Could not locate descriptors section")
+            }
+        }
+    }
+    #endif
+
     /// Support for re-initialising "The Composable Architecture", "Reducer"
     /// variables declared at the top level. Requires custom version of TCA:
     /// https://github.com/thebrowsercompany/swift-composable-architecture/tree/develop
@@ -480,34 +568,9 @@ public class SwiftInjection: NSObject {
         }
     }
 
-    /// Fixup references to Objective-C classes on device
-    open class func fixupObjcClassReferences() {
-        #if !targetEnvironment(simulator)
-        var typeref_size: UInt64 = 0
-        if let pseudoImage = lastPseudoImage(), var refs = objcClassRefs, refs[0] != "",
-           let typeref_start = getsectdatafromheader_64(autoBitCast(pseudoImage),
-                                    SEG_DATA, "__objc_classrefs", &typeref_size) {
-            let classRefPtr: UnsafeMutablePointer<AnyClass?> = autoBitCast(typeref_start)
-            let nClassRefs = Int(typeref_size)/MemoryLayout<AnyClass>.size
-            if nClassRefs == refs.count {
-                for i in 0 ..< nClassRefs {
-                    let classSymbol = "OBJC_CLASS_$_"+refs.removeFirst()
-                    if let classRef = dlsym(SwiftMeta.RTLD_DEFAULT, classSymbol) {
-                        classRefPtr[i] = autoBitCast(classRef)
-                    } else {
-                        log("⚠️ Could not lookup class reference \(classSymbol)")
-                    }
-                }
-            } else {
-                log("⚠️ Number of class refs \(nClassRefs) does not equal \(refs.count)")
-            }
-        }
-        #endif
-    }
-
     /// Interpose references to witness tables, meta data and perhps static variables
     /// to those in main bundle to have them not re-initialise again on each injection.
-    static func reverseInterposeStaticsAccessors(_ tmpfile: String) {
+    static func reverseInterposeStaticsAddressors(_ tmpfile: String) {
         var staticsAccessors = [rebinding]()
         var already = Set<UnsafeRawPointer>()
         var symbolSuffixes = ["Wl", "Ma"] // Witness table, meta data accessors
@@ -515,24 +578,24 @@ public class SwiftInjection: NSObject {
             symbolSuffixes.append("vau") // static variable "mutable addressors"
         }
         for suffix in symbolSuffixes {
-        findHiddenSwiftSymbols(searchLastLoaded(), suffix, .any) {
-            accessor, symname, _, _ in
-            var original = dlsym(SwiftMeta.RTLD_MAIN_ONLY, symname)
-            if original == nil {
-                original = findSwiftSymbol(searchBundleImages(), symname, .any)
-                if original != nil && !already.contains(original!) {
-                    detail("Recovered top level variable with private scope " +
-                           describeImagePointer(original!))
+            findHiddenSwiftSymbols(searchLastLoaded(), suffix, .any) {
+                accessor, symname, _, _ in
+                var original = dlsym(SwiftMeta.RTLD_MAIN_ONLY, symname)
+                if original == nil {
+                    original = findSwiftSymbol(searchBundleImages(), symname, .any)
+                    if original != nil && !already.contains(original!) {
+                        detail("Recovered top level variable with private scope " +
+                               describeImagePointer(original!))
+                    }
                 }
+                guard original != nil, already.insert(original!).inserted else {
+                    return
+                }
+                detail("Reverse interposing \(original!) <- \(accessor) " +
+                       describeImagePointer(original!))
+                staticsAccessors.append(rebinding(name: symname,
+                           replacement: original!, replaced: nil))
             }
-            guard original != nil, already.insert(original!).inserted else {
-                return
-            }
-            detail("Reverse interposing \(original!) <- \(accessor) " +
-                   describeImagePointer(original!))
-            staticsAccessors.append(rebinding(name: symname,
-                       replacement: original!, replaced: nil))
-        }
         }
         let injectedImage = _dyld_image_count()-1 // last injected
         let interposed = SwiftTrace.apply(
@@ -544,9 +607,8 @@ public class SwiftInjection: NSObject {
             detail("Reverse interposed "+describeImageSymbol(symname))
         }
         if interposed.count != staticsAccessors.count && injectionDetail {
-            let succeeded = Set(interposed.map({ String(cString: $0) }))
-            for attemped in staticsAccessors
-                    .map({ String(cString: $0.name) }) {
+            let succeeded = Set(interposed)
+            for attemped in staticsAccessors.map({ $0.name }) {
                 if !succeeded.contains(attemped) {
                     log("Reverse interposing \(interposed.count)/\(staticsAccessors.count) failed for \(describeImageSymbol(attemped))")
                 }

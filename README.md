@@ -1,7 +1,7 @@
 # Yes, HotReloading for Swift, Objective-C & C++!
 
 The [InjectionIII](https://github.com/johnno1962/InjectionIII) app
-available as a Swift Package. i.e.:
+for live code updates available as a Swift Package. i.e.:
 
 ![Icon](http://johnholdsworth.com/HotAdding.png)
 
@@ -28,10 +28,10 @@ has an icon on the menu bar you can use to access features such as tracing
 and remote control. This script also patches your project slightly to add the 
 required `"-Xlinker -interposable"` "Other Linker Flags" so you will
 have to run the project a second time after adding the `HotReloading`
-package and and the script build phase for hot reloading to start working.
+package and the script build phase for hot reloading to start working.
 
-Consult the REAME of the [InjectionIII](https://github.com/johnno1962/InjectionIII)
-project for more information in paticular how to use it to inject `SwiftUI` using the
+Consult the README of the [InjectionIII](https://github.com/johnno1962/InjectionIII)
+project for more information in particular how to use it to inject `SwiftUI` using the
 [HotSwiftUI](https://github.com/johnno1962/HotSwiftUI) protocol extension. It's
 the same code but you no longer need to download or run the app and the project
 is selected automatically.
@@ -44,7 +44,7 @@ configured HotReloading Swift Package when you build your app.
 
 This version of the HotReloading project and it's dependencies now support
 injection on a real iOS or tvOS device. It's early days and this version
-should be considered very much beta software. The binary framework from
+should still be considered beta software. The binary framework from
 the InjectionScratch repo that makes this possible is time limited for 
 now to expire on April 13th 2022 until I find a more reasonable licensing 
 solution should people find it useful. If your device doesn't connect, 
@@ -54,9 +54,9 @@ project to have it take the place of the configured Swift Package.
 
 As Swift plays its cards pretty close to its chest it's not possible
 to initialise type meta data entirely correctly so your milage may vary
-more than using HotReloading in the simulator. In particular if injected
+more than using HotReloading in the simulator. In particular, if injected
 code crashes, the debugger will not display the line number but an address
-under symbol  "injected_code" instead. If you get stuck, use an 
+under the symbol  "injected_code" instead. If you get stuck, use an 
 `@_exported import HotReloading` in a source file and you should be 
 able to type `p HotReloading.stack` to at least get a stack trace.
 
@@ -64,14 +64,14 @@ Also note that, as the HotReloading package needs to connect a socket
 to your Mac to receive commands and new versions of code, expect a
 message the first time you run your app after adding the package
 asking you to "Trust" that your app should be allowed to do this.
-Likewise, at the Mac end as the HotReloading deamon needs to open
+Likewise, at the Mac end as the HotReloading daemon needs to open
 a network port to accept this connection you may be prompted for
 permission if you have the macOS firewall turned on.
 
 In testing it's been performing well but one problem I did encounter was 
 using SwiftUI where you inject two structs conforming to View in the same 
-file which currently crashes. If you avoid this however and use the 
-conventions outlined in the [HotSwiftUI](https://github.com/johnno1962/HotSwiftUI) 
+file which may crash. If you avoid this however and use the conventions 
+outlined in the [HotSwiftUI](https://github.com/johnno1962/HotSwiftUI) 
 project you can experience interactive screen updates something like
 "Xcode Previews", except for a fully functional app on an actual device!
 
@@ -114,4 +114,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2022/02/10 $
+$Date: 2022/02/25 $

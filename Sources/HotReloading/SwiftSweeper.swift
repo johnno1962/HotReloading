@@ -12,7 +12,7 @@
 
 import Foundation
 
-private let debugSweep = getenv("DEBUG_SWEEP") != nil
+private let debugSweep = getenv("INJECTION_SWEEP_DETAIL") != nil
 
 @objc public protocol SwiftInjected {
     @objc optional func injected()

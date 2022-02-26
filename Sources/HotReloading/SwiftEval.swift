@@ -818,13 +818,15 @@ public class SwiftEval: NSObject {
         let projectPrefix = project.deletingPathExtension()
             .lastPathComponent.replacingOccurrences(of: "\\s+", with: "_",
                                     options: .regularExpression, range: nil)
-        let relativeDerivedData = derivedData
-            .appendingPathComponent("\(projectPrefix)/Logs/Build")
-
-        return ((try? filemgr.contentsOfDirectory(atPath: derivedData.path))?
+        var possibleDerivedData = (try? filemgr.contentsOfDirectory(atPath: derivedData.path))?
             .filter { $0.starts(with: projectPrefix + "-") }
-            .map { derivedData.appendingPathComponent($0 + "/Logs/Build") }
-            ?? [] + [relativeDerivedData])
+            .map { derivedData.appendingPathComponent($0 + "/Logs/Build") } ?? []
+        possibleDerivedData.append(project.deletingLastPathComponent()
+            .appendingPathComponent("DerivedData/\(projectPrefix)/Logs/Build"))
+        HRLog("Possible DerivedDatas: \(possibleDerivedData)")
+
+        // use most recentry modified
+        return possibleDerivedData
             .filter { filemgr.fileExists(atPath: $0.path) }
             .sorted { mtime($0) > mtime($1) }
             .first

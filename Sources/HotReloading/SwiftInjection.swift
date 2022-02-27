@@ -288,7 +288,7 @@ public class SwiftInjection: NSObject {
             }
         }
 
-        if getenv("INJECTION_CAST") != nil {
+        if getenv("INJECTION_DYNAMIC_CAST") != nil {
             // Cater for dynamic cast (i.e. as?) to types that have been injected.
             DynamicCast.hook_lastInjected()
         }

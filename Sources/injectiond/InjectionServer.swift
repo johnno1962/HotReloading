@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#34 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#35 $
 //
 
 import Cocoa
@@ -321,7 +321,7 @@ public class InjectionServer: SimpleSocket {
             sendCommand(.inject, with: source)
         } else {
             compileQueue.async {
-                if let dylib = try? self.builder.rebuildClass(oldClass: nil,
+                if let dylib = try? self.builder?.rebuildClass(oldClass: nil,
                                        classNameOrFile: source, extra: nil) {
                     #if SWIFT_PACKAGE && false // for virtualised simulator
                     if let data = NSData(contentsOfFile: "\(dylib).dylib") {

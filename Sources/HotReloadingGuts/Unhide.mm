@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#30 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#31 $
 //
 
 #import <Foundation/Foundation.h>
@@ -24,6 +24,10 @@ extern "C" {
 }
 
 static std::map<std::string,int> seen;
+
+static const char *strend(const char *str) {
+    return str + strlen(str);
+}
 
 void unhide_reset(void) {
     seen.clear();
@@ -128,7 +132,7 @@ int unhide_object(const char *object_file, const char *framework, FILE *log,
 
                 // Default argument generators have a suffix ANN_
                 // Covers a few other cases encountred now as well.
-                const char *symend = symname + strlen(symname) - 1;
+                const char *symend = strend(symname) - 1;
                 BOOL isMutableAddressor = strcmp(symend-2, "vau") == 0 ||
                     // Meta data and witness table accessor functions...
                     strcmp(symend-1, "Ma") == 0 || (strcmp(symend-1, "Wl") == 0 &&
@@ -243,7 +247,7 @@ int unhide_framework(const char *framework, FILE *log) {
 
             // Default argument generators have a suffix ANN_
             // Covers a few other cases encountred now as well.
-            const char *symend = symname + strlen(symname) - 1;
+            const char *symend = strend(symname) - 1;
             BOOL isDefaultArgument = (*symend == '_' &&
                 (symend[-1] == 'A' || (isdigit(symend[-1]) &&
                 (symend[-2] == 'A' || (isdigit(symend[-2]) &&
@@ -368,8 +372,7 @@ void reverse_symbolics(const void *image) {
             Dl_info info;
 
             if (fast_dladdr(referenced, &info) && info.dli_fbase == image &&
-                strstr(info.dli_sname, "Mn") ==
-                info.dli_sname + strlen(info.dli_sname) - 2 &&
+                strcmp(strend(info.dli_sname) - 2, "Mn") == 0 &&
                 (value = dlsym(RTLD_DEFAULT, info.dli_sname))) {
                 ssize_t relative = (unsigned char *)value - infoPtr;
                 *(int *)infoPtr = (int)relative;

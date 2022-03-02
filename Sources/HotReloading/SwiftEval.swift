@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#24 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#25 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -651,7 +651,7 @@ public class SwiftEval: NSObject {
                                             or die "Could not open filemap '$filemap'";
                                         my $json_text = join'', $file_handle->getlines();
                                         my $json_map = decode_json( $json_text, { utf8  => 1 } );
-                                        my $filelist = "\#(tmpDir)/filelist.txt";
+                                        my $filelist = '\#(tmpDir)/filelist.txt';
                                         my $swift_sources = join "\n", keys %$json_map;
                                         my $listfile = IO::File->new( "> $filelist" )
                                             or die "Could not open list file '$filelist'";

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DynamicCast.swift#7 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DynamicCast.swift#8 $
 //
 //  Dynamic casting in an "as?" expression to a type that has been injected.
 //
@@ -17,15 +17,14 @@ import SwiftTraceGuts
 import DLKit
 #endif
 
-public func injection_dynamicCast(inp: UnsafeRawPointer,
-    out: UnsafeMutablePointer<UnsafeRawPointer>,
-    from: Any.Type, to: Any.Type, size: size_t) -> Bool {
-    let toName = _typeName(to)
-//    print("HERE \(inp) \(out) \(_typeName(from)) \(toName) \(size)")
-    let to = toName.hasPrefix("__C.") ? to :
-        SwiftMeta.lookupType(named: toName, protocols: true) ?? to
-    return DynamicCast.dynamicCast.original?(inp, out,
-        autoBitCast(from), autoBitCast(to), size) ?? false
+public func injection_dynamicCast(dest: UnsafeRawPointer, src: UnsafeRawPointer,
+    srcType: Any.Type, targetType: Any.Type, flags: size_t) -> Bool {
+    let targetName = _typeName(targetType)
+//    print("HERE \(dest) \(src) \(_typeName(srcType)) \(targetName) \(flags)")
+    let targetType = targetName.hasPrefix("__C.") ? targetType :
+        SwiftMeta.lookupType(named: targetName, protocols: true) ?? targetType
+    return DynamicCast.dynamicCast.original?(dest, src,
+        autoBitCast(srcType), autoBitCast(targetType), flags) ?? false
 }
 
 class DynamicCast {
@@ -60,10 +59,9 @@ class DynamicCast {
     }
 
     static let dynamicCast = Hooking<@convention(c)
-        (_ inp: UnsafeRawPointer,
-         _ out: UnsafeMutablePointer<UnsafeRawPointer>,
-         _ from: UnsafeRawPointer, _ to: UnsafeRawPointer,
-         _ size: size_t) -> Bool>(runtime: "dynamicCast")
+        (_ dest: UnsafeRawPointer, _ src: UnsafeRawPointer,
+         _ srcType: UnsafeRawPointer, _ targetType: UnsafeRawPointer,
+         _ flags: size_t) -> Bool>(runtime: "dynamicCast")
 
     static var rebinds =  [dynamicCast.rebinder,
 //                           getTypeByMangledNameInContext.rebinder,

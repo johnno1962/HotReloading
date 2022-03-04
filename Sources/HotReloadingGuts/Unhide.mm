@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#31 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#32 $
 //
 
 #import <Foundation/Foundation.h>
@@ -134,8 +134,8 @@ int unhide_object(const char *object_file, const char *framework, FILE *log,
                 // Covers a few other cases encountred now as well.
                 const char *symend = strend(symname) - 1;
                 BOOL isMutableAddressor = strcmp(symend-2, "vau") == 0 ||
-                    // Meta data and witness table accessor functions...
-                    strcmp(symend-1, "Ma") == 0 || (strcmp(symend-1, "Wl") == 0 &&
+                    // witness table accessor functions...
+                    (strcmp(symend-1, "Wl") == 0 &&
                      strncmp(symname+1, framework, isReverseInterpose) == 0);
                 BOOL isDefaultArgument = (*symend == '_' &&
                     (symend[-1] == 'A' || (isdigit(symend[-1]) &&

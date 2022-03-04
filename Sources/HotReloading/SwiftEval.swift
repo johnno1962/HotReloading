@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#25 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#27 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -555,13 +555,14 @@ public class SwiftEval: NSObject {
                     \n\(APP_PREFIX)⚠️ Loading .dylib has failed, try turning off \
                     collection of test coverage in your scheme
                     """
-            } else if error.contains("Symbol not found:") {
+            } else if error.contains("ymbol not found") {
                 error += """
                     \n\(APP_PREFIX)⚠️ Loading .dylib has failed, This is likely \
                     because Swift code being injected refers to a function \
                     with a default argument. Rebuilding and re-running your \
                     project (without a build clean) can resolve this.
                     """
+                startUnhide()
             }
             throw evalError("dlopen() error: \(error)")
         }
@@ -587,6 +588,9 @@ public class SwiftEval: NSObject {
 
             return try extractClasses(dl: dl, tmpfile: tmpfile)
         }
+    }
+
+    func startUnhide() {
     }
 
     // Overridden by SwiftInjectionEval subclass for injection

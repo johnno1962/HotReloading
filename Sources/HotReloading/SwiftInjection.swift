@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#144 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#146 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -99,6 +99,7 @@ public class SwiftInjection: NSObject {
     static let INJECTION_PRESERVE_STATICS = "INJECTION_PRESERVE_STATICS"
     static let INJECTION_SWEEP_DETAIL = "INJECTION_SWEEP_DETAIL"
     static let INJECTION_SWEEP_EXCLUDE = "INJECTION_SWEEP_EXCLUDE"
+    static let INJECTION_OF_GENERICS = "INJECTION_OF_GENERICS"
 
     static let testQueue = DispatchQueue(label: "INTestQueue")
     static let injectedSEL = #selector(SwiftInjected.injected)
@@ -195,7 +196,8 @@ public class SwiftInjection: NSObject {
         findSwiftSymbols(searchLastLoaded(), "CMa") {
             accessor, symname, _, _ in
             if let demangled = SwiftMeta.demangle(symbol: symname),
-               let genericClassName = demangled[safe: (.last(of: " ")+1)...] {
+               let genericClassName = demangled[safe: (.last(of: " ")+1)...],
+               !genericClassName.hasPrefix("__C.") {
                 injectedGenerics.insert(genericClassName)
             }
         }
@@ -292,7 +294,8 @@ public class SwiftInjection: NSObject {
                 RunLoop.main.add(timer, forMode: RunLoop.Mode.common)
             }
         } else {
-            performSweep(oldClasses: oldClasses, tmpfile, injectedGenerics)
+            performSweep(oldClasses: oldClasses, tmpfile,
+                getenv(INJECTION_OF_GENERICS) != nil ? injectedGenerics : [])
 
             NotificationCenter.default.post(name: notification, object: oldClasses)
         }

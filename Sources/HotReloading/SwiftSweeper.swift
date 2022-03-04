@@ -7,7 +7,7 @@
 //  instance of classes that have been injected in order
 //  to be able to send them the @objc injected message.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#10 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#11 $
 //
 
 import Foundation
@@ -75,6 +75,7 @@ extension SwiftInjection {
 
         // implement -injected() method using sweep of objects in application
         if !injectedClasses.isEmpty || !injectedGenerics.isEmpty {
+            log("Starting sweep \(injectedClasses), \(injectedGenerics)...")
             #if os(iOS) || os(tvOS)
             let app = UIApplication.shared
             #else

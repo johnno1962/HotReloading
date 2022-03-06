@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#32 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#33 $
 //
 
 #import <Foundation/Foundation.h>
@@ -54,6 +54,16 @@ int unhide_symbols(const char *framework, const char *linkFileList, FILE *log, t
     return totalExported;
 }
 
+/// Unhiding is where symbols with "private extenal" visibility
+/// are exported so they will be available when a dynamic
+/// library is loaded. This was originally encountered for
+/// default argument generators but can also be useful
+/// for the addressors of private top level and static vars.
+/// @param object_file Path to object file
+/// @param framework Name of image containing object file
+/// @param log FILE * to log to
+/// @param class_references return references to objective-c classes so they can be fixed up.
+/// @param descriptor_refs return local varibles prefixed with l_got. that need to be fixed up.
 int unhide_object(const char *object_file, const char *framework, FILE *log,
                   NSMutableArray<NSString *> *class_references,
                   NSMutableArray<NSString *> *descriptor_refs) {
@@ -325,6 +335,16 @@ extern "C" {
     typedef NSString *_Nonnull (*describeImageInfo_t)(const Dl_info *_Nonnull info);
 }
 
+/**
+ The last piece of the injecting SwiftUI on a device puzzle.
+ Symbolic references are a stream of bytes used to specify
+ a complex type. They contain a relative pointer to the moninal
+ type information of the component types which we need to switch
+ from that newly injected to the original in the app executable.
+ This is becuase when we don't use the dynamic linker it seems
+ injected type information is not proberly initialised.
+ @param image Pointer to pseudo image
+ */
 void reverse_symbolics(const void *image) {
     #if TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
     BOOL debug = FALSE;

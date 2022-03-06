@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#33 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#34 $
 //
 //  Shared definitions between server and client.
 //
@@ -119,6 +119,7 @@ typedef NS_ENUM(int, InjectionResponse) {
     InjectionExit = ~0
 };
 
+// defined in Unhide.mm
 extern int unhide_symbols(const char *framework, const char *linkFileList, FILE *log, time_t since);
 extern int unhide_object(const char *object_file, const char *framework, FILE *log,
                          NSMutableArray<NSString *> *class_references,

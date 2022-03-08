@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#35 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#36 $
 //
 
 import Cocoa
@@ -136,25 +136,6 @@ public class InjectionServer: SimpleSocket {
         appDelegate.lastConnection = self
         pending = []
 
-        let appBundle = URL(fileURLWithPath: builder.frameworks)
-            .deletingLastPathComponent()
-        let appModule = appBundle.deletingPathExtension()
-            .lastPathComponent.replacingOccurrences(of: " ", with: "_")
-        let appPrefix = "$s\(appModule.count)\(appModule)"
-        builder.unhider = { object_file in
-            let logfile = "/tmp/unhide_object.log"
-            if let log = fopen(logfile, "w") {
-                setbuf(log, nil)
-                self.objcClassRefs.removeAllObjects()
-                self.descriptorRefs.removeAllObjects()
-                unhide_object(object_file, appPrefix, log,
-                              self.objcClassRefs, self.descriptorRefs)
-                self.log("Unhidden: \(object_file) -- \(appPrefix) -- \(self.objcClassRefs)")
-            } else {
-                self.log("Could not log to \(logfile)")
-            }
-        }
-
         var lastInjected = projectInjected[projectFile]
         if lastInjected == nil {
             lastInjected = [String: Double]()
@@ -175,6 +156,23 @@ public class InjectionServer: SimpleSocket {
                     mtime(source) > executableBuild {
                     recompileAndInject(source: source)
                 }
+            }
+        }
+
+        let appModule = URL(fileURLWithPath: executable)
+            .lastPathComponent.replacingOccurrences(of: " ", with: "_")
+        let appPrefix = "$s\(appModule.count)\(appModule)"
+        builder.unhider = { object_file in
+            let logfile = "/tmp/unhide_object.log"
+            if let log = fopen(logfile, "w") {
+                setbuf(log, nil)
+                self.objcClassRefs.removeAllObjects()
+                self.descriptorRefs.removeAllObjects()
+                unhide_object(object_file, appPrefix, log,
+                              self.objcClassRefs, self.descriptorRefs)
+                self.log("Unhidden: \(object_file) -- \(appPrefix) -- \(self.objcClassRefs)")
+            } else {
+                self.log("Could not log to \(logfile)")
             }
         }
 
@@ -304,6 +302,8 @@ public class InjectionServer: SimpleSocket {
                 appDelegate.setMenuIcon(.error)
                 log("Injection error: \(readString() ?? "Uknown")")
                 break;
+            case .legacyUnhide:
+                builder.legacyUnhide = readString() == "1"
             default:
                 break
             }

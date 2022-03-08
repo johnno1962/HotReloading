@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#146 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#148 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -100,6 +100,7 @@ public class SwiftInjection: NSObject {
     static let INJECTION_SWEEP_DETAIL = "INJECTION_SWEEP_DETAIL"
     static let INJECTION_SWEEP_EXCLUDE = "INJECTION_SWEEP_EXCLUDE"
     static let INJECTION_OF_GENERICS = "INJECTION_OF_GENERICS"
+    static let INJECTION_UNHIDE = "INJECTION_UNHIDE"
 
     static let testQueue = DispatchQueue(label: "INTestQueue")
     static let injectedSEL = #selector(SwiftInjected.injected)

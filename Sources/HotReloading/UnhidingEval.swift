@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#12 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#14 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -57,6 +57,9 @@ public class UnhidingEval: SwiftEval {
             try super.determineEnvironment(classNameOrFile: classNameOrFile)
         buildDir = logs.deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Build")
+        if legacyUnhide {
+            startUnhide()
+        }
         return (project, logs)
     }
 

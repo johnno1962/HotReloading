@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#148 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#149 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -449,8 +449,9 @@ public class SwiftInjection: NSObject {
             (symname, slotIndex, vtableSlot, stop) in
             let existing: UnsafeMutableRawPointer = autoBitCast(vtableSlot.pointee)
             guard let replacement = fast_dlsym(lastLoadedImage(), symname) ??
-                    dlsym(SwiftMeta.RTLD_DEFAULT, symname).flatMap({
-                        autoBitCast(SwiftTrace.interposed(replacee: $0))}) else {
+                    (dlsym(SwiftMeta.RTLD_DEFAULT, symname) ??
+                     findSwiftSymbol(searchBundleImages(), symname, .any)).flatMap({
+                    autoBitCast(SwiftTrace.interposed(replacee: $0)) }) else {
                 log("⚠️ Class patching failed to lookup " +
                     describeImageSymbol(symname))
                 return
@@ -656,7 +657,8 @@ public class SwiftInjection: NSObject {
            symname: symname, objcMethod: objcMethod, objcClass: objcClass)
 
         // injecting getters returning generics best avoided for some reason.
-        if let getted = name?[safe: .last(of: ".getter : ", end: true)...] {
+        if let getted = (name ?? symname?.demangled)?[
+            safe: .last(of: ".getter : ", end: true)...] {
             if getted.hasSuffix(">") { return }
             if let type = SwiftMeta.lookupType(named: getted),
                inheritedGeneric(anyType: type) {
@@ -782,9 +784,11 @@ public class SwiftInjection: NSObject {
             }
         }
         #endif
-        filterImageSymbols(ST_LAST_IMAGE, .global, SwiftTrace.injectableSymbol) {
+        filterImageSymbols(ST_LAST_IMAGE, .any, SwiftTrace.injectableSymbol) {
                 (loadedFunc, symbol, _, _) in
-                guard let existing = dlsym(main, symbol), existing != loadedFunc/*,
+                guard let existing = dlsym(main, symbol) ??
+                        findSwiftSymbol(searchBundleImages(), symbol, .any),
+                      existing != loadedFunc/*,
                     let current = SwiftTrace.interposed(replacee: existing)*/ else {
                     return
                 }
@@ -911,7 +915,7 @@ public class SwiftInjection: NSObject {
         return swizzled
     }
 
-    static func injection(swizzle oldClass: AnyClass, tmpfile: String) -> Int {
+    open class func injection(swizzle oldClass: AnyClass, tmpfile: String) -> Int {
         var methodCount: UInt32 = 0, swizzled = 0
         if let methods = class_copyMethodList(oldClass, &methodCount) {
             for i in 0 ..< Int(methodCount) {

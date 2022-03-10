@@ -7,7 +7,7 @@
 //  instance of classes that have been injected in order
 //  to be able to send them the @objc injected message.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#11 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#12 $
 //
 
 import Foundation
@@ -111,7 +111,7 @@ extension SwiftInjection {
 
 }
 
-class SwiftSweeper: NSObject {
+class SwiftSweeper {
 
     static var current: SwiftSweeper?
 
@@ -120,7 +120,6 @@ class SwiftSweeper: NSObject {
 
     init(instanceTask: @escaping (AnyObject) -> Void) {
         self.instanceTask = instanceTask
-        super.init()
         SwiftSweeper.current = self
     }
 

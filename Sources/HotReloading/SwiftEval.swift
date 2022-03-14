@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#31 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#32 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -169,6 +169,7 @@ public class SwiftEval: NSObject {
     #endif
 
     var legacyUnhide = false
+    var forceUnhide = {}
     var unhider: ((String) -> Void)?
     var linkerOptions = ""
 
@@ -563,7 +564,7 @@ public class SwiftEval: NSObject {
                     with a default argument. Rebuilding and re-running your \
                     project (without a build clean) can resolve this.
                     """
-                startUnhide()
+                forceUnhide()
             }
             throw evalError("dlopen() error: \(error)")
         }

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#36 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#37 $
 //
 
 import Cocoa
@@ -304,6 +304,8 @@ public class InjectionServer: SimpleSocket {
                 break;
             case .legacyUnhide:
                 builder.legacyUnhide = readString() == "1"
+            case .forceUnhide:
+                builder.startUnhide()
             default:
                 break
             }

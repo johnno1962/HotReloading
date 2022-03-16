@@ -1,44 +1,43 @@
 # Yes, HotReloading for Swift, Objective-C & C++!
 
-The [InjectionIII](https://github.com/johnno1962/InjectionIII) app
+This project is the [InjectionIII](https://github.com/johnno1962/InjectionIII) app
 for live code updates available as a Swift Package. i.e.:
 
 ![Icon](http://johnholdsworth.com/HotAdding.png)
 
-Then you can do this ...
+Then, you can inject function implementations witout having to rebuild your app...
 ![Icon](http://johnholdsworth.com/HotReloading.png)
 
 To try out an example project that is already set-up, clone this fork of
 [SwiftUI-Kit](https://github.com/johnno1962/SwiftUI-Kit).
 
-To use on your project, add this repo as a Swift Package to your project and add
-the following `"Run Script"`  `"Build Phase`" to run the HotReloading daemon:
+To use on your project, simply add this repo as a Swift Package and rebuild.
+You no longer need to add a "Run Script" build phase unless you want to inject 
+on a device, in which case add the following to start the Injection daemon. 
 
 ```
 if [ -d $SYMROOT/../../SourcePackages ]; then
     $SYMROOT/../../SourcePackages/checkouts/HotReloading/start_daemon.sh
-elif [ -d "$SYMROOT"/../../../../../SourcePackages ]; then
-    "$SYMROOT"/../../../../../SourcePackages/checkouts/HotReloading/fix_previews.sh
 fi
 ```
 
+***Remember to never release your app with this package configured.**
+
 You should see a message that the app has connected and which
-directories it is watching for source file changes. The daemon also
+directories it is watching for source file changes. It you run the daemon it
 has an icon on the menu bar you can use to access features such as tracing
-and remote control. This script also patches your project slightly to add the 
-required `"-Xlinker -interposable"` "Other Linker Flags" so you will
+and remote control and it patches your project slightly to add the 
+required `"-Xlinker -interposable"` "Other Linker Flags" so you may
 have to run the project a second time after adding the `HotReloading`
-package and the script build phase for hot reloading to start working.
+package for hot reloading to start working. If you choose to run 
+the daemon in the simulator, add the environment  variable 
+`INJECTION_DAEMON` to your scheme to have the app connect.
 
 Consult the README of the [InjectionIII](https://github.com/johnno1962/InjectionIII)
 project for more information in particular how to use it to inject `SwiftUI` using the
 [HotSwiftUI](https://github.com/johnno1962/HotSwiftUI) protocol extension. It's
 the same code but you no longer need to download or run the app and the project
 is selected automatically.
-
-If you want to work on the hot reloading code, clone this repo and drag
-its directory into your project in Xcode and it will take the place of the
-configured HotReloading Swift Package when you build your app.
 
 ### Device Injection
 
@@ -68,9 +67,7 @@ Likewise, at the Mac end as the HotReloading daemon needs to open
 a network port to accept this connection you may be prompted for
 permission if you have the macOS firewall turned on.
 
-In testing it's been performing well but one problem I did encounter was 
-using SwiftUI where you inject two structs conforming to View in the same 
-file which may crash. If you avoid this however and use the conventions 
+For `SwifuUI` you avoid this however and follow the conventions 
 outlined in the [HotSwiftUI](https://github.com/johnno1962/HotSwiftUI) 
 project you can experience interactive screen updates something like
 "Xcode Previews", except for a fully functional app on an actual device!
@@ -114,4 +111,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2022/02/25 $
+$Date: 2022/03/16 $

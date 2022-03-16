@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#32 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#35 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -174,7 +174,7 @@ public class SwiftEval: NSObject {
     var linkerOptions = ""
 
     /// Additional logging to /tmp/hot\_reloading.log for "HotReloading" version of injection.
-    func HRLog(_ what: Any...) {
+    var HRLog = { (what: Any...) in
         #if SWIFT_PACKAGE
         NSLog("\(APP_PREFIX)***** %@", what.map {"\($0)"}.joined(separator: " "))
         #endif
@@ -237,11 +237,12 @@ public class SwiftEval: NSObject {
         }
         HRLog("DerivedData:", derivedData.path)
         guard let (projectFile, logsDir) =
-//            self.derivedLogs
-//                .flatMap({ (URL(fileURLWithPath: self.projectFile!), URL(fileURLWithPath: $0)) }) ??
-                self.projectFile
+                derivedLogs.flatMap({
+                    (URL(fileURLWithPath: projectFile ?? "/tmp/x.xcodeproj"),
+                     URL(fileURLWithPath: $0)) }) ??
+                projectFile
                     .flatMap({ logsDir(project: URL(fileURLWithPath: $0), derivedData: derivedData) })
-                    .flatMap({ (URL(fileURLWithPath: self.projectFile!), $0) }) ??
+                    .flatMap({ (URL(fileURLWithPath: projectFile!), $0) }) ??
                 findProject(for: sourceURL, derivedData: derivedData) else {
                     throw evalError("""
                         Could not locate containing project or it's logs.
@@ -355,6 +356,7 @@ public class SwiftEval: NSObject {
                 1. Injection does not work with Whole Module Optimization.
                 2. There are restrictions on characters allowed in paths.
                 3. File paths in the simulator are case sensitive.
+                4. The modified source file is not in the current project.
                 Try a build clean then rebuild to make logs available or
                 consult: "\(cmdfile)".
                 """)

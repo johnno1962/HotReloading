@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 08/03/2015.
 //  Copyright (c) 2015 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#2 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#3 $
 //
 //  Simple abstraction to watch files under a driectory.
 //
@@ -136,5 +136,5 @@ let kFSEventStreamCreateFlagUseCFTypes: FSEventStreamCreateFlags = 1
 let kFSEventStreamCreateFlagFileEvents: FSEventStreamCreateFlags = 16
 let kFSEventStreamEventFlagItemRenamed = 0x00000800
 let kFSEventStreamEventFlagItemModified = 0x00001000
-var watcher: FileWatcher!
+fileprivate var watcher: FileWatcher!
 #endif

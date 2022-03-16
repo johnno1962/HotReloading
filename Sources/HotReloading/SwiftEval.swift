@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#33 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#34 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -356,7 +356,7 @@ public class SwiftEval: NSObject {
                 1. Injection does not work with Whole Module Optimization.
                 2. There are restrictions on characters allowed in paths.
                 3. File paths in the simulator are case sensitive.
-                4. The modeified source file is not in your project.
+                4. The modeified source file is not in the current project.
                 Try a build clean then rebuild to make logs available or
                 consult: "\(cmdfile)".
                 """)

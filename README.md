@@ -5,7 +5,7 @@ for live code updates available as a Swift Package. i.e.:
 
 ![Icon](http://johnholdsworth.com/HotAdding.png)
 
-Then, you can inject function implementations witout having to rebuild your app...
+Then, you can inject function implementations without having to rebuild your app...
 ![Icon](http://johnholdsworth.com/HotReloading.png)
 
 To try out an example project that is already set-up, clone this fork of
@@ -21,17 +21,19 @@ if [ -d $SYMROOT/../../SourcePackages ]; then
 fi
 ```
 
-***Remember to never release your app with this package configured.**
+***Remember not to release your app with this package configured.**
 
 You should see a message that the app has connected and which
-directories it is watching for source file changes. It you run the daemon it
-has an icon on the menu bar you can use to access features such as tracing
-and remote control and it patches your project slightly to add the 
-required `"-Xlinker -interposable"` "Other Linker Flags" so you may
-have to run the project a second time after adding the `HotReloading`
-package for hot reloading to start working. If you choose to run 
-the daemon in the simulator, add the environment  variable 
-`INJECTION_DAEMON` to your scheme to have the app connect.
+directories it is watching for source file changes. You can add to
+these by using comma separated list in the environment variable
+`INJECTION_DIRECTORIES`. It you run the daemon it presents an icon
+on the menu bar you can use to access features such as tracing and
+[remote control](https://github.com/johnno1962/Remote). The daemon also
+patches your project slightly to add the required `"-Xlinker -interposable"`
+"Other Linker Flags" so you may have to run the project a second time after
+adding the  `HotReloading` package. If
+you choose to run the daemon when using the simulator, add the environment
+variable `INJECTION_DAEMON` to your scheme to have your app connect.
 
 Consult the README of the [InjectionIII](https://github.com/johnno1962/InjectionIII)
 project for more information in particular how to use it to inject `SwiftUI` using the
@@ -57,7 +59,7 @@ more than using HotReloading in the simulator. In particular, if injected
 code crashes, the debugger will not display the line number but an address
 under the symbol  "injected_code" instead. If you get stuck, use an 
 `@_exported import HotReloading` in a source file and you should be 
-able to type `p HotReloading.stack` to at least get a stack trace.
+able to type `p HotReloading.stack` to get a stack trace.
 
 Also note that, as the HotReloading package needs to connect a socket
 to your Mac to receive commands and new versions of code, expect a
@@ -67,9 +69,9 @@ Likewise, at the Mac end as the HotReloading daemon needs to open
 a network port to accept this connection you may be prompted for
 permission if you have the macOS firewall turned on.
 
-For `SwifuUI` you avoid this however and follow the conventions 
+For `SwifuUI` you can force screen updates by following the conventions 
 outlined in the [HotSwiftUI](https://github.com/johnno1962/HotSwiftUI) 
-project you can experience interactive screen updates something like
+project then you can experience something like
 "Xcode Previews", except for a fully functional app on an actual device!
 
 ### Vapour injection

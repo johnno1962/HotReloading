@@ -21,7 +21,7 @@ if [ -d $SYMROOT/../../SourcePackages ]; then
 fi
 ```
 
-***Remember not to release your app with this package configured.**
+***Remember not to release your app with this package configured.***
 
 You should see a message that the app has connected and which
 directories it is watching for source file changes. You can add to

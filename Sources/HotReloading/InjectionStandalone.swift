@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionStandalone.swift#4 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionStandalone.swift#8 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -35,7 +35,7 @@ class InjectionStandalone: InjectionClient {
 
         SwiftInjection.traceInjection = getenv("INJECTION_TRACE") != nil
 
-        if let home = builder.derivedLogs?[#"/Users/[^/]+"#] as String? {
+        if let home = NSHomeDirectory()[#"/Users/[^/]+"#] as String? {
             var dirs = [home]
             if let extra = getenv("INJECTION_DIRECTORIES") {
                 dirs += String(cString: extra).components(separatedBy: ",")
@@ -52,7 +52,9 @@ class InjectionStandalone: InjectionClient {
                     }
                 }))
             }
-            print(APP_PREFIX+"HotReloading available for sources under \(dirs)")
+            log("HotReloading available for sources under \(dirs)")
+        } else {
+            log("⚠️ HotReloading could not parse home directory.")
         }
     }
 }

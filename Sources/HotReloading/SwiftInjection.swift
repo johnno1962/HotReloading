@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#149 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#156 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -325,7 +325,7 @@ public class SwiftInjection: NSObject {
             log("Interposed \(interposed.count) function references.")
         }
 
-        #if !targetEnvironment(simulator)
+        #if !targetEnvironment(simulator) && !os(macOS)
         if let pseudoImage = lastPseudoImage() {
             onDeviceSpecificProcessing(for: pseudoImage)
         }
@@ -472,91 +472,6 @@ public class SwiftInjection: NSObject {
         return patched
     }
 
-    #if !targetEnvironment(simulator)
-    /// Emulate remaining functions of the dynamic linker.
-    /// - Parameter pseudoImage: last "loaded" image
-    open class func onDeviceSpecificProcessing(for pseudoImage:
-                                               UnsafePointer<mach_header>) {
-        // register types, protocols, conformances...
-        var section_size: UInt64 = 0
-        for (section, regsiter) in [
-            ("types",  "swift_registerTypeMetadataRecords"),
-            ("protos", "swift_registerProtocols"),
-            ("proto",  "swift_registerProtocolConformances")] {
-            if let section_start =
-                getsectdatafromheader_64(autoBitCast(pseudoImage),
-                     SEG_TEXT, "__swift5_"+section, &section_size),
-               section_size != 0, let call: @convention(c)
-                (UnsafeRawPointer, UnsafeRawPointer) -> Void =
-                autoBitCast(dlsym(SwiftMeta.RTLD_DEFAULT, regsiter)) {
-                call(section_start, section_start+Int(section_size))
-            }
-        }
-        // Redirect symbolic type references to main bundle
-        reverse_symbolics(pseudoImage)
-        // Fixup references to Objective-C classes
-        fixupObjcClassReferences(in: pseudoImage)
-        // Populate "l_got.*" descriptor references
-        bindDescriptorReferences(in: pseudoImage)
-    }
-
-    /// Fixup references to Objective-C classes on device
-    open class func fixupObjcClassReferences(in pseudoImage:
-                                             UnsafePointer<mach_header>) {
-        var typeref_size: UInt64 = 0
-        if var refs = objcClassRefs, refs[0] != "",
-           let typeref_start = getsectdatafromheader_64(autoBitCast(pseudoImage),
-                                    SEG_DATA, "__objc_classrefs", &typeref_size) {
-            let classRefPtr:
-                UnsafeMutablePointer<AnyClass?> = autoBitCast(typeref_start)
-            let nClassRefs = Int(typeref_size)/MemoryLayout<AnyClass>.size
-            if nClassRefs == refs.count {
-                for i in 0 ..< nClassRefs {
-                    let classSymbol = "OBJC_CLASS_$_"+refs.removeFirst()
-                    if let classRef = dlsym(SwiftMeta.RTLD_DEFAULT, classSymbol) {
-                        classRefPtr[i] = autoBitCast(classRef)
-                    } else {
-                        log("⚠️ Could not lookup class reference \(classSymbol)")
-                    }
-                }
-            } else {
-                log("⚠️ Number of class refs \(nClassRefs) does not equal \(refs)")
-            }
-        }
-    }
-
-    /// Populate "l_got.*" external references to "descriptors"
-    /// - Parameter pseudoImage: lastLoadedImage
-    open class func bindDescriptorReferences(in pseudoImage:
-                                             UnsafePointer<mach_header>) {
-        if let descriptorSyms = descriptorRefs, descriptorSyms[0] != "" {
-            var forces: UnsafeRawPointer?
-            let forcePrefix = "__swift_FORCE_LOAD_$_"
-            let forcePrefixLen = strlen(forcePrefix)
-            fast_dlscan(pseudoImage, .any, { symname in
-                return strncmp(symname, forcePrefix, forcePrefixLen) == 0
-            }) { value, symname, _, _ in
-                forces = value
-            }
-
-            if var descriptorRefs:
-                UnsafeMutablePointer<UnsafeMutableRawPointer?> = autoBitCast(forces) {
-                for descriptorSym in descriptorSyms {
-                    descriptorRefs = descriptorRefs.advanced(by: 1)
-                    if let value = dlsym(SwiftMeta.RTLD_DEFAULT, descriptorSym),
-                       descriptorRefs.pointee == nil {
-                        descriptorRefs.pointee = value
-                    } else {
-                        log("⚠️ Could not bind " + describeImageSymbol(descriptorSym))
-                    }
-                }
-            } else {
-                log("⚠️ Could not locate descriptors section")
-            }
-        }
-    }
-    #endif
-
     /// Support for re-initialising "The Composable Architecture", "Reducer"
     /// variables declared at the top level. Requires custom version of TCA:
     /// https://github.com/thebrowsercompany/swift-composable-architecture/tree/develop
@@ -657,8 +572,7 @@ public class SwiftInjection: NSObject {
            symname: symname, objcMethod: objcMethod, objcClass: objcClass)
 
         // injecting getters returning generics best avoided for some reason.
-        if let getted = (name ?? symname?.demangled)?[
-            safe: .last(of: ".getter : ", end: true)...] {
+        if let getted = name?[safe: .last(of: ".getter : ", end: true)...] {
             if getted.hasSuffix(">") { return }
             if let type = SwiftMeta.lookupType(named: getted),
                inheritedGeneric(anyType: type) {
@@ -670,16 +584,7 @@ public class SwiftInjection: NSObject {
         }
     }
 
-    /// Fallback to make sure at least the @objc func injected() and viewDidLoad() methods are swizzled
-    open class func swizzleBasics(oldClass: AnyClass, tmpfile: String) -> Int {
-        var swizzled = swizzle(oldClass: oldClass, selector: injectedSEL, tmpfile)
-        #if os(iOS) || os(tvOS)
-        swizzled += swizzle(oldClass: oldClass, selector: viewDidLoadSEL, tmpfile)
-        #endif
-        return swizzled
-    }
-
-    /// Resolve a function or trampoline back to name of original symbol
+    /// Resolve a perhaps traced function back to name of original symbol
     open class func originalSym(for existing: UnsafeMutableRawPointer) -> SymbolName? {
         var info = Dl_info()
         if fast_dladdr(existing, &info) != 0 {
@@ -689,32 +594,6 @@ public class SwiftInjection: NSObject {
             return info.dli_sname
         }
         return nil
-    }
-
-    /// Swizzle the newly loaded implementation of a selector onto oldClass
-    open class func swizzle(oldClass: AnyClass, selector: Selector,
-                            _ tmpfile: String) -> Int {
-        var swizzled = 0
-        if let method = class_getInstanceMethod(oldClass, selector),
-            let existing = unsafeBitCast(method_getImplementation(method),
-                                         to: UnsafeMutableRawPointer?.self),
-            let selsym = originalSym(for: existing) {
-            if let replacement = fast_dlsym(lastLoadedImage(), selsym) {
-                traceAndReplace(existing, replacement: replacement,
-                                objcMethod: method, objcClass: oldClass) {
-                    (replacement: IMP) -> String? in
-                    if class_replaceMethod(oldClass, selector, replacement,
-                                           method_getTypeEncoding(method)) != nil {
-                        swizzled += 1
-                        return "Swizzled "+describeImageSymbol(selsym)
-                    }
-                    return nil
-                }
-            } else {
-                detail("⚠️ Swizzle failed "+describeImageSymbol(selsym))
-            }
-        }
-        return swizzled
     }
 
     /// If class is a generic, patch its specialised vtable and basic selectors
@@ -886,46 +765,6 @@ public class SwiftInjection: NSObject {
         }
     }
     #endif
-
-    static func injection(swizzle newClass: AnyClass?, onto oldClass: AnyClass?) -> Int {
-        var methodCount: UInt32 = 0, swizzled = 0
-        if let methods = class_copyMethodList(newClass, &methodCount) {
-            for i in 0 ..< Int(methodCount) {
-                let selector = method_getName(methods[i])
-                let replacement = method_getImplementation(methods[i])
-                guard let method = class_getInstanceMethod(oldClass, selector),
-                      let existing = i < 0 ? nil : method_getImplementation(method),
-                   replacement != existing else {
-                    continue
-                }
-                traceAndReplace(existing, replacement: autoBitCast(replacement),
-                                objcMethod: methods[i], objcClass: newClass) {
-                    (replacement: IMP) -> String? in
-                    if class_replaceMethod(oldClass, selector, replacement,
-                        method_getTypeEncoding(methods[i])) != nil {
-                        swizzled += 1
-                        let which = class_isMetaClass(oldClass) ? "+" : "-"
-                        return "Sizzled \(which)[\(_typeName(oldClass!)) \(selector)]"
-                    }
-                    return nil
-                }
-            }
-            free(methods)
-        }
-        return swizzled
-    }
-
-    open class func injection(swizzle oldClass: AnyClass, tmpfile: String) -> Int {
-        var methodCount: UInt32 = 0, swizzled = 0
-        if let methods = class_copyMethodList(oldClass, &methodCount) {
-            for i in 0 ..< Int(methodCount) {
-                swizzled += swizzle(oldClass: oldClass,
-                    selector: method_getName(methods[i]), tmpfile)
-            }
-            free(methods)
-        }
-        return swizzled
-    }
 
     @objc open class func dumpStats(top: Int) {
         let invocationCounts =  SwiftTrace.invocationCounts()

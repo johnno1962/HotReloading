@@ -30,9 +30,9 @@ these by using comma separated list in the environment variable
 on the menu bar you can use to access features such as tracing and
 [remote control](https://github.com/johnno1962/Remote). The daemon also
 patches your project slightly to add the required `"-Xlinker -interposable"`
-"Other Linker Flags" so you may have to run the project a second time after
-adding the  `HotReloading` package. If
-you choose to run the daemon when using the simulator, add the environment
+"Other Linker Flags" for injecting the methods of structs so you may have
+to run the project a second time after adding the `HotReloading` package. 
+If you choose to run the daemon when using the simulator, add the environment
 variable `INJECTION_DAEMON` to your scheme to have your app connect.
 
 Consult the README of the [InjectionIII](https://github.com/johnno1962/InjectionIII)
@@ -74,9 +74,9 @@ outlined in the [HotSwiftUI](https://github.com/johnno1962/HotSwiftUI)
 project then you can experience something like
 "Xcode Previews", except for a fully functional app on an actual device!
 
-### Vapour injection
+### Vapor injection
 
-To use injection with Vapour web server, add this Swift package as a
+To use injection with Vapor web server, add this Swift package as a
 dependency to its Package.swift and as dependency of the "App" target
 then run vapour from inside Xcode. It will ask you to run a script to start
 the associated daemon processes which watches for source file changes
@@ -113,4 +113,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2022/03/16 $
+$Date: 2022/03/17 $

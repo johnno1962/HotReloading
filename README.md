@@ -24,7 +24,7 @@ fi
 ***Remember not to release your app with this package configured.***
 
 You should see a message that the app has connected and which
-directories it is watching for source file changes. You can add to
+directories it is watching for source file changes. You can change
 these by using comma separated list in the environment variable
 `INJECTION_DIRECTORIES`. It you run the daemon it presents an icon
 on the menu bar you can use to access features such as tracing and
@@ -46,14 +46,14 @@ is selected automatically.
 This version of the HotReloading project and it's dependencies now support
 injection on a real iOS or tvOS device. It's early days and this version
 should still be considered beta software. The binary framework from
-the InjectionScratch repo that makes this possible is time limited for 
-now to expire on April 13th 2022 until I find a more reasonable licensing 
+the InjectionScratch repo that makes this possible is time limited for now 
+to expire on September 15th 2022 until I find a more sustainable licensing 
 solution should people find it useful. If your device doesn't connect, 
 clone this project and configure your mac's WiFi IP address into the 
 `hostname` variable in Package.swift. Then drag the clone onto your 
 project to have it take the place of the configured Swift Package.
 
-As Swift plays its cards pretty close to its chest it's not possible
+As Swift plays its cards pretty close to its chest it's not quite possible
 to initialise type meta data entirely correctly so your milage may vary
 more than using HotReloading in the simulator. In particular, if injected
 code crashes, the debugger will not display the line number but an address
@@ -61,18 +61,18 @@ under the symbol  "injected_code" instead. If you get stuck, use an
 `@_exported import HotReloading` in a source file and you should be 
 able to type `p HotReloading.stack` to get a stack trace.
 
-Also note that, as the HotReloading package needs to connect a socket
-to your Mac to receive commands and new versions of code, expect a
-message the first time you run your app after adding the package
+Also note that, as the HotReloading package needs to connect a network
+socket to your Mac to receive commands and new versions of code, expect
+a message the first time you run your app after adding the package
 asking you to "Trust" that your app should be allowed to do this.
-Likewise, at the Mac end as the HotReloading daemon needs to open
-a network port to accept this connection you may be prompted for
+Likewise, at the Mac end (as the HotReloading daemon needs to open
+a network port to accept this connection) you may be prompted for
 permission if you have the macOS firewall turned on.
 
 For `SwifuUI` you can force screen updates by following the conventions 
 outlined in the [HotSwiftUI](https://github.com/johnno1962/HotSwiftUI) 
-project then you can experience something like
-"Xcode Previews", except for a fully functional app on an actual device!
+project then you can experience something like "Xcode Previews", except 
+for a fully functional app on an actual device!
 
 ### Vapor injection
 
@@ -81,10 +81,10 @@ dependency to its Package.swift and as dependency of the "App" target
 then run vapour from inside Xcode. It will ask you to run a script to start
 the associated daemon processes which watches for source file changes
 from inside project directory. It's not possible to inject closures that have
-already been registered with routes but if you delegate their implementation
-to the method of a class it can be injected. If you want to delegate to a top
-level method or the method of a struct you'll need to add the following to
-the executable target to enable "interposing":
+already been registered with routes however but if you delegate their 
+implementation to the method of a class it can be injected. If you want to 
+delegate to a top level function or the method of a struct you'll need to 
+add the following to the executable target to enable "interposing":
 
 ```
     , linkerSettings: [
@@ -113,4 +113,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2022/03/17 $
+$Date: 2022/03/19 $

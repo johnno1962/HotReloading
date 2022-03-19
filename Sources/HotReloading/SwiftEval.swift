@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#35 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#39 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -238,7 +238,8 @@ public class SwiftEval: NSObject {
         HRLog("DerivedData:", derivedData.path)
         guard let (projectFile, logsDir) =
                 derivedLogs.flatMap({
-                    (URL(fileURLWithPath: projectFile ?? "/tmp/x.xcodeproj"),
+                    (findProject(for: sourceURL, derivedData:derivedData)?
+                        .projectFile ?? URL(fileURLWithPath: "/tmp/x.xcodeproj"),
                      URL(fileURLWithPath: $0)) }) ??
                 projectFile
                     .flatMap({ logsDir(project: URL(fileURLWithPath: $0), derivedData: derivedData) })
@@ -249,6 +250,15 @@ public class SwiftEval: NSObject {
                         For a macOS app you need to turn off the App Sandbox.
                         Have you customised the DerivedData path?
                         """)
+        }
+
+        if false == (try? String(contentsOf: projectFile
+            .appendingPathComponent("project.pbxproj")))?.contains("-interposable") {
+            print(APP_PREFIX+"""
+                ⚠️ Project file does not contain the -interposable linker flag. \
+                If you want to be able to inject methods of structs and final classes, \
+                please add \"Other Linker Flags\" -Xlinker -interposable.
+                """)
         }
 
         return (projectFile, logsDir)
@@ -696,10 +706,14 @@ public class SwiftEval: NSObject {
             cd "\(logsDir.path.escaping("$"))" &&
             for log in `ls -t *.xcactivitylog`; do
                 #echo "Scanning $log"
-                /usr/bin/env perl "\(tmpfile).pl" "$log" >"\(tmpfile).sh" && exit 0
+                /usr/bin/env perl "\(tmpfile).pl" "$log" >"\(tmpfile).sh" 2>"\(tmpfile).err" && exit 0
             done
             exit 1;
             """) else {
+            if let log = try? String(contentsOfFile: "\(tmpfile).err"),
+               log.contains("error") {
+                throw evalError(log)
+            }
             return nil
         }
 

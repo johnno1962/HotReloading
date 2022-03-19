@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#156 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#157 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -325,7 +325,7 @@ public class SwiftInjection: NSObject {
             log("Interposed \(interposed.count) function references.")
         }
 
-        #if !targetEnvironment(simulator) && !os(macOS)
+        #if !targetEnvironment(simulator) && SWIFT_PACKAGE
         if let pseudoImage = lastPseudoImage() {
             onDeviceSpecificProcessing(for: pseudoImage)
         }

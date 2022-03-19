@@ -2,7 +2,7 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
 //  Repo: https://github.com/johnno1962/HotReloading
-//  $Id: //depot/HotReloading/Package.swift#126 $
+//  $Id: //depot/HotReloading/Package.swift#128 $
 //
 
 import PackageDescription
@@ -29,7 +29,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/johnno1962/SwiftTrace",
-                 .upToNextMinor(from: "8.2.5")),
+                 .upToNextMinor(from: "8.2.6")),
         .package(name: "SwiftRegex",
                  url: "https://github.com/johnno1962/SwiftRegex5",
                  .upToNextMinor(from: "5.2.1")),
@@ -46,7 +46,7 @@ let package = Package(
         // have to find a sustainable licensing mechanism.
         // It should still work fine with the simulator.
         .package(url: "https://github.com/johnno1962/InjectionScratch",
-                 .upToNextMinor(from: "1.2.8")),
+                 .upToNextMinor(from: "1.2.9")),
     ],
     targets: [
         .target(name: "HotReloading", dependencies: ["HotReloadingGuts",

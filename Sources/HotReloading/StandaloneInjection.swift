@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionStandalone.swift#14 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#1 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -20,9 +20,10 @@ import HotReloadingGuts
 import SwiftTraceGuts
 import SwiftRegex
 
-@objc(InjectionStandalone)
-class InjectionStandalone: InjectionClient {
+@objc(StandaloneInjection)
+class StandaloneInjection: InjectionClient {
 
+    static var singleton: StandaloneInjection?
     var watchers = [FileWatcher]()
 
     override func runInBackground() {
@@ -37,6 +38,9 @@ class InjectionStandalone: InjectionClient {
         }
         builder.signer = { _ in return true }
         builder.HRLog = { (what: Any...) in }
+        signal(SIGPIPE, {_ in
+            print(APP_PREFIX+"⚠️ SIGPIPE")
+        })
 
         SwiftInjection.traceInjection = getenv("INJECTION_TRACE") != nil
 
@@ -59,6 +63,7 @@ class InjectionStandalone: InjectionClient {
                 }))
             }
             log("HotReloading available for sources under \(dirs)")
+            Self.singleton = self
         } else {
             log("⚠️ HotReloading could not parse home directory.")
         }

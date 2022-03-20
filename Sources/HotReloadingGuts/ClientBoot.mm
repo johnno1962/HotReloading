@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#50 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#57 $
 //
 //  Initiate connection to server side of InjectionIII/HotReloading.
 //
@@ -21,6 +21,10 @@ NSString *INJECTION_KEY = @__FILE__;
 #endif
 
 #if defined(DEBUG) || defined(INJECTION_III_APP)
+@interface NSProcessInfo(iOSAppOnMac)
+@property BOOL isiOSAppOnMac;
+@end
+
 @interface BundleInjection: NSObject
 @end
 @implementation BundleInjection
@@ -35,19 +39,24 @@ static SimpleSocket *injectionClient;
 NSString *injectionHost = @"127.0.0.1";
 
 + (void)tryConnect:(Class)clientClass {
+    NSString *socketAddr = @INJECTION_ADDRESS;
     __unused const char *buildPhase = APP_PREFIX"Have you added the following "
     "\"Run Script\" build phase to your project to start injectiond?\n"
     "if [ -d $SYMROOT/../../SourcePackages ]; then\n"
     "    $SYMROOT/../../SourcePackages/checkouts/HotReloading/start_daemon.sh\n"
     "fi\n";
-#if TARGET_IPHONE_SIMULATOR
-    if (!getenv("INJECTION_DAEMON"))
-        if (Class stanalone = objc_getClass("InjectionStandalone")) {
-            [[stanalone new] run];
+#if !defined(INJECTION_III_APP)
+#if TARGET_IPHONE_SIMULATOR || TARGET_OS_OSX
+    BOOL isiOSAppOnMac = false;
+    if (@available(iOS 14.0, *)) {
+        isiOSAppOnMac = [NSProcessInfo processInfo].isiOSAppOnMac;
+    }
+    if (!isiOSAppOnMac && !getenv("INJECTION_DAEMON"))
+        if (Class standalone = objc_getClass("StandaloneInjection")) {
+            [[standalone new] run];
             return;
         }
-#endif
-#if TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR && !defined(INJECTION_III_APP)
+#elif TARGET_OS_IPHONE
     #ifdef DEVELOPER_HOST
     if (!isdigit(DEVELOPER_HOST[0]))
         printf(APP_PREFIX"Sending multicast packet to connect to your development host.\n"
@@ -56,9 +65,8 @@ NSString *injectionHost = @"127.0.0.1";
     injectionHost = [NSString stringWithUTF8String:[clientClass
         getMulticastService:HOTRELOADING_MULTICAST port:HOTRELOADING_PORT
                     message:APP_PREFIX"Connecting to %s (%s)...\n"]];
-    NSString *socketAddr = [injectionHost stringByAppendingString:@INJECTION_ADDRESS];
-#else
-    NSString *socketAddr = @INJECTION_ADDRESS;
+    socketAddr = [injectionHost stringByAppendingString:socketAddr];
+#endif
 #endif
     for (int retry=0, retrys=3; retry<retrys; retry++) {
         if (retry)

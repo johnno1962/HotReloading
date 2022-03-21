@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#14 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#15 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -135,11 +135,11 @@ public class UnhidingEval: SwiftEval {
             return groups[2] == sourceName || groups[3] == sourceName ?
                 groups[0] : hasFileList ? "" : " "+groups[1]
         }
-        // Xcode 13 can have multiple primary files but implements default
-        // arguments in a way that no longer requires they be "unhidden".
-        if nPrimaries < 2 {
-            startUnhide()
-        }
+//        // Xcode 13 can have multiple primary files but implements default
+//        // arguments in a way that no longer requires they be "unhidden".
+//        if nPrimaries < 2 {
+//            startUnhide()
+//        }
         // The number of these options must match the number of -primary-file arguments
         // which has just been changed to only ever be one so, strip them out
         compileCommand = compileCommand

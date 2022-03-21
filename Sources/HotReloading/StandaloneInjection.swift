@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#1 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#2 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -42,6 +42,7 @@ class StandaloneInjection: InjectionClient {
             print(APP_PREFIX+"⚠️ SIGPIPE")
         })
 
+        builder.forceUnhide = { builder.startUnhide() }
         SwiftInjection.traceInjection = getenv("INJECTION_TRACE") != nil
 
         if let home = NSHomeDirectory()[#"/Users/[^/]+"#] as String? {

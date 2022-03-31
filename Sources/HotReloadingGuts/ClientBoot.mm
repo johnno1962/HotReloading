@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#57 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#58 $
 //
 //  Initiate connection to server side of InjectionIII/HotReloading.
 //
@@ -45,13 +45,14 @@ NSString *injectionHost = @"127.0.0.1";
     "if [ -d $SYMROOT/../../SourcePackages ]; then\n"
     "    $SYMROOT/../../SourcePackages/checkouts/HotReloading/start_daemon.sh\n"
     "fi\n";
+    BOOL isVapor = dlsym(RTLD_DEFAULT, VAPOUR_SYMBOL) != nullptr;
 #if !defined(INJECTION_III_APP)
 #if TARGET_IPHONE_SIMULATOR || TARGET_OS_OSX
     BOOL isiOSAppOnMac = false;
     if (@available(iOS 14.0, *)) {
         isiOSAppOnMac = [NSProcessInfo processInfo].isiOSAppOnMac;
     }
-    if (!isiOSAppOnMac && !getenv("INJECTION_DAEMON"))
+    if (!isiOSAppOnMac && !isVapor && !getenv("INJECTION_DAEMON"))
         if (Class standalone = objc_getClass("StandaloneInjection")) {
             [[standalone new] run];
             return;
@@ -77,8 +78,8 @@ NSString *injectionHost = @"127.0.0.1";
         }
     }
 
-    if (dlsym(RTLD_DEFAULT, VAPOUR_SYMBOL)) {
-       printf(APP_PREFIX"Unable to connect to HotReloading server, please run %s/start_daemon.sh\n",
+    if (isVapor) {
+       printf(APP_PREFIX"Unable to connect to HotReloading server, please run %s/start_daemon.sh and restart the server.\n",
               @__FILE__.stringByDeletingLastPathComponent.stringByDeletingLastPathComponent
               .stringByDeletingLastPathComponent.UTF8String);
        return;

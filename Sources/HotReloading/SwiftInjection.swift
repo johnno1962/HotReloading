@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#157 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#159 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -165,7 +165,7 @@ public class SwiftInjection: NSObject {
         var out = [AnyClass](), nc: UInt32 = 0
         if let classes = UnsafePointer(objc_copyClassList(&nc)) {
             for i in 0 ..< Int(nc) {
-                if class_getSuperclass(classes[i]) != nil &&
+                if class_getSuperclass(classes[i]) != nil && classes[i] != aClass,
                     strcmp(named, class_getName(classes[i])) == 0 {
                     out.append(classes[i])
                 }
@@ -183,9 +183,7 @@ public class SwiftInjection: NSObject {
 
     @objc
     open class func inject(tmpfile: String, newClasses: [AnyClass]) throws {
-        let oldClasses = //oldClass != nil ? [oldClass!] :
-            newClasses.map { objc_getClass(class_getName($0)) as? AnyClass ??
-                SwiftMeta.lookupType(named: _typeName($0)) as? AnyClass ?? $0 }
+        var sweepClasses = [AnyClass]()
         var totalPatched = 0, totalSwizzled = 0
         var injectedGenerics = Set<String>()
         var testClasses = [AnyClass]()
@@ -204,10 +202,12 @@ public class SwiftInjection: NSObject {
         }
 
         // The old way for non-generics
-        for i in 0..<oldClasses.count {
-            var oldClass: AnyClass = oldClasses[i], newClass: AnyClass = newClasses[i]
-            injectedGenerics.remove(_typeName(oldClass))
+        for i in 0..<newClasses.count {
+            var newClass: AnyClass = newClasses[i], oldClasses = versions(of: newClass)
+            injectedGenerics.remove(_typeName(newClass))
+            sweepClasses += oldClasses
 
+            for var oldClass: AnyClass in oldClasses {
             #if true
             let patched = patchSwiftVtable(oldClass: oldClass, newClass: newClass)
             #else
@@ -274,6 +274,7 @@ public class SwiftInjection: NSObject {
 //                [[objc_getClass("_TtC5Quick5World") sharedWorld]
 //                setCurrentExampleMetadata:nil];
             }
+            }
         }
 
         // (Reverse) interposing, reducers, operation on a device etc.
@@ -295,10 +296,10 @@ public class SwiftInjection: NSObject {
                 RunLoop.main.add(timer, forMode: RunLoop.Mode.common)
             }
         } else {
-            performSweep(oldClasses: oldClasses, tmpfile,
+            performSweep(oldClasses: sweepClasses, tmpfile,
                 getenv(INJECTION_OF_GENERICS) != nil ? injectedGenerics : [])
 
-            NotificationCenter.default.post(name: notification, object: oldClasses)
+            NotificationCenter.default.post(name: notification, object: sweepClasses)
         }
     }
 

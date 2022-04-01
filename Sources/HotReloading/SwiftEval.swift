@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#39 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#40 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -170,7 +170,7 @@ public class SwiftEval: NSObject {
 
     var legacyUnhide = false
     var forceUnhide = {}
-    var unhider: ((String) -> Void)?
+    var objectUnhider: ((String) -> Void)?
     var linkerOptions = ""
 
     /// Additional logging to /tmp/hot\_reloading.log for "HotReloading" version of injection.
@@ -452,7 +452,7 @@ public class SwiftEval: NSObject {
         }
 
         // link resulting object file to create dynamic library
-        _ = unhider?(objectFile)
+        _ = objectUnhider?(objectFile)
 
         let toolchain = ((try! NSRegularExpression(pattern: "\\s*(\\S+?\\.xctoolchain)", options: []))
             .firstMatch(in: compileCommand, options: [], range: NSMakeRange(0, compileCommand.utf16.count))?
@@ -538,6 +538,31 @@ public class SwiftEval: NSObject {
         }
         compileCommand += " -o "+tmpfile+".o"
         return tmpfile+".o"
+    }
+
+    /// Per-object file version of unhiding on injection to export some symbols
+    /// - Parameters:
+    ///   - executable: Path to app executable to extract module name
+    ///   - objcClassRefs: Array to accumulate class referrences
+    ///   - descriptorRefs: Array to accumulate "l.got" references to "fixup"
+    func createUnhider(executable: String, _ objcClassRefs: NSMutableArray,
+                       _ descriptorRefs: NSMutableArray) {
+        let appModule = URL(fileURLWithPath: executable)
+            .lastPathComponent.replacingOccurrences(of: " ", with: "_")
+        let appPrefix = "$s\(appModule.count)\(appModule)"
+        objectUnhider = { object_file in
+            let logfile = "/tmp/unhide_object.log"
+            if let log = fopen(logfile, "w") {
+                setbuf(log, nil)
+                objcClassRefs.removeAllObjects()
+                descriptorRefs.removeAllObjects()
+                unhide_object(object_file, appPrefix, log,
+                              objcClassRefs, descriptorRefs)
+//                self.log("Unhidden: \(object_file) -- \(appPrefix) -- \(self.objcClassRefs)")
+            } else {
+//                self.log("Could not log to \(logfile)")
+            }
+        }
     }
 
     lazy var loadXCTest: () = {

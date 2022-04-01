@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#160 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#161 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -111,8 +111,8 @@ public class SwiftInjection: NSObject {
 
     static var injectionDetail = getenv(INJECTION_DETAIL) != nil
     static var injectableReducerSymbols = Set<String>()
-    static var objcClassRefs: [String]?
-    static var descriptorRefs: [String]?
+    static var objcClassRefs = NSMutableArray()
+    static var descriptorRefs = NSMutableArray()
     static var injectedPrefix: String {
         return "Injection#\(SwiftEval.instance.injectionNumber)/"
     }

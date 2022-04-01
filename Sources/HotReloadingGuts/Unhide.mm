@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#33 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#38 $
 //
 
 #import <Foundation/Foundation.h>
@@ -53,6 +53,16 @@ int unhide_symbols(const char *framework, const char *linkFileList, FILE *log, t
     fclose(linkFiles);
     return totalExported;
 }
+
+typedef BOOL (^ _Nonnull STSymbolFilter)(const char *_Nonnull symname);
+
+@interface NSObject(SwiftTrace)
+@property (nonatomic, class, copy) STSymbolFilter _Nonnull swiftTraceSymbolFilter;
++ (NSString *_Nullable)swiftTraceDemangle:(char const *_Nonnull)symbol;
+@end
+
+#define SWIFT_PRIVATE 0xe
+#define SWIFT_GLOBAL 0xf
 
 /// Unhiding is where symbols with "private extenal" visibility
 /// are exported so they will be available when a dynamic
@@ -154,6 +164,17 @@ int unhide_object(const char *object_file, const char *framework, FILE *log,
                     strcmp(symend-1, "FZ") == 0 || (symend[-1] == 'M' && (
                     *symend == 'c' || *symend == 'g' || *symend == 'n'));
 
+                #if DEBUG
+                if (symbol.n_sect != NO_SECT && symbol.n_type == SWIFT_PRIVATE &&
+                    [NSObject respondsToSelector:@selector(swiftTraceSymbolFilter)] &&
+                    !isMutableAddressor && NSObject.swiftTraceSymbolFilter(symname)) {
+                    NSString *demangled = [NSObject swiftTraceDemangle:symname];
+                    if (![demangled hasPrefix:@"reflection metadata "])
+                        printf(APP_PREFIX"%s is private and may not inject\n",
+                               demangled.UTF8String);
+                }
+                #endif
+
 //                fprintf(log, "symbol: #%d 0%lo 0x%x 0x%x %3d %s %d\n",
 //                       i, (char *)&symbol.n_type - (char *)object,
 //                       symbol.n_type, symbol.n_desc,
@@ -167,7 +188,7 @@ int unhide_object(const char *object_file, const char *framework, FILE *log,
                     symbol.n_type & N_PEXT) {
                     symbol.n_type |= N_EXT;
                     symbol.n_type &= ~N_PEXT;
-                    symbol.n_type = 0xf;
+                    symbol.n_type = SWIFT_GLOBAL;
                     symbol.n_desc = N_GSYM;
 
                     if (!exported++)

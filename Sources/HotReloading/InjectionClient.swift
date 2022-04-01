@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#41 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#42 $
 //
 //  Client app side of HotReloading started by +load
 //  method in HotReloadingGuts/ClientBoot.mm
@@ -48,7 +48,8 @@ public class InjectionClient: SimpleSocket, InjectionReader {
         let frameworksPath = Bundle.main.privateFrameworksPath!
         write(builder.tmpDir)
         write(builder.arch)
-        write(Bundle.main.executablePath!)
+        let executable = Bundle.main.executablePath!
+        write(executable)
 
         #if canImport(InjectionScratch)
         if let scratch = loadScratchImage(nil, 0, self, nil) {
@@ -62,6 +63,10 @@ public class InjectionClient: SimpleSocket, InjectionReader {
                                 .forceUnhide.rawValue, with: nil) }
 
         builder.tmpDir = readString() ?? "/tmp"
+
+        builder.createUnhider(executable: executable,
+                              SwiftInjection.objcClassRefs,
+                              SwiftInjection.descriptorRefs)
 
         if getenv(SwiftInjection.INJECTION_UNHIDE) != nil {
             builder.legacyUnhide = true
@@ -272,9 +277,15 @@ public class InjectionClient: SimpleSocket, InjectionReader {
             presentInjectionScratch(readString() ?? "")
             #endif
         case .objcClassRefs:
-            SwiftInjection.objcClassRefs = readString()?.components(separatedBy: ",")
+            if let objcClassRefs = readString()?
+                .components(separatedBy: ",") as? NSMutableArray {
+                SwiftInjection.objcClassRefs = objcClassRefs
+            }
         case .descriptorRefs:
-            SwiftInjection.descriptorRefs = readString()?.components(separatedBy: ",")
+            if let descriptorRefs = readString()?
+                .components(separatedBy: ",") as? NSMutableArray {
+                SwiftInjection.descriptorRefs = descriptorRefs
+            }
         default:
             processOnMainThread(command: command, builder: builder)
         }

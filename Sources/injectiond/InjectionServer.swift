@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#37 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#38 $
 //
 
 import Cocoa
@@ -159,22 +159,8 @@ public class InjectionServer: SimpleSocket {
             }
         }
 
-        let appModule = URL(fileURLWithPath: executable)
-            .lastPathComponent.replacingOccurrences(of: " ", with: "_")
-        let appPrefix = "$s\(appModule.count)\(appModule)"
-        builder.unhider = { object_file in
-            let logfile = "/tmp/unhide_object.log"
-            if let log = fopen(logfile, "w") {
-                setbuf(log, nil)
-                self.objcClassRefs.removeAllObjects()
-                self.descriptorRefs.removeAllObjects()
-                unhide_object(object_file, appPrefix, log,
-                              self.objcClassRefs, self.descriptorRefs)
-                self.log("Unhidden: \(object_file) -- \(appPrefix) -- \(self.objcClassRefs)")
-            } else {
-                self.log("Could not log to \(logfile)")
-            }
-        }
+        builder.createUnhider(executable: executable,
+                              objcClassRefs, descriptorRefs)
 
         var testCache = [String: [String]]()
 

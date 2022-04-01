@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#3 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#5 $
 //
 //  Code specific to injecting on an actual device.
 //
@@ -49,7 +49,7 @@ extension SwiftInjection {
     open class func fixupObjcClassReferences(in pseudoImage:
                                              UnsafePointer<mach_header>) {
         var typeref_size: UInt64 = 0
-        if var refs = objcClassRefs, refs[0] != "",
+        if var refs = objcClassRefs as? [String], refs.first != "",
            let typeref_start = getsectdatafromheader_64(autoBitCast(pseudoImage),
                                     SEG_DATA, "__objc_classrefs", &typeref_size) {
             let classRefPtr:
@@ -74,7 +74,8 @@ extension SwiftInjection {
     /// - Parameter pseudoImage: lastLoadedImage
     open class func bindDescriptorReferences(in pseudoImage:
                                              UnsafePointer<mach_header>) {
-        if let descriptorSyms = descriptorRefs, descriptorSyms[0] != "" {
+        if let descriptorSyms = descriptorRefs as? [String],
+            descriptorSyms.first != "" {
             var forces: UnsafeRawPointer?
             let forcePrefix = "__swift_FORCE_LOAD_$_"
             let forcePrefixLen = strlen(forcePrefix)

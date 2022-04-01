@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#159 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#160 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -201,13 +201,15 @@ public class SwiftInjection: NSObject {
             }
         }
 
-        // The old way for non-generics
-        for i in 0..<newClasses.count {
-            var newClass: AnyClass = newClasses[i], oldClasses = versions(of: newClass)
+        // First, the old way for non-generics
+        for var newClass: AnyClass in newClasses {
+            let oldClasses = versions(of: newClass)
             injectedGenerics.remove(_typeName(newClass))
             sweepClasses += oldClasses
 
             for var oldClass: AnyClass in oldClasses {
+            let oldClassName = _typeName(oldClass) +
+                String(format: " %p", unsafeBitCast(oldClass, to: uintptr_t.self))
             #if true
             let patched = patchSwiftVtable(oldClass: oldClass, newClass: newClass)
             #else
@@ -238,15 +240,14 @@ public class SwiftInjection: NSObject {
                 // (object_getClass() and class_copyMethodList() crash)
                 let swizzled = swizzleBasics(oldClass: oldClass, tmpfile: tmpfile)
                 totalSwizzled += swizzled
-                log("Injected class '\(_typeName(oldClass))' (\(patched),\(swizzled)).")
+                detail("Injected class '\(oldClassName)' (\(patched),\(swizzled)).")
                 continue
             }
 
             if oldClass == newClass {
-                let versions = self.versions(of: newClass)
-                if versions.count > 1 {
-                    oldClass = versions.first!
-                    newClass = versions.last!
+                if oldClasses.count > 1 {
+                    oldClass = oldClasses.first!
+                    newClass = oldClasses.last!
                 } else {
                     log("⚠️ Could not find versions of class \(_typeName(newClass)). ⚠️")
                 }
@@ -265,7 +266,7 @@ public class SwiftInjection: NSObject {
             }
             totalSwizzled += swizzled
 
-            log("Patched class '\(_typeName(newClass))' (\(patched),\(swizzled))")
+            detail("Patched class '\(oldClassName)' (\(patched),\(swizzled))")
 
             if let XCTestCase = objc_getClass("XCTestCase") as? AnyClass,
                 newClass.isSubclass(of: XCTestCase) {

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#40 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#41 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -760,8 +760,9 @@ public class SwiftEval: NSObject {
 //            // remove excess escaping in new build system (no linger necessary)
 //            .replacingOccurrences(of: #"\\([\"'\\])"#, with: "$1", options: [.regularExpression])
             // these files may no longer exist
-            .replacingOccurrences(of: " -pch-output-dir \\S+ ", with: " ", options: [.regularExpression])
-            .replacingOccurrences(of: " -supplementary-output-file-map \\S+ ", with: " ", options: [.regularExpression])
+            .replacingOccurrences(of:
+                #" -(pch-output-dir|supplementary-output-file-map) \#(Self.argumentRegex) "#,
+                                  with: " ", options: [.regularExpression])
         HRLog("Replaced command:", compileCommand)
 
         if isFile {

@@ -11,7 +11,8 @@ Then, you can inject function implementations without having to rebuild your app
 To try out an example project that is already set-up, clone this fork of
 [SwiftUI-Kit](https://github.com/johnno1962/SwiftUI-Kit).
 
-To use on your project, simply add this repo as a Swift Package and rebuild.
+To use on your project, simply add this repo as a Swift Package, add the following
+`-Xlinker -interposable` to Debug "Other Linker Flags", and then rebuild.
 You no longer need to add a "Run Script" build phase unless you want to inject 
 on a device, in which case add the following to start the Injection daemon. 
 
@@ -20,6 +21,10 @@ if [ -d $SYMROOT/../../SourcePackages ]; then
     $SYMROOT/../../SourcePackages/checkouts/HotReloading/start_daemon.sh
 fi
 ```
+
+If you encounter undefined `FSEventStream*` symbols, this is due to using a macOS 
+api in the simulator and you should find this goes away if add the following additional 
+"Other Linker Flags": `-Xlinker -undefined -Xlinker dynamic_lookup`.
 
 ***Remember not to release your app with this package configured.***
 
@@ -113,4 +118,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2022/03/19 $
+$Date: 2022/04/05 $

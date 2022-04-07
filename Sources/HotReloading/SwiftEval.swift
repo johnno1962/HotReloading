@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#41 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#43 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -468,6 +468,9 @@ public class SwiftEval: NSObject {
         } else if compileCommand.contains("AppleTVSimulator.platform") {
             platform = "AppleTVSimulator"
             osSpecific = "-mtvos-simulator-version-min=9.0"// -Xlinker -bundle_loader -Xlinker \"\(Bundle.main.executablePath!)\""
+        } else if compileCommand.contains("AppleTVOS.platform") {
+            platform = "AppleTVOS"
+            osSpecific = "-mtvos-version-min=9.0"// -Xlinker -bundle_loader -Xlinker \"\(Bundle.main.executablePath!)\""
         } else {
             platform = "MacOSX"
             osSpecific = "-mmacosx-version-min=10.11"

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#161 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#162 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -495,7 +495,10 @@ public class SwiftInjection: NSObject {
     static func reverseInterposeStaticsAddressors(_ tmpfile: String) {
         var staticsAccessors = [rebinding]()
         var already = Set<UnsafeRawPointer>()
-        var symbolSuffixes = ["Wl", "Ma"] // Witness table, meta data accessors
+        var symbolSuffixes = ["Wl"] // Witness table accessors
+        if false && lastPseudoImage() != nil {
+            symbolSuffixes.append("Ma") // meta data accessors
+        }
         if SwiftTrace.preserveStatics {
             symbolSuffixes.append("vau") // static variable "mutable addressors"
         }

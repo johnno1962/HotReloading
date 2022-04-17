@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#38 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#40 $
 //
 
 #import <Foundation/Foundation.h>
@@ -387,7 +387,7 @@ void reverse_symbolics(const void *image) {
                (int)typeref_size, strerror(errno));
 
     static char symbolics[] = {"_symbolic _____"};
-    fast_dlscan(image, STVisibilityAny, ^(const char *symname) {
+    fast_dlscan(image, STVisibilityAny, ^BOOL(const char *symname) {
         return strncmp(symname, symbolics, sizeof symbolics-1) == 0;
     }, ^(const void * _Nonnull address, const char * _Nonnull symname, void * _Nonnull typeref, void * _Nonnull typeend) {
 //        rsprintf("%s\n", symname);

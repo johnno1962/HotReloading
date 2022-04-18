@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#44 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#45 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -248,7 +248,7 @@ public class SwiftEval: NSObject {
                     throw evalError("""
                         Could not locate containing project or it's logs.
                         For a macOS app you need to turn off the App Sandbox.
-                        Have you customised the DerivedData path?
+                        Are using a custom DerivedData path? This is not supported.
                         """)
         }
 

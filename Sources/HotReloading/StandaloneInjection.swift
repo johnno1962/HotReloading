@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#4 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#7 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -15,7 +15,7 @@
 //  substitution. Regex patterns are raw strings to emphasise this role.
 //
 
-#if SWIFT_PACKAGE
+#if SWIFT_PACKAGE && (targetEnvironment(simulator) || os(macOS))
 import HotReloadingGuts
 import SwiftTraceGuts
 import SwiftRegex
@@ -60,9 +60,21 @@ class StandaloneInjection: InjectionClient {
             for dir in dirs {
                 watchers.append(FileWatcher(root: dir, callback: { filesChanged, _ in
                     for changed in filesChanged {
+                        guard let changed = changed as? String else {
+                            continue
+                        }
+                        if changed.hasSuffix("storyboard") ||
+                            changed.hasSuffix("xib") {
+                            #if os(iOS) || os(tvOS)
+                            if !NSObject.injectUI(changed) {
+                                self.log("⚠️ Interface injection failed")
+                            }
+                            #endif
+                            continue
+                        }
                         do {
                             let tmpfile = try builder.rebuildClass(oldClass: nil,
-                                classNameOrFile: changed as! String, extra: nil)
+                                classNameOrFile: changed, extra: nil)
                             try SwiftInjection.inject(tmpfile: tmpfile)
                         } catch {
                         }

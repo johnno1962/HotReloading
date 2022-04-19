@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#7 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#9 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -15,7 +15,7 @@
 //  substitution. Regex patterns are raw strings to emphasise this role.
 //
 
-#if SWIFT_PACKAGE && (targetEnvironment(simulator) || os(macOS))
+#if targetEnvironment(simulator) || os(macOS)
 import HotReloadingGuts
 import SwiftTraceGuts
 import SwiftRegex

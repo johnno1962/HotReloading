@@ -2,7 +2,7 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
 //  Repo: https://github.com/johnno1962/HotReloading
-//  $Id: //depot/HotReloading/Package.swift#136 $
+//  $Id: //depot/HotReloading/Package.swift#141 $
 //
 
 import PackageDescription
@@ -46,7 +46,7 @@ let package = Package(
         // I'll have to find a sustainable licensing mechanism.
         // It should still work fine with the simulator.
         .package(url: "https://github.com/johnno1962/InjectionScratch",
-                 .upToNextMinor(from: "1.2.9")),
+                 .upToNextMinor(from: "1.2.11")),
     ],
     targets: [
         .target(name: "HotReloading", dependencies: ["HotReloadingGuts",

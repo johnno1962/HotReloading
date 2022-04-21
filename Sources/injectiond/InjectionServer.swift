@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#38 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#40 $
 //
 
 import Cocoa
@@ -173,7 +173,9 @@ public class InjectionServer: SimpleSocket {
                     var matchedTests = testCache[injectedFile]
                     if matchedTests == nil {
                         matchedTests = Self.searchForTestWithFile(injectedFile,
-                              projectRoot:(projectFile as NSString)
+                              projectRoot: appDelegate
+                                .watchedDirectories.first ??
+                              (projectFile as NSString)
                                 .deletingLastPathComponent,
                             fileManager: FileManager.default)
                         testCache[injectedFile] = matchedTests
@@ -376,8 +378,8 @@ public class InjectionServer: SimpleSocket {
             projectRoot: String, fileManager: FileManager) -> [String] {
         var matchedTests = [String]()
         let injectedFileName = URL(fileURLWithPath: injectedFile)
-            .deletingPathExtension().path
-        let projectUrl = URL(string: urlEncode(string: projectRoot))!
+            .deletingPathExtension().lastPathComponent
+        let projectUrl = URL(fileURLWithPath: projectRoot)
         if let enumerator = fileManager.enumerator(at: projectUrl,
                 includingPropertiesForKeys: [URLResourceKey.nameKey,
                                              URLResourceKey.isDirectoryKey],
@@ -404,7 +406,8 @@ public class InjectionServer: SimpleSocket {
                         filename?.lastPathComponent !=
                             (injectedFile as NSString).lastPathComponent &&
                         filename?.lowercased
-                            .contains(injectedFileName.lowercased()) == true {
+                            .contains(injectedFileName.lowercased()) == true &&
+                        filename?.contains("Tests.") == true {
                         matchedTests.append(fileURL.path!)
                     }
                 }

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#162 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#163 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -268,13 +268,13 @@ public class SwiftInjection: NSObject {
 
             detail("Patched class '\(oldClassName)' (\(patched),\(swizzled))")
 
+            }
             if let XCTestCase = objc_getClass("XCTestCase") as? AnyClass,
                 newClass.isSubclass(of: XCTestCase) {
                 testClasses.append(newClass)
 //                if ( [newClass isSubclassOfClass:objc_getClass("QuickSpec")] )
 //                [[objc_getClass("_TtC5Quick5World") sharedWorld]
 //                setCurrentExampleMetadata:nil];
-            }
             }
         }
 

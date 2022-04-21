@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#45 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#46 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -473,7 +473,10 @@ public class SwiftEval: NSObject {
             osSpecific = "-mtvos-version-min=9.0"// -Xlinker -bundle_loader -Xlinker \"\(Bundle.main.executablePath!)\""
         } else {
             platform = "MacOSX"
-            osSpecific = "-mmacosx-version-min=10.11"
+            let target = compileCommand
+                .replacingOccurrences(of: #"^.*( -target \S+).*$"#,
+                    with: "$1", options: .regularExpression)
+            osSpecific = "-mmacosx-version-min=10.11"+target
         }
 
         guard shell(command: """

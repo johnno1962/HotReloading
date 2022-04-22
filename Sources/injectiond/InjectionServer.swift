@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#40 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#41 $
 //
 
 import Cocoa
@@ -294,6 +294,13 @@ public class InjectionServer: SimpleSocket {
                 builder.legacyUnhide = readString() == "1"
             case .forceUnhide:
                 builder.startUnhide()
+            case .projectRoot:
+                if let projectRoot = readString() {
+                    DispatchQueue.main.async {
+                        _ = appDelegate.application(nil,
+                                        openFile: projectRoot)
+                    }
+                }
             default:
                 break
             }

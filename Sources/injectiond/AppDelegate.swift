@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#49 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#50 $
 //
 
 import Cocoa
@@ -203,7 +203,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
         statusMenu.item(at: statusMenu.items.count-1)?.title = "Quit "+appName
     }
 
-    func application(_ theApplication: NSApplication, openFile filename: String) -> Bool {
+    func application(_ theApplication: NSApplication?, openFile filename: String) -> Bool {
         #if SWIFT_PACKAGE
         return false
         #else

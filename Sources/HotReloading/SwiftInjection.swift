@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#163 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#164 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -95,6 +95,7 @@ public class SwiftInjection: NSObject {
 
     // Constants for environment variables
     static let INJECTION_DETAIL = "INJECTION_DETAIL"
+    static let INJECTION_PROJECT_ROOT = "INJECTION_PROJECT_ROOT"
     static let INJECTION_DYNAMIC_CAST = "INJECTION_DYNAMIC_CAST"
     static let INJECTION_PRESERVE_STATICS = "INJECTION_PRESERVE_STATICS"
     static let INJECTION_SWEEP_DETAIL = "INJECTION_SWEEP_DETAIL"

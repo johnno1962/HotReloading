@@ -2,7 +2,7 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
 //  Repo: https://github.com/johnno1962/HotReloading
-//  $Id: //depot/HotReloading/Package.swift#142 $
+//  $Id: //depot/HotReloading/Package.swift#143 $
 //
 
 import PackageDescription
@@ -29,7 +29,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/johnno1962/SwiftTrace",
-                 .upToNextMinor(from: "8.2.11")),
+                 .upToNextMinor(from: "8.2.12")),
         .package(name: "SwiftRegex",
                  url: "https://github.com/johnno1962/SwiftRegex5",
                  .upToNextMinor(from: "5.2.3")),

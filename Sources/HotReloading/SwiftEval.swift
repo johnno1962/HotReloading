@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#46 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#49 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -367,6 +367,7 @@ public class SwiftEval: NSObject {
                 2. There are restrictions on characters allowed in paths.
                 3. File paths in the simulator are case sensitive.
                 4. The modified source file is not in the current project.
+                5. The source file is an XCTest that has not been run yet.
                 Try a build clean then rebuild to make logs available or
                 consult: "\(cmdfile)".
                 """)
@@ -582,7 +583,12 @@ public class SwiftEval: NSObject {
         let sdk = "iPhoneOS"
         #endif
 
-        if dlopen("\(xcodeDev)/Platforms/\(sdk).platform/Developer/Library/Frameworks/XCTest.framework/XCTest", RTLD_LAZY) == nil {
+        let platform = "\(xcodeDev)/Platforms/\(sdk).platform/Developer/"
+
+        if dlopen(platform+"Library/Frameworks/XCTest.framework/XCTest", RTLD_LAZY) == nil {
+            debug(String(cString: dlerror()))
+        }
+        if dlopen(platform+"usr/lib/libXCTestSwiftSupport.dylib", RTLD_LAZY) == nil {
             debug(String(cString: dlerror()))
         }
     }()

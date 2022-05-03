@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#49 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#50 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -610,8 +610,9 @@ public class SwiftEval: NSObject {
                 error += """
                     \n\(APP_PREFIX)⚠️ Loading .dylib has failed, This is likely \
                     because Swift code being injected refers to a function \
-                    with a default argument. Rebuilding and re-running your \
-                    project (without a build clean) can resolve this.
+                    with a default argument or perhaps an XCTest that depends on \
+                    code not normally linked into your application. Rebuilding and \
+                    re-running your project (without a build clean) can resolve this.
                     """
                 forceUnhide()
             }

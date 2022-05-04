@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#50 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#52 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -455,6 +455,32 @@ public class SwiftEval: NSObject {
         // link resulting object file to create dynamic library
         _ = objectUnhider?(objectFile)
 
+        var speclib = ""
+        if sourceFile.contains("Spec.") {
+            let dylib = "\(tmpfile)_spec.dylib"
+            let supportFiles = getenv("INJECTION_QUICK_FILES")
+                .flatMap { String(cString: $0) } ??
+                "Debug-*/{Quick*,Nimble,Cwl*}.o"
+            do {
+                try link(dylib: dylib, compileCommand: compileCommand, contents: """
+                    \(logsDir.path)/../../Build/Products/\(supportFiles) \
+                    __PLATFORM__/Developer/usr/lib/libXCTestSwiftSupport.dylib
+                    """)
+                speclib = dylib
+            } catch {
+                HRLog(APP_PREFIX+"⚠️ Error building support dylib for Quick")
+            }
+        }
+
+        let dylib = "\(tmpfile).dylib"
+        try link(dylib: dylib, compileCommand: compileCommand,
+                 contents: "\"\(objectFile)\" \(speclib)")
+        return (speclib != "" ? speclib+Self.dylibSep : "")+tmpfile
+    }
+
+    static let dylibSep = "==="
+
+    func link(dylib: String, compileCommand: String, contents: String) throws {
         let toolchain = ((try! NSRegularExpression(pattern: "\\s*(\\S+?\\.xctoolchain)", options: []))
             .firstMatch(in: compileCommand, options: [], range: NSMakeRange(0, compileCommand.utf16.count))?
             .range(at: 1)).flatMap { compileCommand[$0] } ?? "\(xcodeDev)/Toolchains/XcodeDefault.xctoolchain"
@@ -481,8 +507,9 @@ public class SwiftEval: NSObject {
         }
 
         guard shell(command: """
-            "\(xcodeDev)/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang" -arch "\(arch)" -bundle -isysroot "\(xcodeDev)/Platforms/\(platform).platform/Developer/SDKs/\(platform).sdk" -L"\(toolchain)/usr/lib/swift/\(platform.lowercased())" \(osSpecific) -undefined dynamic_lookup -dead_strip -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -interposable\(linkerOptions) -fobjc-arc -fprofile-instr-generate "\(objectFile)" -L "\(frameworks)" -F "\(frameworks)" -rpath "\(frameworks)" -o \"\(tmpfile).dylib\" >>\"\(logfile)\" 2>&1
-            """) else {
+            "\(xcodeDev)/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang" -arch "\(arch)" -Xlinker -dylib -isysroot "\(xcodeDev)/Platforms/\(platform).platform/Developer/SDKs/\(platform).sdk" -L"\(toolchain)/usr/lib/swift/\(platform.lowercased())" \(osSpecific) -undefined dynamic_lookup -dead_strip -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -interposable\(linkerOptions) -fobjc-arc -fprofile-instr-generate \(contents) -L "\(frameworks)" -F "\(frameworks)" -rpath "\(frameworks)" -o \"\(dylib)\" >>\"\(logfile)\" 2>&1
+            """.replacingOccurrences(of: "__PLATFORM__",
+                with: "\(xcodeDev)/Platforms/\(platform).platform")) else {
             throw scriptError("Linking")
         }
 
@@ -513,12 +540,10 @@ public class SwiftEval: NSObject {
         }
 
         // Reset dylib to prevent macOS 10.15 from blocking it
-        let url = URL(fileURLWithPath: "\(tmpfile).dylib")
+        let url = URL(fileURLWithPath: dylib)
         let dylib = try Data(contentsOf: url)
-        try filemgr.removeItem(at: url)
+        try FileManager.default.removeItem(at: url)
         try dylib.write(to: url)
-
-        return tmpfile
     }
 
 
@@ -599,7 +624,10 @@ public class SwiftEval: NSObject {
 
         print("\(APP_PREFIX)Loading .dylib ...")
         // load patched .dylib into process with new version of class
-        guard let dl = dlopen("\(tmpfile).dylib", RTLD_NOW) else {
+        var dl: UnsafeMutableRawPointer?
+        for dylib in "\(tmpfile).dylib".components(separatedBy: Self.dylibSep) {
+            dl = dlopen(dylib, RTLD_NOW)
+            guard dl != nil else {
             var error = String(cString: dlerror())
             if error.contains("___llvm_profile_runtime") {
                 error += """
@@ -617,6 +645,7 @@ public class SwiftEval: NSObject {
                 forceUnhide()
             }
             throw evalError("dlopen() error: \(error)")
+        }
         }
         print("\(APP_PREFIX)Loaded .dylib - Ignore any duplicate class warning ⬆️")
 
@@ -638,7 +667,7 @@ public class SwiftEval: NSObject {
         else {
             // grep out symbols for classes being injected from object file
 
-            return try extractClasses(dl: dl, tmpfile: tmpfile)
+            return try extractClasses(dl: dl!, tmpfile: tmpfile)
         }
     }
 

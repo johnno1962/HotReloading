@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#52 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#53 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -457,7 +457,7 @@ public class SwiftEval: NSObject {
 
         var speclib = ""
         if sourceFile.contains("Spec.") {
-            let dylib = "\(tmpfile)_spec.dylib"
+            let dylib = tmpfile+Self.quickDylib
             let supportFiles = getenv("INJECTION_QUICK_FILES")
                 .flatMap { String(cString: $0) } ??
                 "Debug-*/{Quick*,Nimble,Cwl*}.o"
@@ -472,12 +472,12 @@ public class SwiftEval: NSObject {
             }
         }
 
-        let dylib = "\(tmpfile).dylib"
-        try link(dylib: dylib, compileCommand: compileCommand,
+        try link(dylib: "\(tmpfile).dylib", compileCommand: compileCommand,
                  contents: "\"\(objectFile)\" \(speclib)")
         return (speclib != "" ? speclib+Self.dylibSep : "")+tmpfile
     }
 
+    static let quickDylib = "_spec.dylib"
     static let dylibSep = "==="
 
     func link(dylib: String, compileCommand: String, contents: String) throws {
@@ -516,7 +516,8 @@ public class SwiftEval: NSObject {
         // codesign dylib
 
         if signer != nil {
-            guard signer!("\(injectionNumber).dylib") else {
+            guard dylib.hasSuffix(Self.quickDylib) ||
+                signer!("\(injectionNumber).dylib") else {
                 #if SWIFT_PACKAGE
                 throw evalError("Codesign failed. Consult /tmp/hot_reloading.log")
                 #else

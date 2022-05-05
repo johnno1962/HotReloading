@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#54 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#55 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -138,7 +138,7 @@ fileprivate extension StringProtocol {
     }
     func escaping(_ chars: String, with template: String = "\\$0") -> String {
         return self.replacingOccurrences(of: "[\(chars)]",
-            with: template.replacingOccurrences(of: "\\", with: "\\\\"),
+            with: template.replacingOccurrences(of: #"\"#, with: "\\\\"),
             options: [.regularExpression])
     }
     func unescape() -> String {
@@ -356,7 +356,7 @@ public class SwiftEval: NSObject {
         return out
     }
 
-    let detectFilepaths = try! NSRegularExpression(pattern: "(/(?:[^\\ ]*\\\\.)*[^\\ ]*) ")
+    let detectFilepaths = try! NSRegularExpression(pattern: #"(/(?:[^\ ]*\\.)*[^\ ]*) "#)
 
     @objc public func rebuildClass(oldClass: AnyClass?,
         classNameOrFile: String, extra: String?) throws -> String {
@@ -494,7 +494,7 @@ public class SwiftEval: NSObject {
     static let dylibDelim = "==="
 
     func link(dylib: String, compileCommand: String, contents: String) throws {
-        let toolchain = ((try! NSRegularExpression(pattern: "\\s*(\\S+?\\.xctoolchain)", options: []))
+        let toolchain = ((try! NSRegularExpression(pattern: #"\s*(\S+?\.xctoolchain)"#, options: []))
             .firstMatch(in: compileCommand, options: [], range: NSMakeRange(0, compileCommand.utf16.count))?
             .range(at: 1)).flatMap { compileCommand[$0] } ?? "\(xcodeDev)/Toolchains/XcodeDefault.xctoolchain"
 
@@ -647,26 +647,26 @@ public class SwiftEval: NSObject {
         // load patched .dylib into process with new version of class
         var dl: UnsafeMutableRawPointer?
         for dylib in "\(tmpfile).dylib".components(separatedBy: Self.dylibDelim) {
-        dl = dlopen(dylib, RTLD_NOW)
-        guard dl != nil else {
-            var error = String(cString: dlerror())
-            if error.contains("___llvm_profile_runtime") {
-                error += """
-                    \n\(APP_PREFIX)⚠️ Loading .dylib has failed, try turning off \
-                    collection of test coverage in your scheme
-                    """
-            } else if error.contains("ymbol not found") {
-                error += """
-                    \n\(APP_PREFIX)⚠️ Loading .dylib has failed, This is likely \
-                    because Swift code being injected refers to a function \
-                    with a default argument or perhaps an XCTest that depends on \
-                    code not normally linked into your application. Rebuilding and \
-                    re-running your project (without a build clean) can resolve this.
-                    """
-                forceUnhide()
+            dl = dlopen(dylib, RTLD_NOW)
+            guard dl != nil else {
+                var error = String(cString: dlerror())
+                if error.contains("___llvm_profile_runtime") {
+                    error += """
+                        \n\(APP_PREFIX)⚠️ Loading .dylib has failed, try turning off \
+                        collection of test coverage in your scheme
+                        """
+                } else if error.contains("ymbol not found") {
+                    error += """
+                        \n\(APP_PREFIX)⚠️ Loading .dylib has failed, This is likely \
+                        because Swift code being injected refers to a function \
+                        with a default argument or perhaps an XCTest that depends on \
+                        code not normally linked into your application. Rebuilding and \
+                        re-running your project (without a build clean) can resolve this.
+                        """
+                    forceUnhide()
+                }
+                throw evalError("dlopen() error: \(error)")
             }
-            throw evalError("dlopen() error: \(error)")
-        }
         }
         print("\(APP_PREFIX)Loaded .dylib - Ignore any duplicate class warning ⬆️")
 
@@ -941,7 +941,7 @@ public class SwiftEval: NSObject {
     func logsDir(project: URL, derivedData: URL) -> URL? {
         let filemgr = FileManager.default
         let projectPrefix = project.deletingPathExtension()
-            .lastPathComponent.replacingOccurrences(of: "\\s+", with: "_",
+            .lastPathComponent.replacingOccurrences(of: #"\s+"#, with: "_",
                                     options: .regularExpression, range: nil)
         var possibleDerivedData = (try? filemgr
             .contentsOfDirectory(atPath: derivedData.path))?

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#167 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#168 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -209,67 +209,67 @@ public class SwiftInjection: NSObject {
             sweepClasses += oldClasses
 
             for var oldClass: AnyClass in oldClasses {
-            let oldClassName = _typeName(oldClass) +
-                String(format: " %p", unsafeBitCast(oldClass, to: uintptr_t.self))
-            #if true
-            let patched = patchSwiftVtable(oldClass: oldClass, newClass: newClass)
-            #else
-            let patched = newPatchSwiftVtable(oldClass: oldClass, tmpfile: tmpfile)
-            #endif
+                let oldClassName = _typeName(oldClass) +
+                    String(format: " %p", unsafeBitCast(oldClass, to: uintptr_t.self))
+                #if true
+                let patched = patchSwiftVtable(oldClass: oldClass, newClass: newClass)
+                #else
+                let patched = newPatchSwiftVtable(oldClass: oldClass, tmpfile: tmpfile)
+                #endif
 
-            if patched != 0 {
-                totalPatched += patched
+                if patched != 0 {
+                    totalPatched += patched
 
-                let existingClass = unsafeBitCast(oldClass, to:
-                    UnsafeMutablePointer<SwiftMeta.TargetClassMetadata>.self)
-                let classMetadata = unsafeBitCast(newClass, to:
-                    UnsafeMutablePointer<SwiftMeta.TargetClassMetadata>.self)
+                    let existingClass = unsafeBitCast(oldClass, to:
+                        UnsafeMutablePointer<SwiftMeta.TargetClassMetadata>.self)
+                    let classMetadata = unsafeBitCast(newClass, to:
+                        UnsafeMutablePointer<SwiftMeta.TargetClassMetadata>.self)
 
-                // Old mechanism for Swift equivalent of "Swizzling".
-                if classMetadata.pointee.ClassSize != existingClass.pointee.ClassSize {
-                    log("""
-                        ⚠️ Adding or [re]moving methods of non-final classes is not supported. \
-                        Your application will likely crash. Paradoxically, you can avoid this by \
-                        making the class you are trying to inject (and add methods to) "final". ⚠️
-                        """)
+                    // Old mechanism for Swift equivalent of "Swizzling".
+                    if classMetadata.pointee.ClassSize != existingClass.pointee.ClassSize {
+                        log("""
+                            ⚠️ Adding or [re]moving methods of non-final classes is not supported. \
+                            Your application will likely crash. Paradoxically, you can avoid this by \
+                            making the class you are trying to inject (and add methods to) "final". ⚠️
+                            """)
+                    }
                 }
-            }
 
-            // Is there a generic superclass?
-            if inheritedGeneric(anyType: oldClass) {
-                // fallback to limited processing avoiding objc runtime.
-                // (object_getClass() and class_copyMethodList() crash)
-                let swizzled = swizzleBasics(oldClass: oldClass, tmpfile: tmpfile)
-                totalSwizzled += swizzled
-                detail("Injected class '\(oldClassName)' (\(patched),\(swizzled)).")
-                continue
-            }
+                // Is there a generic superclass?
+                if inheritedGeneric(anyType: oldClass) {
+                    // fallback to limited processing avoiding objc runtime.
+                    // (object_getClass() and class_copyMethodList() crash)
+                    let swizzled = swizzleBasics(oldClass: oldClass, tmpfile: tmpfile)
+                    totalSwizzled += swizzled
+                    detail("Injected class '\(oldClassName)' (\(patched),\(swizzled)).")
+                    continue
+                }
 
-            if oldClass == newClass {
-                if oldClasses.count > 1 {
-                    oldClass = oldClasses.first!
-                    newClass = oldClasses.last!
+                if oldClass == newClass {
+                    if oldClasses.count > 1 {
+                        oldClass = oldClasses.first!
+                        newClass = oldClasses.last!
+                    } else {
+                        log("⚠️ Could not find versions of class \(_typeName(newClass)). ⚠️")
+                    }
+                }
+
+                var swizzled: Int
+                if lastPseudoImage() == nil {
+                // old-school swizzle Objective-C class & instance methods
+                    swizzled = injection(swizzle: object_getClass(newClass),
+                                         onto: object_getClass(oldClass)) +
+                               injection(swizzle: newClass, onto: oldClass)
                 } else {
-                    log("⚠️ Could not find versions of class \(_typeName(newClass)). ⚠️")
+                    swizzled = injection(swizzle: object_getClass(oldClass)!,
+                                         tmpfile: tmpfile) +
+                               injection(swizzle: oldClass, tmpfile: tmpfile)
                 }
+                totalSwizzled += swizzled
+
+                detail("Patched class '\(oldClassName)' (\(patched),\(swizzled))")
             }
 
-            var swizzled: Int
-            if lastPseudoImage() == nil {
-            // old-school swizzle Objective-C class & instance methods
-                swizzled = injection(swizzle: object_getClass(newClass),
-                                     onto: object_getClass(oldClass)) +
-                           injection(swizzle: newClass, onto: oldClass)
-            } else {
-                swizzled = injection(swizzle: object_getClass(oldClass)!,
-                                     tmpfile: tmpfile) +
-                           injection(swizzle: oldClass, tmpfile: tmpfile)
-            }
-            totalSwizzled += swizzled
-
-            detail("Patched class '\(oldClassName)' (\(patched),\(swizzled))")
-
-            }
             if let XCTestCase = objc_getClass("XCTestCase") as? AnyClass,
                 newClass.isSubclass(of: XCTestCase) {
                 testClasses.append(newClass)
@@ -421,7 +421,7 @@ public class SwiftInjection: NSObject {
             (name, slotIndex, vtableSlot, stop) in
             if let replacement = SwiftTrace.interposed(replacee:
                 autoBitCast(newTable[slotIndex] ?? vtableSlot.pointee)),
-               autoBitCast(vtableSlot.pointee) != replacement {
+                autoBitCast(vtableSlot.pointee) != replacement {
                 traceAndReplace(vtableSlot.pointee,
                     replacement: replacement, name: name) {
                     (replacement: UnsafeMutableRawPointer) -> String? in

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#50 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#55 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -96,8 +96,10 @@ extension NSObject {
 
         if NSObject.lastEvalByClass[className] != expression {
             do {
-                let tmpfile = try SwiftEval.instance.rebuildClass(oldClass: oldClass, classNameOrFile: className, extra: extra)
-                if let newClass = try SwiftEval.instance.loadAndInject(tmpfile: tmpfile, oldClass: oldClass).first {
+                let tmpfile = try SwiftEval.instance.rebuildClass(oldClass: oldClass,
+                                            classNameOrFile: className, extra: extra)
+                if let newClass = try SwiftEval.instance
+                    .loadAndInject(tmpfile: tmpfile, oldClass: oldClass).first {
                     if NSStringFromClass(newClass) != NSStringFromClass(oldClass) {
                         NSLog("Class names different. Have the right class been loaded?")
                     }
@@ -136,7 +138,7 @@ fileprivate extension StringProtocol {
     }
     func escaping(_ chars: String, with template: String = "\\$0") -> String {
         return self.replacingOccurrences(of: "[\(chars)]",
-            with: template.replacingOccurrences(of: "\\", with: "\\\\"),
+            with: template.replacingOccurrences(of: #"\"#, with: "\\\\"),
             options: [.regularExpression])
     }
     func unescape() -> String {
@@ -204,7 +206,8 @@ public class SwiftEval: NSObject {
     @objc public var evalError = {
         (_ message: String) -> Error in
         print(APP_PREFIX+(message.hasPrefix("Compiling") ?"":"⚠️ ")+message)
-        return NSError(domain: "SwiftEval", code: -1, userInfo: [NSLocalizedDescriptionKey: message])
+        return NSError(domain: "SwiftEval", code: -1,
+                       userInfo: [NSLocalizedDescriptionKey: message])
     }
 
     func scriptError(_ what: String) -> Error {
@@ -222,16 +225,20 @@ public class SwiftEval: NSObject {
     var compileByClass = [String: (String, String)]()
 
     static var buildCacheFile = "/tmp/eval_builds.plist"
-    static var longTermCache = NSMutableDictionary(contentsOfFile: buildCacheFile) ?? NSMutableDictionary()
+    static var longTermCache =
+        NSMutableDictionary(contentsOfFile: buildCacheFile) ?? NSMutableDictionary()
 
     public func determineEnvironment(classNameOrFile: String) throws -> (URL, URL) {
         // Largely obsolete section used find Xcode paths from source file being injected.
 
-        let sourceURL = URL(fileURLWithPath: classNameOrFile.hasPrefix("/") ? classNameOrFile : #file)
+        let sourceURL = URL(fileURLWithPath:
+            classNameOrFile.hasPrefix("/") ? classNameOrFile : #file)
         HRLog("Project file:", projectFile ?? "nil")
-        guard let derivedData = findDerivedData(url: URL(fileURLWithPath: NSHomeDirectory()), ideProcPath: self.lastIdeProcPath) ??
+        guard let derivedData = findDerivedData(url: URL(fileURLWithPath:
+                    NSHomeDirectory()), ideProcPath: self.lastIdeProcPath) ??
             (self.projectFile != nil ?
-                findDerivedData(url: URL(fileURLWithPath: self.projectFile!), ideProcPath: self.lastIdeProcPath) :
+                findDerivedData(url: URL(fileURLWithPath:
+                        self.projectFile!), ideProcPath: self.lastIdeProcPath) :
                 findDerivedData(url: sourceURL, ideProcPath: self.lastIdeProcPath)) else {
                 throw evalError("Could not locate derived data. Is the project under your home directory?")
         }
@@ -315,7 +322,8 @@ public class SwiftEval: NSObject {
             do if (find . -name '*.nib' -a -newer "\(storyboard)" | \
             grep .nib >/dev/null); then break; fi; sleep 1; done; \
             while (ps auxww | grep -v grep | grep "/ibtool " >/dev/null); do sleep 1; done; \
-            for i in `find . -name '*.nib'`; do cp -rf "$i" "\(Bundle.main.bundlePath)/$i"; done >"\(logfile)" 2>&1)
+            for i in `find . -name '*.nib'`; do cp -rf "$i" "\(
+                        Bundle.main.bundlePath)/$i"; done >"\(logfile)" 2>&1)
             """) else {
                 throw scriptError("Re-compilation")
         }
@@ -348,18 +356,23 @@ public class SwiftEval: NSObject {
         return out
     }
 
-    let detectFilepaths = try! NSRegularExpression(pattern: "(/(?:[^\\ ]*\\\\.)*[^\\ ]*) ")
+    let detectFilepaths = try! NSRegularExpression(pattern: #"(/(?:[^\ ]*\\.)*[^\ ]*) "#)
 
-    @objc public func rebuildClass(oldClass: AnyClass?, classNameOrFile: String, extra: String?) throws -> String {
-        let (projectFile, logsDir) = try determineEnvironment(classNameOrFile: classNameOrFile)
+    @objc public func rebuildClass(oldClass: AnyClass?,
+        classNameOrFile: String, extra: String?) throws -> String {
+        let (projectFile, logsDir) = try
+            determineEnvironment(classNameOrFile: classNameOrFile)
 
         // locate compile command for class
 
         injectionNumber += 1
 
-        guard var (compileCommand, sourceFile) = try compileByClass[classNameOrFile] ??
-            findCompileCommand(logsDir: logsDir, classNameOrFile: classNameOrFile, tmpfile: tmpfile) ??
-            SwiftEval.longTermCache[classNameOrFile].flatMap({ ($0 as! String, classNameOrFile) }) else {
+        guard var (compileCommand, sourceFile) = try
+            compileByClass[classNameOrFile] ??
+            findCompileCommand(logsDir: logsDir,
+               classNameOrFile: classNameOrFile, tmpfile: tmpfile) ??
+            SwiftEval.longTermCache[classNameOrFile].flatMap({
+                ($0 as! String, classNameOrFile) }) else {
             throw evalError("""
                 Could not locate compile command for \(classNameOrFile).
                 This could be due to one of the following:
@@ -378,7 +391,7 @@ public class SwiftEval: NSObject {
         // Normalise paths in compile command with the actual casing
         // of files as the simulator has a case-sensitive file system.
         for filepath in detectFilepaths.matches(in: compileCommand, options: [],
-                                range: NSMakeRange(0, compileCommand.utf16.count))
+            range: NSMakeRange(0, compileCommand.utf16.count))
             .compactMap({ compileCommand[$0.range(at: 1)] }) {
             let unescaped = filepath.unescape()
             if let normalised = actualCase(path: unescaped) {
@@ -446,7 +459,8 @@ public class SwiftEval: NSObject {
         }
 
         compileByClass[classNameOrFile] = (compileCommand, sourceFile)
-        if SwiftEval.longTermCache[classNameOrFile] as? String != compileCommand && classNameOrFile.hasPrefix("/") {
+        if SwiftEval.longTermCache[classNameOrFile] as? String != compileCommand &&
+            classNameOrFile.hasPrefix("/") {
             SwiftEval.longTermCache[classNameOrFile] = compileCommand
             SwiftEval.longTermCache.write(toFile: SwiftEval.buildCacheFile,
                                           atomically: false)
@@ -455,41 +469,75 @@ public class SwiftEval: NSObject {
         // link resulting object file to create dynamic library
         _ = objectUnhider?(objectFile)
 
-        let toolchain = ((try! NSRegularExpression(pattern: "\\s*(\\S+?\\.xctoolchain)", options: []))
+        var speclib = ""
+        if sourceFile.contains("Spec.") {
+            let dylib = tmpfile+Self.quickDylib
+            do {
+                try link(dylib: dylib, compileCommand: compileCommand, contents: """
+                    \(logsDir.path)/../../Build/Products/\(Self.quickFiles) \
+                    __PLATFORM__/Developer/usr/lib/libXCTestSwiftSupport.dylib
+                    """)
+                speclib = dylib
+            } catch {
+                HRLog(APP_PREFIX+"⚠️ Error building support dylib for Quick")
+            }
+        }
+
+        try link(dylib: "\(tmpfile).dylib", compileCommand: compileCommand,
+                 contents: "\"\(objectFile)\" \(speclib)")
+        return (speclib != "" ? speclib+Self.dylibDelim : "")+tmpfile
+    }
+
+    static let quickFiles = getenv("INJECTION_QUICK_FILES").flatMap {
+        String(cString: $0) } ?? "Debug-*/{Quick*,Nimble,Cwl*}.o"
+    static let quickDylib = "_spec.dylib"
+    static let dylibDelim = "==="
+
+    func link(dylib: String, compileCommand: String, contents: String) throws {
+        let toolchain = ((try! NSRegularExpression(pattern: #"\s*(\S+?\.xctoolchain)"#, options: []))
             .firstMatch(in: compileCommand, options: [], range: NSMakeRange(0, compileCommand.utf16.count))?
             .range(at: 1)).flatMap { compileCommand[$0] } ?? "\(xcodeDev)/Toolchains/XcodeDefault.xctoolchain"
 
         let platform: String, osSpecific: String
         if compileCommand.contains("iPhoneSimulator.platform") {
             platform = "iPhoneSimulator"
-            osSpecific = "-mios-simulator-version-min=9.0"// -Xlinker -bundle_loader -Xlinker \"\(Bundle.main.executablePath!)\""
+            osSpecific = "-mios-simulator-version-min=9.0"
         } else if compileCommand.contains("iPhoneOS.platform") {
             platform = "iPhoneOS"
-            osSpecific = "-miphoneos-version-min=9.0"// -Xlinker -bundle_loader -Xlinker \"\(Bundle.main.executablePath!)\""
+            osSpecific = "-miphoneos-version-min=9.0"
         } else if compileCommand.contains("AppleTVSimulator.platform") {
             platform = "AppleTVSimulator"
-            osSpecific = "-mtvos-simulator-version-min=9.0"// -Xlinker -bundle_loader -Xlinker \"\(Bundle.main.executablePath!)\""
+            osSpecific = "-mtvos-simulator-version-min=9.0"
         } else if compileCommand.contains("AppleTVOS.platform") {
             platform = "AppleTVOS"
-            osSpecific = "-mtvos-version-min=9.0"// -Xlinker -bundle_loader -Xlinker \"\(Bundle.main.executablePath!)\""
+            osSpecific = "-mtvos-version-min=9.0"
         } else {
             platform = "MacOSX"
             let target = compileCommand
                 .replacingOccurrences(of: #"^.*( -target \S+).*$"#,
-                    with: "$1", options: .regularExpression)
+                                      with: "$1", options: .regularExpression)
             osSpecific = "-mmacosx-version-min=10.11"+target
+            // -Xlinker -bundle_loader -Xlinker \"\(Bundle.main.executablePath!)\""
         }
 
         guard shell(command: """
-            "\(xcodeDev)/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang" -arch "\(arch)" -bundle -isysroot "\(xcodeDev)/Platforms/\(platform).platform/Developer/SDKs/\(platform).sdk" -L"\(toolchain)/usr/lib/swift/\(platform.lowercased())" \(osSpecific) -undefined dynamic_lookup -dead_strip -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -interposable\(linkerOptions) -fobjc-arc -fprofile-instr-generate "\(objectFile)" -L "\(frameworks)" -F "\(frameworks)" -rpath "\(frameworks)" -o \"\(tmpfile).dylib\" >>\"\(logfile)\" 2>&1
-            """) else {
+            "\(xcodeDev)/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang" -arch "\(arch)" \
+                -Xlinker -dylib -isysroot "__PLATFORM__/Developer/SDKs/\(platform).sdk" \
+                -L"\(toolchain)/usr/lib/swift/\(platform.lowercased())" \(osSpecific) \
+                -undefined dynamic_lookup -dead_strip -Xlinker -objc_abi_version \
+                -Xlinker 2 -Xlinker -interposable\(linkerOptions) -fobjc-arc \
+                -fprofile-instr-generate \(contents) -L "\(frameworks)" -F "\(frameworks)" \
+                -rpath "\(frameworks)" -o \"\(dylib)\" >>\"\(logfile)\" 2>&1
+            """.replacingOccurrences(of: "__PLATFORM__",
+                with: "\(xcodeDev)/Platforms/\(platform).platform")) else {
             throw scriptError("Linking")
         }
 
         // codesign dylib
 
         if signer != nil {
-            guard signer!("\(injectionNumber).dylib") else {
+            guard dylib.hasSuffix(Self.quickDylib) ||
+                signer!("\(injectionNumber).dylib") else {
                 #if SWIFT_PACKAGE
                 throw evalError("Codesign failed. Consult /tmp/hot_reloading.log")
                 #else
@@ -512,13 +560,11 @@ public class SwiftEval: NSObject {
             #endif
         }
 
-        // Reset dylib to prevent macOS 10.15 from blocking it
-        let url = URL(fileURLWithPath: "\(tmpfile).dylib")
+        // Rewrite dylib to prevent macOS 10.15+ from quarantining it
+        let url = URL(fileURLWithPath: dylib)
         let dylib = try Data(contentsOf: url)
-        try filemgr.removeItem(at: url)
+        try FileManager.default.removeItem(at: url)
         try dylib.write(to: url)
-
-        return tmpfile
     }
 
 
@@ -593,30 +639,34 @@ public class SwiftEval: NSObject {
         }
     }()
 
-    @objc func loadAndInject(tmpfile: String, oldClass: AnyClass? = nil) throws -> [AnyClass] {
-
+    @objc func loadAndInject(tmpfile: String, oldClass: AnyClass? = nil)
+        throws -> [AnyClass] {
         _ = loadXCTest
 
         print("\(APP_PREFIX)Loading .dylib ...")
         // load patched .dylib into process with new version of class
-        guard let dl = dlopen("\(tmpfile).dylib", RTLD_NOW) else {
-            var error = String(cString: dlerror())
-            if error.contains("___llvm_profile_runtime") {
-                error += """
-                    \n\(APP_PREFIX)⚠️ Loading .dylib has failed, try turning off \
-                    collection of test coverage in your scheme
-                    """
-            } else if error.contains("ymbol not found") {
-                error += """
-                    \n\(APP_PREFIX)⚠️ Loading .dylib has failed, This is likely \
-                    because Swift code being injected refers to a function \
-                    with a default argument or perhaps an XCTest that depends on \
-                    code not normally linked into your application. Rebuilding and \
-                    re-running your project (without a build clean) can resolve this.
-                    """
-                forceUnhide()
+        var dl: UnsafeMutableRawPointer?
+        for dylib in "\(tmpfile).dylib".components(separatedBy: Self.dylibDelim) {
+            dl = dlopen(dylib, RTLD_NOW)
+            guard dl != nil else {
+                var error = String(cString: dlerror())
+                if error.contains("___llvm_profile_runtime") {
+                    error += """
+                        \n\(APP_PREFIX)⚠️ Loading .dylib has failed, try turning off \
+                        collection of test coverage in your scheme
+                        """
+                } else if error.contains("ymbol not found") {
+                    error += """
+                        \n\(APP_PREFIX)⚠️ Loading .dylib has failed, This is likely \
+                        because Swift code being injected refers to a function \
+                        with a default argument or perhaps an XCTest that depends on \
+                        code not normally linked into your application. Rebuilding and \
+                        re-running your project (without a build clean) can resolve this.
+                        """
+                    forceUnhide()
+                }
+                throw evalError("dlopen() error: \(error)")
             }
-            throw evalError("dlopen() error: \(error)")
         }
         print("\(APP_PREFIX)Loaded .dylib - Ignore any duplicate class warning ⬆️")
 
@@ -638,7 +688,7 @@ public class SwiftEval: NSObject {
         else {
             // grep out symbols for classes being injected from object file
 
-            return try extractClasses(dl: dl, tmpfile: tmpfile)
+            return try extractClasses(dl: dl!, tmpfile: tmpfile)
         }
     }
 
@@ -649,11 +699,14 @@ public class SwiftEval: NSObject {
     @objc func extractClasses(dl: UnsafeMutableRawPointer,
                               tmpfile: String) throws -> [AnyClass] {
         guard shell(command: """
-            \(xcodeDev)/Toolchains/XcodeDefault.xctoolchain/usr/bin/nm \(tmpfile).o | grep -E ' S _OBJC_CLASS_\\$_| _(_T0|\\$S|\\$s).*CN$' | awk '{print $3}' >\(tmpfile).classes
+            \(xcodeDev)/Toolchains/XcodeDefault.xctoolchain/usr/bin/nm \(tmpfile).o | \
+            grep -E ' S _OBJC_CLASS_\\$_| _(_T0|\\$S|\\$s).*CN$' | awk '{print $3}' \
+            >\(tmpfile).classes
             """) else {
             throw evalError("Could not list class symbols")
         }
-        guard var classSymbolNames = (try? String(contentsOfFile: "\(tmpfile).classes"))?.components(separatedBy: "\n") else {
+        guard var classSymbolNames = (try? String(contentsOfFile:
+            "\(tmpfile).classes"))?.components(separatedBy: "\n") else {
             throw evalError("Could not load class symbol list")
         }
         classSymbolNames.removeLast()
@@ -662,7 +715,8 @@ public class SwiftEval: NSObject {
             .map { unsafeBitCast($0, to: AnyClass.self) }
     }
 
-    func findCompileCommand(logsDir: URL, classNameOrFile: String, tmpfile: String) throws -> (compileCommand: String, sourceFile: String)? {
+    func findCompileCommand(logsDir: URL, classNameOrFile: String, tmpfile: String)
+        throws -> (compileCommand: String, sourceFile: String)? {
         // path to project can contain spaces and '$&(){}
         // Objective-C paths can only contain space and '
         // project file itself can only contain spaces
@@ -745,7 +799,8 @@ public class SwiftEval: NSObject {
             cd "\(logsDir.path.escaping("$"))" &&
             for log in `ls -t *.xcactivitylog`; do
                 #echo "Scanning $log"
-                /usr/bin/env perl "\(tmpfile).pl" "$log" >"\(tmpfile).sh" 2>"\(tmpfile).err" && exit 0
+                /usr/bin/env perl "\(tmpfile).pl" "$log" \
+                >"\(tmpfile).sh" 2>"\(tmpfile).err" && exit 0
             done
             exit 1;
             """) else {
@@ -886,9 +941,10 @@ public class SwiftEval: NSObject {
     func logsDir(project: URL, derivedData: URL) -> URL? {
         let filemgr = FileManager.default
         let projectPrefix = project.deletingPathExtension()
-            .lastPathComponent.replacingOccurrences(of: "\\s+", with: "_",
+            .lastPathComponent.replacingOccurrences(of: #"\s+"#, with: "_",
                                     options: .regularExpression, range: nil)
-        var possibleDerivedData = (try? filemgr.contentsOfDirectory(atPath: derivedData.path))?
+        var possibleDerivedData = (try? filemgr
+            .contentsOfDirectory(atPath: derivedData.path))?
             .filter { $0.starts(with: projectPrefix + "-") }
             .map { derivedData.appendingPathComponent($0 + "/Logs/Build") } ?? []
         possibleDerivedData.append(project.deletingLastPathComponent()

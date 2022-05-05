@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiondGuts/SignerService.m#10 $
+//  $Id: //depot/HotReloading/Sources/injectiondGuts/SignerService.m#11 $
 //
 
 #import "SignerService.h"
@@ -24,11 +24,14 @@
     }
     NSString *command = [NSString stringWithFormat:@""
                          "(export CODESIGN_ALLOCATE=\"%s/usr/bin/codesign_allocate\"; "
-                         "if /usr/bin/file \"%@\" | grep ' bundle ' >/dev/null;"
+                         "if /usr/bin/file \"%@\" | grep ' shared library ' >/dev/null;"
                          "then /usr/bin/codesign --force -s \"%@\" \"%@\";"
                          "else exit 1; fi)",
                          toolchainDir, dylib, identity ?: adhocSign, dylib];
-    return system(command.UTF8String) >> 8 == EXIT_SUCCESS;
+    if (system(command.UTF8String) >> 8 == EXIT_SUCCESS)
+        return TRUE;
+    NSLog(@"Codesigning failed with command: %@", command);
+    return FALSE;
 }
 
 #if 0 // no longer used

@@ -5,7 +5,7 @@
 //
 //  Interpose processing (-Xlinker -interposable).
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInterpose.swift#1 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInterpose.swift#2 $
 //
 
 import Foundation
@@ -68,25 +68,25 @@ extension SwiftInjection {
         }
         #endif
         filterImageSymbols(ST_LAST_IMAGE, .any, SwiftTrace.injectableSymbol) {
-                (loadedFunc, symbol, _, _) in
-                guard let existing = dlsym(main, symbol) ??
-                        findSwiftSymbol(searchBundleImages(), symbol, .any),
-                      existing != loadedFunc/*,
-                    let current = SwiftTrace.interposed(replacee: existing)*/ else {
-                    return
-                }
-                let current = existing
-                traceAndReplace(current, replacement: loadedFunc, symname: symbol) {
-                    (replacement: UnsafeMutableRawPointer) -> String? in
-                    interposes.append(dyld_interpose_tuple(replacement: replacement,
-                                                           replacee: current))
-                    symbols.append(symbol)
-                    return "Interposing"
-                }
-                #if ORIGINAL_2_2_0_CODE
-                SwiftTrace.interposed[existing] = loadedFunc
-                SwiftTrace.interposed[current] = loadedFunc
-                #endif
+            (loadedFunc, symbol, _, _) in
+            guard let existing = dlsym(main, symbol) ??
+                    findSwiftSymbol(searchBundleImages(), symbol, .any),
+                  existing != loadedFunc/*,
+                let current = SwiftTrace.interposed(replacee: existing)*/ else {
+                return
+            }
+            let current = existing
+            traceAndReplace(current, replacement: loadedFunc, symname: symbol) {
+                (replacement: UnsafeMutableRawPointer) -> String? in
+                interposes.append(dyld_interpose_tuple(replacement: replacement,
+                                                       replacee: current))
+                symbols.append(symbol)
+                return nil //"Interposing"
+            }
+            #if ORIGINAL_2_2_0_CODE
+            SwiftTrace.interposed[existing] = loadedFunc
+            SwiftTrace.interposed[current] = loadedFunc
+            #endif
         }
 
         #if !ORIGINAL_2_2_0_CODE

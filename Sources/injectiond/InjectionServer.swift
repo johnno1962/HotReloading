@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#42 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#43 $
 //
 
 import Cocoa
@@ -414,7 +414,8 @@ public class InjectionServer: SimpleSocket {
                             (injectedFile as NSString).lastPathComponent &&
                         filename?.lowercased
                             .contains(injectedFileName.lowercased()) == true &&
-                        filename?.contains("Test") == true {
+                        (filename?.contains("Test") == true ||
+                         filename?.contains("Spec.") == true) {
                         matchedTests.append(fileURL.path!)
                     }
                 }

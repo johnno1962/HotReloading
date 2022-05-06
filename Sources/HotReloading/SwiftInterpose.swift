@@ -5,7 +5,7 @@
 //
 //  Interpose processing (-Xlinker -interposable).
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInterpose.swift#2 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInterpose.swift#3 $
 //
 
 import Foundation
@@ -90,7 +90,7 @@ extension SwiftInjection {
         }
 
         #if !ORIGINAL_2_2_0_CODE
-        if interposes.count == 0 { return [] }
+        //// if interposes.count == 0 { return [] }
         var rebindings = SwiftTrace.record(interposes: interposes, symbols: symbols)
         return SwiftTrace.apply(rebindings: &rebindings,
             onInjection: { (header, slide) in

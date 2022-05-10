@@ -5,7 +5,7 @@
 //
 //  Interpose processing (-Xlinker -interposable).
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInterpose.swift#3 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInterpose.swift#4 $
 //
 
 import Foundation
@@ -17,7 +17,7 @@ import SwiftTraceGuts
 extension SwiftInjection {
 
     /// "Interpose" all function definitions in a dylib onto the main executable
-    open class func interpose(functionsIn dylib: String) -> [UnsafePointer<Int8>] {
+    public class func interpose(functionsIn dylib: String) -> [UnsafePointer<Int8>] {
         var symbols = [UnsafePointer<Int8>]()
 
         #if false // DLKit based interposing

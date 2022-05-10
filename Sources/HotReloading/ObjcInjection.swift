@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/ObjcInjection.swift#7 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/ObjcInjection.swift#8 $
 //
 //  Code specific to "classic" Objective-C method swizzling.
 //
@@ -22,7 +22,7 @@ extension SwiftInjection {
     ///   - oldClass: original class to be swizzled
     ///   - tmpfile: no longer used
     /// - Returns: # methods swizzled
-    open class func injection(swizzle oldClass: AnyClass, tmpfile: String) -> Int {
+    public class func injection(swizzle oldClass: AnyClass, tmpfile: String) -> Int {
         var methodCount: UInt32 = 0, swizzled = 0
         if let methods = class_copyMethodList(oldClass, &methodCount) {
             for i in 0 ..< Int(methodCount) {
@@ -40,7 +40,7 @@ extension SwiftInjection {
     ///   - selector: method selector to be swizzled
     ///   - tmpfile: no longer used
     /// - Returns: # methods swizzled
-    open class func swizzle(oldClass: AnyClass, selector: Selector,
+    public class func swizzle(oldClass: AnyClass, selector: Selector,
                             _ tmpfile: String) -> Int {
         var swizzled = 0
         if let method = class_getInstanceMethod(oldClass, selector),
@@ -66,7 +66,7 @@ extension SwiftInjection {
     }
 
     /// Fallback to make sure at least the @objc func injected() and viewDidLoad() methods are swizzled
-    open class func swizzleBasics(oldClass: AnyClass, tmpfile: String) -> Int {
+    public class func swizzleBasics(oldClass: AnyClass, tmpfile: String) -> Int {
         var swizzled = swizzle(oldClass: oldClass, selector: injectedSEL, tmpfile)
         #if os(iOS) || os(tvOS)
         swizzled += swizzle(oldClass: oldClass, selector: viewDidLoadSEL, tmpfile)
@@ -79,7 +79,7 @@ extension SwiftInjection {
     ///   - newClass: Newly loaded class
     ///   - oldClass: Original class to be swizzle
     /// - Returns: # of methods swizzled
-    open class func injection(swizzle newClass: AnyClass?, onto oldClass: AnyClass?) -> Int {
+    public class func injection(swizzle newClass: AnyClass?, onto oldClass: AnyClass?) -> Int {
         var methodCount: UInt32 = 0, swizzled = 0
         if let methods = class_copyMethodList(newClass, &methodCount) {
             for i in 0 ..< Int(methodCount) {

@@ -7,7 +7,7 @@
 //  instance of classes that have been injected in order
 //  to be able to send them the @objc injected message.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#12 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#13 $
 //
 
 import Foundation
@@ -44,7 +44,7 @@ extension SwiftInjection {
 
     static var sweepWarned = false
 
-    open class func performSweep(oldClasses: [AnyClass], _ tmpfile: String,
+    public class func performSweep(oldClasses: [AnyClass], _ tmpfile: String,
                                  _ injectedGenerics: Set<String>) {
         var injectedClasses = [AnyClass]()
         typealias ClassIMP = @convention(c) (AnyClass, Selector) -> ()

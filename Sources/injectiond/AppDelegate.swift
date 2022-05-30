@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#50 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#54 $
 //
 
 import Cocoa
@@ -214,6 +214,20 @@ class AppDelegate : NSObject, NSApplicationDelegate {
             return false
         }
 
+        if url.pathExtension == "xcworkspace" ||
+            url.pathExtension == "xcodeproj" {
+            let alert: NSAlert = NSAlert()
+            alert.messageText = "InjectionIII"
+            alert.informativeText = """
+                Please select the project directory to watch \
+                for file changes under, not the project file.
+                """
+            alert.alertStyle = NSAlert.Style.warning
+            alert.addButton(withTitle: "Sorry")
+            _ = alert.runModal()
+            return false
+        }
+
         let projectFiles =
             filesWithExtension("xcworkspace", inFiles: fileList) ??
             filesWithExtension("xcodeproj", inFiles: fileList)
@@ -244,7 +258,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
                         let alert: NSAlert = NSAlert()
                         alert.messageText = "InjectionIII"
                         alert.informativeText = """
-                            InjectionIII has patched Package.swift to indlude the -interposable linker flag. Use Menu item "Prepare Project" to complete conversion.
+                            InjectionIII has patched Package.swift to include the -interposable linker flag. Use Menu item "Prepare Project" to complete conversion.
                             """
                         alert.alertStyle = NSAlert.Style.warning
                         alert.addButton(withTitle: "OK")

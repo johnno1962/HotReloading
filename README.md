@@ -79,6 +79,12 @@ outlined in the [HotSwiftUI](https://github.com/johnno1962/HotSwiftUI)
 project then you can experience something like "Xcode Previews", except 
 for a fully functional app on an actual device!
 
+### HotReloading using VSCode
+
+It's possible to use HotReloading from inside the VSCode editor. Consult
+[this project](https://github.com/markst/hotreloading-vscode-ios) for the
+setup required.
+
 ### Vapor injection
 
 To use injection with Vapor web server, add this Swift package as a
@@ -118,4 +124,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2022/04/05 $
+$Date: 2022/06/04 $

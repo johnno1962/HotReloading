@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#55 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#56 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -825,13 +825,14 @@ public class SwiftEval: NSObject {
             // (logs of new build system escape ', $ and ")
         HRLog("Found command:", compileCommand)
         compileCommand = compileCommand
-            .replacingOccurrences(of: #"builtin-swiftDriverJobExecution --"#, with: "")
+            .replacingOccurrences(of: #"builtin-swift(DriverJob|Task)Execution --"#,
+                                  with: "", options: .regularExpression)
 //            // remove excess escaping in new build system (no linger necessary)
 //            .replacingOccurrences(of: #"\\([\"'\\])"#, with: "$1", options: [.regularExpression])
             // these files may no longer exist
             .replacingOccurrences(of:
                 #" -(pch-output-dir|supplementary-output-file-map) \#(Self.argumentRegex) "#,
-                                  with: " ", options: [.regularExpression])
+                                  with: " ", options: .regularExpression)
         HRLog("Replaced command:", compileCommand)
 
         if isFile {

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#43 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#44 $
 //
 
 import Cocoa
@@ -297,8 +297,8 @@ public class InjectionServer: SimpleSocket {
             case .projectRoot:
                 if let projectRoot = readString() {
                     DispatchQueue.main.async {
-                        _ = appDelegate.application(nil,
-                                        openFile: projectRoot)
+                        _ = appDelegate.application(NSApp,
+                                                    openFile: projectRoot)
                     }
                 }
             default:

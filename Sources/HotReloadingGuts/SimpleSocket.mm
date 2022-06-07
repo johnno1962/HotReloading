@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#23 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#24 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -230,7 +230,15 @@
 /// Hash used to differentiate HotReloading users on network.
 /// Derived from path to source file in project's DerivedData.
 + (int)multicastHash {
-    const char *key = __FILE__;
+    #if INJECTION_III_APP
+    const char *key = NSHomeDirectory().UTF8String;
+    #else
+    NSString *file = [NSString stringWithUTF8String:__FILE__];
+    const char *key = [file
+       stringByReplacingOccurrencesOfString: @"(/Users/[^/]+).*"
+           withString: @"$1" options: NSRegularExpressionSearch
+               range: NSMakeRange(0, file.length)].UTF8String;
+    #endif
     int hash = 0;
     for (size_t i=0, len = strlen(key); i<len; i++)
         hash += (i+3)%15*key[i];

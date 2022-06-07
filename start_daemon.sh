@@ -2,8 +2,10 @@
 #
 # Start up daemon process to rebuild changed sources
 #
-# $Id: //depot/HotReloading/start_daemon.sh#36 $
+# $Id: //depot/HotReloading/start_daemon.sh#41 $
 #
+
+echo "*** You no longer need to run start_daemon.sh" 1>&2
 
 export PROJECT_FILE_PATH="${PROJECT_FILE_PATH:-"$PWD/Package.swift"}" # Vapor
 

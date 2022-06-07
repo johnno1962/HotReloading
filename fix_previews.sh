@@ -5,8 +5,10 @@
 #  Running this script seemed to help Xcode not
 #  leave out frameworks when running previews.
 #
-#  $Id: //depot/HotReloading/fix_previews.sh#6 $
+#  $Id: //depot/HotReloading/fix_previews.sh#7 $
 #
+
+echo "*** You no longer need to run fix_previews.sh" 1>&2
 
 APP_ROOT="$CODESIGNING_FOLDER_PATH"
 if [ -d "$APP_ROOT"/Contents ]; then

@@ -14,13 +14,7 @@ To try out an example project that is already set-up, clone this fork of
 To use on your project, simply add this repo as a Swift Package, add the following
 `-Xlinker -interposable` to Debug "Other Linker Flags", and then rebuild.
 You no longer need to add a "Run Script" build phase unless you want to inject 
-on a device, in which case add the following to start the Injection daemon. 
-
-```
-if [ -d $SYMROOT/../../SourcePackages ]; then
-    $SYMROOT/../../SourcePackages/checkouts/HotReloading/start_daemon.sh
-fi
-```
+on a device, in which case see the notes below on how to configure the InjectionIII app. 
 
 If you encounter undefined `FSEventStream*` symbols, this is due to using a macOS 
 api in the simulator and you should find this goes away if add the following additional 
@@ -31,20 +25,18 @@ api in the simulator and you should find this goes away if add the following add
 You should see a message that the app has connected and which
 directories it is watching for source file changes. You can change
 these by using comma separated list in the environment variable
-`INJECTION_DIRECTORIES`. It you run the daemon it presents an icon
-on the menu bar you can use to access features such as tracing and
-[remote control](https://github.com/johnno1962/Remote). The daemon also
-patches your project slightly to add the required `"-Xlinker -interposable"`
-"Other Linker Flags" for injecting the methods of structs so you may have
-to run the project a second time after adding the `HotReloading` package. 
-If you choose to run the daemon when using the simulator, add the environment
+`INJECTION_DIRECTORIES`.  You can choose to connect to the 
+InjectionIII.app when using the simulator, by adding the environment 
 variable `INJECTION_DAEMON` to your scheme to have your app connect.
 
 Consult the README of the [InjectionIII](https://github.com/johnno1962/InjectionIII)
 project for more information in particular how to use it to inject `SwiftUI` using the
-[HotSwiftUI](https://github.com/johnno1962/HotSwiftUI) protocol extension. It's
-the same code but you no longer need to download or run the app and the project
-is selected automatically.
+[HotSwiftUI](https://github.com/johnno1962/HotSwiftUI) protocol extension.
+
+### HotReloading using VSCode
+
+It's possible to use HotReloading from inside the VSCode editor and realise a
+form of "VScode Previews". Consult [this project](https://github.com/markst/hotreloading-vscode-ios) for the setup required.
 
 ### Device Injection
 
@@ -58,6 +50,13 @@ clone this project and configure your mac's WiFi IP address into the
 `hostname` variable in Package.swift. Then drag the clone onto your 
 project to have it take the place of the configured Swift Package.
 
+Device injection now connects to the [InjectionIII.app](https://github.com/johnno1962/InjectionIII)
+([github release](https://github.com/johnno1962/InjectionIII/releases) 4.2.8 or above) and 
+requires you type the following command into a Terminal to opt into 
+receiving remote connections from the device then restart the InjectionIII app:
+
+    $ defaults write com.johnholdsworth.InjectionIII deviceUnlock any
+
 As Swift plays its cards pretty close to its chest it's not quite possible
 to initialise type meta data entirely correctly so your milage may vary
 more than using HotReloading in the simulator. In particular, if injected
@@ -70,20 +69,14 @@ Also note that, as the HotReloading package needs to connect a network
 socket to your Mac to receive commands and new versions of code, expect
 a message the first time you run your app after adding the package
 asking you to "Trust" that your app should be allowed to do this.
-Likewise, at the Mac end (as the HotReloading daemon needs to open
+Likewise, at the Mac end (as the InjectionIII app needs to open
 a network port to accept this connection) you may be prompted for
 permission if you have the macOS firewall turned on.
 
-For `SwifuUI` you can force screen updates by following the conventions 
+For `SwiftUI` you can force screen updates by following the conventions 
 outlined in the [HotSwiftUI](https://github.com/johnno1962/HotSwiftUI) 
 project then you can experience something like "Xcode Previews", except 
 for a fully functional app on an actual device!
-
-### HotReloading using VSCode
-
-It's possible to use HotReloading from inside the VSCode editor. Consult
-[this project](https://github.com/markst/hotreloading-vscode-ios) for the
-setup required.
 
 ### Vapor injection
 
@@ -124,4 +117,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2022/06/04 $
+$Date: 2022/06/07 $

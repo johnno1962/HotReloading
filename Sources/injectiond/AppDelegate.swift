@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#54 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#63 $
 //
 
 import Cocoa
@@ -85,13 +85,13 @@ class AppDelegate : NSObject, NSApplicationDelegate {
         if isSandboxed {
 //            sponsorItem.isHidden = true
             updateItem.isHidden = true
-        } else {
-            #if SWIFT_PACKAGE
+        } else if let platform = getenv("PLATFORM_NAME"),
+           strcmp(platform, "iphonesimulator") == 0 {
+            DeviceServer.startServer(HOTRELOADING_PORT)
+        } else if let unlock = defaults.string(forKey: UserDefaultsUnlock) {
+            let deviceInform = "deviceInform"
             var openPort = ""
-            if let platform = getenv("PLATFORM_NAME"),
-               strcmp(platform, "iphonesimulator") == 0 {
-            } else {
-                let deviceInform = "deviceInform"
+            if unlock == "any" {
                 if defaults.string(forKey: deviceInform) == nil {
                     let alert: NSAlert = NSAlert()
                     alert.messageText = "Device Injection"
@@ -114,7 +114,6 @@ class AppDelegate : NSObject, NSApplicationDelegate {
                                             port: HOTRELOADING_PORT)
             }
             DeviceServer.startServer(openPort+HOTRELOADING_PORT)
-            #endif
         }
 
         #if !SWIFT_PACKAGE
@@ -125,7 +124,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
             alert.messageText = "Missing Xcode at required location"
             alert.informativeText = """
                 Xcode.app not found at path /Applications/Xcode.app. \
-                You need to have an Xcode at this location to be able \
+                You may need to have an Xcode at this location to be able \
                 to use InjectionIII. A symbolic link at that path is fine.
                 """
             alert.alertStyle = .critical
@@ -203,7 +202,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
         statusMenu.item(at: statusMenu.items.count-1)?.title = "Quit "+appName
     }
 
-    func application(_ theApplication: NSApplication?, openFile filename: String) -> Bool {
+    func application(_ theApplication: NSApplication, openFile filename: String) -> Bool {
         #if SWIFT_PACKAGE
         return false
         #else

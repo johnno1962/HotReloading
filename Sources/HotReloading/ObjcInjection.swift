@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/ObjcInjection.swift#8 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/ObjcInjection.swift#10 $
 //
 //  Code specific to "classic" Objective-C method swizzling.
 //
@@ -85,16 +85,16 @@ extension SwiftInjection {
             for i in 0 ..< Int(methodCount) {
                 let selector = method_getName(methods[i])
                 let replacement = method_getImplementation(methods[i])
-                guard let method = class_getInstanceMethod(oldClass, selector),
-                      let existing = i < 0 ? nil : method_getImplementation(method),
-                   replacement != existing else {
+                guard let method = class_getInstanceMethod(oldClass, selector) ??
+                                    class_getInstanceMethod(newClass, selector),
+                      let existing = i < 0 ? nil : method_getImplementation(method) else {
                     continue
                 }
                 traceAndReplace(existing, replacement: autoBitCast(replacement),
                                 objcMethod: methods[i], objcClass: newClass) {
                     (replacement: IMP) -> String? in
                     if class_replaceMethod(oldClass, selector, replacement,
-                        method_getTypeEncoding(methods[i])) != nil {
+                        method_getTypeEncoding(methods[i])) != replacement {
                         swizzled += 1
                         let which = class_isMetaClass(oldClass) ? "+" : "-"
                         return "Sizzled \(which)[\(_typeName(oldClass!)) \(selector)]"

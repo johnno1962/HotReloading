@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 09/06/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/ReducerInjection.swift#1 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/ReducerInjection.swift#3 $
 //
 
 import Foundation
@@ -36,10 +36,11 @@ extension SwiftInjection {
                 expectedInjectableReducerSymbols.insert(String(cString: symname))
             }
 
-            for sym in expectedInjectableReducerSymbols
+            for symname in expectedInjectableReducerSymbols
                 .subtracting(injectableReducerSymbols) {
-                log("⚠️ Not injectable or not used:",
-                    SwiftMeta.demangle(symbol: sym) ?? sym)
+                let sym = SwiftMeta.demangle(symbol: symname) ?? symname
+                let variable = sym.components(separatedBy: " ").last ?? sym
+                log("⚠️ \(variable) is not injectable (or unused), wrap it with ARCInjectable")
             }
         }
     }()

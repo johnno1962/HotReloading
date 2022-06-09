@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#168 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#170 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -81,11 +81,6 @@ extension NSObject {
     public class func inject(file: String) {
         SwiftInjection.inject(oldClass: nil, classNameOrFile: file)
     }
-
-    @objc
-    public func registerInjectableTCAReducer(_ symbol: String) {
-        SwiftInjection.injectableReducerSymbols.insert(symbol)
-    }
 }
 
 @objc(SwiftInjection)
@@ -111,15 +106,14 @@ public class SwiftInjection: NSObject {
     static let notification = Notification.Name("INJECTION_BUNDLE_NOTIFICATION")
 
     static var injectionDetail = getenv(INJECTION_DETAIL) != nil
-    static var injectableReducerSymbols = Set<String>()
     static var objcClassRefs = NSMutableArray()
     static var descriptorRefs = NSMutableArray()
     static var injectedPrefix: String {
         return "Injection#\(SwiftEval.instance.injectionNumber)/"
     }
 
-    open class func log(_ msg: String) {
-        print(APP_PREFIX+msg)
+    open class func log(_ what: Any...) {
+        print(APP_PREFIX+what.map {"\($0)"}.joined(separator: " "))
     }
     open class func detail(_ msg: @autoclosure () -> String) {
         if injectionDetail {
@@ -470,22 +464,6 @@ public class SwiftInjection: NSObject {
         }
 
         return patched
-    }
-
-    /// Support for re-initialising "The Composable Architecture", "Reducer"
-    /// variables declared at the top level. Requires custom version of TCA:
-    /// https://github.com/thebrowsercompany/swift-composable-architecture/tree/develop
-    static func reinitializeInjectedReducers(_ tmpfile: String,
-                reinitialized: UnsafeMutablePointer<[SymbolName]>) {
-        findHiddenSwiftSymbols(searchLastLoaded(), "_WZ", .local) {
-            accessor, symname, _, _ in
-            if injectableReducerSymbols.contains(String(cString: symname)) {
-                typealias OneTimeInitialiser = @convention(c) () -> Void
-                let reinitialise: OneTimeInitialiser = autoBitCast(accessor)
-                reinitialise()
-                reinitialized.pointee.append(symname)
-            }
-        }
     }
 
     /// Pop a trace on a newly injected method and convert the pointer type while you're at it

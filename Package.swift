@@ -1,8 +1,8 @@
-// swift-tools-version:5.3
+// swift-tools-version:5.2
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
 //  Repo: https://github.com/johnno1962/HotReloading
-//  $Id: //depot/HotReloading/Package.swift#145 $
+//  $Id: //depot/HotReloading/Package.swift#146 $
 //
 
 import PackageDescription
@@ -40,13 +40,8 @@ let package = Package(
                  .upToNextMinor(from: "2.3.5")),
         .package(url: "https://github.com/johnno1962/DLKit",
                  .upToNextMinor(from: "1.2.1")),
-        // This package is configured to use a time limited
-        // binary framework that allows iOS and tvOS device
-        // injection until Sepetember 15th 2022 after which
-        // I'll have to find a sustainable licensing mechanism.
-        // It should still work fine with the simulator.
         .package(url: "https://github.com/johnno1962/InjectionScratch",
-                 .upToNextMinor(from: "1.2.11")),
+                 .upToNextMinor(from: "1.2.12")),
     ],
     targets: [
         .target(name: "HotReloading", dependencies: ["HotReloadingGuts",

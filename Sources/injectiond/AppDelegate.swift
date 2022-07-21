@@ -54,26 +54,35 @@ class AppDelegate : NSObject, NSApplicationDelegate {
     @IBOutlet var statusItem: NSStatusItem!
 
     var watchedDirectories = Set<String>()
+    private(set) var xcodeAppPath: String = "/Applications/Xcode.app"
     weak var lastConnection: InjectionServer?
     var selectedProject: String?
     let openProject = NSLocalizedString("Select Project Directory",
                                         tableName: "Project Directory",
                                         comment: "Project Directory")
+    let openXcode = NSLocalizedString("Select Xcode app",
+                                      comment: "Xcode Directory")
 
     @objc let defaults = UserDefaults.standard
     var defaultsMap: [NSMenuItem: String]!
 
     lazy var isSandboxed =
         ProcessInfo.processInfo.environment["APP_SANDBOX_CONTAINER_ID"] != nil
-    var runningXcodeDevURL: URL? =
-        NSRunningApplication.runningApplications(
-            withBundleIdentifier: XcodeBundleID).first?
-            .bundleURL?.appendingPathComponent("Contents/Developer")
+    var runningXcodeAppURL: URL? = NSRunningApplication.runningApplications(
+        withBundleIdentifier: XcodeBundleID).first?
+        .bundleURL
+    var runningXcodeDevURL: URL? {
+        return runningXcodeAppURL?.appendingPathComponent("Contents/Developer")
+    }
     var derivedLogs: String?
 
     @objc func applicationDidFinishLaunching(_ aNotification: Notification) {
         // Insert code here to initialize your application
         appDelegate = self
+
+        if let path = defaults.string(forKey: UserDefaultsXcodeAppPath) {
+            xcodeAppPath = path
+        }
 
         let statusBar = NSStatusBar.system
         statusItem = statusBar.statusItem(withLength: statusBar.thickness)
@@ -119,17 +128,18 @@ class AppDelegate : NSObject, NSApplicationDelegate {
         #if !SWIFT_PACKAGE
         InjectionServer.startServer(INJECTION_ADDRESS)
         if !FileManager.default.fileExists(atPath:
-            "/Applications/Xcode.app/Contents/Developer") {
+            "\(xcodeAppPath)/Contents/Developer") {
             let alert: NSAlert = NSAlert()
             alert.messageText = "Missing Xcode at required location"
             alert.informativeText = """
-                Xcode.app not found at path /Applications/Xcode.app. \
+                Xcode.app not found at path \(xcodeAppPath). \
                 You may need to have an Xcode at this location to be able \
                 to use InjectionIII. A symbolic link at that path is fine.
                 """
             alert.alertStyle = .critical
             alert.addButton(withTitle: "OK")
             _ = alert.runModal()
+            selectXcode()
         }
         #endif
 
@@ -397,6 +407,23 @@ class AppDelegate : NSObject, NSApplicationDelegate {
                 }
             }
         }
+    }
+
+    @IBAction func selectXcode(_ sender: Any) {
+        selectXcode()
+    }
+
+    private func selectXcode() {
+        let open = NSOpenPanel()
+        open.prompt = openXcode
+        open.allowsMultipleSelection = false
+        open.canChooseDirectories = false
+        open.canChooseFiles = true
+        open.directoryURL = URL(fileURLWithPath: "/Applications")
+        guard open.runModal() == .OK, let url = open.urls.first else { return }
+        xcodeAppPath = url.path
+        lastConnection?.setXcodeAppPath(xcodeAppPath)
+        defaults.set(xcodeAppPath, forKey: UserDefaultsXcodeAppPath)
     }
 
     @IBAction func openProject(_ sender: Any) {

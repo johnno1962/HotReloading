@@ -168,6 +168,12 @@ public class InjectionClient: SimpleSocket, InjectionReader {
             builder.derivedLogs = nil;
         case .watching:
             log("Watching files under the directory \(readString() ?? "Missing directory")")
+        case .xcodeAppPath:
+            let xcodeAppPath = readString()
+            log("Xcode app path set at \(xcodeAppPath ?? "Missing path")")
+            if let xcodeAppPath = xcodeAppPath {
+                builder.xcodeAppPath = xcodeAppPath
+            }
         case .log:
             log(readString() ?? "Missing log message")
         case .ideProcPath:

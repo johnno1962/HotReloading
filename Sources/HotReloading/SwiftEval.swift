@@ -183,6 +183,11 @@ public class SwiftEval: NSObject {
     }
 
     // Xcode related info
+    @objc public var xcodeAppPath: String = "/Applications/Xcode.app" {
+        didSet {
+            xcodeDev = xcodeAppPath + "/Contents/Developer"
+        }
+    }
     @objc public var xcodeDev = "/Applications/Xcode.app/Contents/Developer"
 
     @objc public var projectFile: String?

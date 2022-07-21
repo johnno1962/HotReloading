@@ -68,6 +68,7 @@ typedef NS_ENUM(int, InjectionCommand) {
     // commands to Bundle
     InjectionConnected,
     InjectionWatching,
+    InjectionXcodeAppPath,
     InjectionLog,
     InjectionSigned,
     InjectionLoad,

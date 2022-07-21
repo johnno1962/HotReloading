@@ -122,18 +122,22 @@ public class InjectionServer: SimpleSocket {
                 self.log("Signing with identity: \(identity!)")
             }
             return SignerService.codesignDylib(
-                self.builder.tmpDir+"/eval"+$0, identity: identity)
+                self.builder.tmpDir+"/eval"+$0,
+                identity: identity,
+                xcodePath: appDelegate.xcodeAppPath
+            )
         }
 
         // Xcode specific config
-        if let xcodeDevURL = appDelegate.runningXcodeDevURL {
-            builder.xcodeDev = xcodeDevURL.path
+        if let xcodeAppURL = appDelegate.runningXcodeAppURL {
+            builder.xcodeAppPath = xcodeAppURL.path
         }
 
         builder.projectFile = projectFile
 
         appDelegate.setMenuIcon(.ok)
         appDelegate.lastConnection = self
+        setXcodeAppPath(appDelegate.xcodeAppPath)
         pending = []
 
         var lastInjected = projectInjected[projectFile]
@@ -343,6 +347,10 @@ public class InjectionServer: SimpleSocket {
         fileWatchers.append(FileWatcher(root: directory,
                                         callback: fileChangeHandler))
         sendCommand(.watching, with: directory)
+    }
+
+    public func setXcodeAppPath(_ path: String) {
+        sendCommand(.xcodeAppPath, with: path)
     }
 
     @objc public func injectPending() {

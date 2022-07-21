@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#63 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#64 $
 //
 
 import Cocoa
@@ -118,19 +118,6 @@ class AppDelegate : NSObject, NSApplicationDelegate {
 
         #if !SWIFT_PACKAGE
         InjectionServer.startServer(INJECTION_ADDRESS)
-        if !FileManager.default.fileExists(atPath:
-            "/Applications/Xcode.app/Contents/Developer") {
-            let alert: NSAlert = NSAlert()
-            alert.messageText = "Missing Xcode at required location"
-            alert.informativeText = """
-                Xcode.app not found at path /Applications/Xcode.app. \
-                You may need to have an Xcode at this location to be able \
-                to use InjectionIII. A symbolic link at that path is fine.
-                """
-            alert.alertStyle = .critical
-            alert.addButton(withTitle: "OK")
-            _ = alert.runModal()
-        }
         #endif
 
         defaultsMap = [

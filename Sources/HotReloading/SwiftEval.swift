@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#63 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#64 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -473,9 +473,14 @@ public class SwiftEval: NSObject {
         if sourceFile.contains("Spec.") {
             let dylib = tmpfile+Self.quickDylib
             do {
+                let platformLib = "__PLATFORM__/../../usr/lib"
+                let platformFrameworks = "__PLATFORM__/../../Library/Frameworks"
                 try link(dylib: dylib, compileCommand: compileCommand, contents: """
                     \(logsDir.path)/../../Build/Products/\(Self.quickFiles) \
-                    __PLATFORM__/../../usr/lib/libXCTestSwiftSupport.dylib
+                    \(platformLib)/libXCTestSwiftSupport.dylib \
+                    -Xlinker -rpath \(platformLib) \
+                    -framework XCTest -F \(platformFrameworks) \
+                    -Xlinker -rpath \(platformFrameworks)
                     """)
                 speclib = dylib
             } catch {
@@ -506,7 +511,7 @@ public class SwiftEval: NSObject {
             if let devRange = Range(match.range(at: 2), in: compileCommand) {
                 xcodeDev = String(compileCommand[devRange])
             }
-            if let pltRange = Range(match.range(at: 3), in: compileCommand) {
+            if let pltRange = Range(match.range(at: 4), in: compileCommand) {
                 platform = String(compileCommand[pltRange])
             }
         }

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#61 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#69 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -183,7 +183,13 @@ public class SwiftEval: NSObject {
     }
 
     // Xcode related info
-    @objc public var xcodeDev = "/Applications/Xcode.app/Contents/Developer"
+    @objc public var xcodeDev = "/Applications/Xcode.app/Contents/Developer" {
+        willSet(newValue) {
+            if newValue != xcodeDev {
+                print(APP_PREFIX+"Selecting Xcode \(newValue)")
+            }
+        }
+    }
 
     @objc public var projectFile: String?
     @objc public var derivedLogs: String?
@@ -473,9 +479,15 @@ public class SwiftEval: NSObject {
         if sourceFile.contains("Spec.") {
             let dylib = tmpfile+Self.quickDylib
             do {
+                let platform = "\"__PLATFORM__\"/../../"
+                let platformLib = platform+"usr/lib"
+                let platformFrameworks = platform+"Library/Frameworks"
                 try link(dylib: dylib, compileCommand: compileCommand, contents: """
                     \(logsDir.path)/../../Build/Products/\(Self.quickFiles) \
-                    __PLATFORM__/Developer/usr/lib/libXCTestSwiftSupport.dylib
+                    \(platformLib)/libXCTestSwiftSupport.dylib \
+                    -Xlinker -rpath \(platformLib) \
+                    -framework XCTest -F \(platformFrameworks) \
+                    -Xlinker -rpath \(platformFrameworks)
                     """)
                 speclib = dylib
             } catch {
@@ -492,44 +504,58 @@ public class SwiftEval: NSObject {
         String(cString: $0) } ?? "Debug-*/{Quick*,Nimble,Cwl*}.o"
     static let quickDylib = "_spec.dylib"
     static let dylibDelim = "==="
+    static let parsePlatform = try! NSRegularExpression(pattern:
+        #" -(?:isysroot|sdk) ((\#(fileNameRegex)/Contents/Developer)/Platforms/(\w+)\.platform\#(fileNameRegex))"#)
 
     func link(dylib: String, compileCommand: String, contents: String) throws {
-        let toolchain = ((try! NSRegularExpression(pattern: #"\s*(\S+?\.xctoolchain)"#, options: []))
-            .firstMatch(in: compileCommand, options: [], range: NSMakeRange(0, compileCommand.utf16.count))?
-            .range(at: 1)).flatMap { compileCommand[$0] } ?? "\(xcodeDev)/Toolchains/XcodeDefault.xctoolchain"
-
-        let platform: String, osSpecific: String
-        if compileCommand.contains("iPhoneSimulator.platform") {
-            platform = "iPhoneSimulator"
-            osSpecific = "-mios-simulator-version-min=9.0"
-        } else if compileCommand.contains("iPhoneOS.platform") {
-            platform = "iPhoneOS"
-            osSpecific = "-miphoneos-version-min=9.0"
-        } else if compileCommand.contains("AppleTVSimulator.platform") {
-            platform = "AppleTVSimulator"
-            osSpecific = "-mtvos-simulator-version-min=9.0"
-        } else if compileCommand.contains("AppleTVOS.platform") {
-            platform = "AppleTVOS"
-            osSpecific = "-mtvos-version-min=9.0"
+        var platform = "iPhoneSimulator"
+        var sdk = "\(xcodeDev)/Platforms/\(platform).platform/Developer/SDKs/\(platform).sdk"
+        if let match = Self.parsePlatform.firstMatch(in: compileCommand,
+            options: [], range: NSMakeRange(0, compileCommand.utf16.count)) {
+            func extract(group: Int, into: inout String) {
+                if let range = Range(match.range(at: group), in: compileCommand) {
+                    into = compileCommand[range]
+                        .replacingOccurrences(of: #"\\(.)"#, with: "$1",
+                                              options: .regularExpression)
+                }
+            }
+            extract(group: 1, into: &sdk)
+            extract(group: 2, into: &xcodeDev)
+            extract(group: 4, into: &platform)
         } else {
-            platform = "MacOSX"
+            _ = evalError("Unable to parse SDK from: \(compileCommand)")
+        }
+
+        var osSpecific = ""
+        switch platform {
+        case "iPhoneSimulator":
+            osSpecific = "-mios-simulator-version-min=9.0"
+        case "iPhoneOS":
+            osSpecific = "-miphoneos-version-min=9.0"
+        case "AppleTVSimulator":
+            osSpecific = "-mtvos-simulator-version-min=9.0"
+        case "AppleTVOS":
+            osSpecific = "-mtvos-version-min=9.0"
+        case "MacOS":
             let target = compileCommand
                 .replacingOccurrences(of: #"^.*( -target \S+).*$"#,
                                       with: "$1", options: .regularExpression)
             osSpecific = "-mmacosx-version-min=10.11"+target
+        default:
+            _ = evalError("Invalid platform \(platform)")
             // -Xlinker -bundle_loader -Xlinker \"\(Bundle.main.executablePath!)\""
         }
 
+        let toolchain = xcodeDev+"/Toolchains/XcodeDefault.xctoolchain"
         guard shell(command: """
-            "\(xcodeDev)/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang" -arch "\(arch)" \
-                -Xlinker -dylib -isysroot "__PLATFORM__/Developer/SDKs/\(platform).sdk" \
+            "\(toolchain)/usr/bin/clang" -arch "\(arch)" \
+                -Xlinker -dylib -isysroot "__PLATFORM__" \
                 -L"\(toolchain)/usr/lib/swift/\(platform.lowercased())" \(osSpecific) \
                 -undefined dynamic_lookup -dead_strip -Xlinker -objc_abi_version \
                 -Xlinker 2 -Xlinker -interposable\(linkerOptions) -fobjc-arc \
                 -fprofile-instr-generate \(contents) -L "\(frameworks)" -F "\(frameworks)" \
                 -rpath "\(frameworks)" -o \"\(dylib)\" >>\"\(logfile)\" 2>&1
-            """.replacingOccurrences(of: "__PLATFORM__",
-                with: "\(xcodeDev)/Platforms/\(platform).platform")) else {
+            """.replacingOccurrences(of: "__PLATFORM__", with: sdk)) else {
             throw scriptError("Linking")
         }
 

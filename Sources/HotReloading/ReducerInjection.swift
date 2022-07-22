@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 09/06/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/ReducerInjection.swift#3 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/ReducerInjection.swift#4 $
 //
 
 import Foundation
@@ -48,8 +48,8 @@ extension SwiftInjection {
     /// Support for re-initialising "The Composable Architecture", "Reducer"
     /// variables declared at the top level. Requires custom version of TCA:
     /// https://github.com/thebrowsercompany/swift-composable-architecture/tree/develop
-    static func reinitializeInjectedReducers(_ tmpfile: String,
-                reinitialized: UnsafeMutablePointer<[SymbolName]>) {
+    public class func reinitializeInjectedReducers(_ tmpfile: String,
+        reinitialized: UnsafeMutablePointer<[SymbolName]>) {
         findHiddenSwiftSymbols(searchLastLoaded(), "_WZ", .local) {
             accessor, symname, _, _ in
             if injectableReducerSymbols.contains(String(cString: symname)) {

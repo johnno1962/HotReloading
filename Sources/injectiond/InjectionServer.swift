@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#44 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#47 $
 //
 
 import Cocoa
@@ -121,6 +121,8 @@ public class InjectionServer: SimpleSocket {
             if identity != nil {
                 self.log("Signing with identity: \(identity!)")
             }
+            setenv("TOOLCHAIN_DIR", self.builder.xcodeDev +
+                   "/Toolchains/XcodeDefault.xctoolchain", 1)
             return SignerService.codesignDylib(
                 self.builder.tmpDir+"/eval"+$0, identity: identity)
         }
@@ -273,6 +275,10 @@ public class InjectionServer: SimpleSocket {
             case .pause:
                 pause = NSDate.timeIntervalSinceReferenceDate + Double(readString() ?? "0.0")!
                 break
+            case .getXcodeDev:
+                if let xcodeDev = readString() {
+                    builder.xcodeDev = xcodeDev
+                }
             case .sign:
                 if !appDelegate.isSandboxed && xprobePlugin == nil {
                     sendCommand(.signed, with: "0")
@@ -320,6 +326,7 @@ public class InjectionServer: SimpleSocket {
             compileQueue.async {
                 if let dylib = try? self.builder?.rebuildClass(oldClass: nil,
                                        classNameOrFile: source, extra: nil) {
+                    self.sendCommand(.setXcodeDev, with: self.builder.xcodeDev)
                     #if SWIFT_PACKAGE && false // for virtualised simulator
                     if let data = NSData(contentsOfFile: "\(dylib).dylib") {
                         commandQueue.sync {

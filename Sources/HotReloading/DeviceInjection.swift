@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#5 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#6 $
 //
 //  Code specific to injecting on an actual device.
 //
@@ -20,8 +20,8 @@ extension SwiftInjection {
 
     /// Emulate remaining functions of the dynamic linker.
     /// - Parameter pseudoImage: last image read into memory
-    open class func onDeviceSpecificProcessing(for pseudoImage:
-                                               UnsafePointer<mach_header>) {
+    public class func onDeviceSpecificProcessing(
+        for pseudoImage: UnsafePointer<mach_header>) {
         // register types, protocols, conformances...
         var section_size: UInt64 = 0
         for (section, regsiter) in [
@@ -46,8 +46,8 @@ extension SwiftInjection {
     }
 
     /// Fixup references to Objective-C classes on device
-    open class func fixupObjcClassReferences(in pseudoImage:
-                                             UnsafePointer<mach_header>) {
+    public class func fixupObjcClassReferences(
+        in pseudoImage: UnsafePointer<mach_header>) {
         var typeref_size: UInt64 = 0
         if var refs = objcClassRefs as? [String], refs.first != "",
            let typeref_start = getsectdatafromheader_64(autoBitCast(pseudoImage),
@@ -72,8 +72,8 @@ extension SwiftInjection {
 
     /// Populate "l_got.*" external references to "descriptors"
     /// - Parameter pseudoImage: lastLoadedImage
-    open class func bindDescriptorReferences(in pseudoImage:
-                                             UnsafePointer<mach_header>) {
+    public class func bindDescriptorReferences(
+        in pseudoImage: UnsafePointer<mach_header>) {
         if let descriptorSyms = descriptorRefs as? [String],
             descriptorSyms.first != "" {
             var forces: UnsafeRawPointer?

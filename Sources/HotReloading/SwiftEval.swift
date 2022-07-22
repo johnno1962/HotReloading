@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#64 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#66 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -183,7 +183,13 @@ public class SwiftEval: NSObject {
     }
 
     // Xcode related info
-    @objc public var xcodeDev = "/Applications/Xcode.app/Contents/Developer"
+    @objc public var xcodeDev = "/Applications/Xcode.app/Contents/Developer" {
+        willSet(newValue) {
+            if newValue != xcodeDev {
+                print(APP_PREFIX+"Selecting Xcode \(newValue)")
+            }
+        }
+    }
 
     @objc public var projectFile: String?
     @objc public var derivedLogs: String?
@@ -497,13 +503,13 @@ public class SwiftEval: NSObject {
         String(cString: $0) } ?? "Debug-*/{Quick*,Nimble,Cwl*}.o"
     static let quickDylib = "_spec.dylib"
     static let dylibDelim = "==="
-    static let platformRegex = try! NSRegularExpression(pattern:
+    static let parsePlatform = try! NSRegularExpression(pattern:
         #" -(?:isysroot|sdk) ((\#(fileNameRegex)/Contents/Developer)/Platforms/(\w+)\.platform\#(fileNameRegex))"#)
 
     func link(dylib: String, compileCommand: String, contents: String) throws {
         var platform = "iPhoneSimulator"
         var sdk = "\(xcodeDev)/Platforms/\(platform).platform/Developer/SDKs/\(platform).sdk"
-        if let match = Self.platformRegex.firstMatch(in: compileCommand,
+        if let match = Self.parsePlatform.firstMatch(in: compileCommand,
             options: [], range: NSMakeRange(0, compileCommand.utf16.count)) {
             if let sdkRange = Range(match.range(at: 1), in: compileCommand) {
                 sdk = String(compileCommand[sdkRange])
@@ -514,9 +520,11 @@ public class SwiftEval: NSObject {
             if let pltRange = Range(match.range(at: 4), in: compileCommand) {
                 platform = String(compileCommand[pltRange])
             }
+        } else {
+            _ = evalError("Unable to parse SDK from: \(compileCommand)")
         }
 
-        let osSpecific: String
+        var osSpecific = ""
         switch platform {
         case "iPhoneSimulator":
             osSpecific = "-mios-simulator-version-min=9.0"
@@ -526,11 +534,13 @@ public class SwiftEval: NSObject {
             osSpecific = "-mtvos-simulator-version-min=9.0"
         case "AppleTVOS":
             osSpecific = "-mtvos-version-min=9.0"
-        default:
+        case "MacOS":
             let target = compileCommand
                 .replacingOccurrences(of: #"^.*( -target \S+).*$"#,
                                       with: "$1", options: .regularExpression)
             osSpecific = "-mmacosx-version-min=10.11"+target
+        default:
+            _ = evalError("Invalid platform \(platform)")
             // -Xlinker -bundle_loader -Xlinker \"\(Bundle.main.executablePath!)\""
         }
 

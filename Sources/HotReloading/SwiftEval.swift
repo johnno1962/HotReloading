@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#66 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#69 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -479,8 +479,9 @@ public class SwiftEval: NSObject {
         if sourceFile.contains("Spec.") {
             let dylib = tmpfile+Self.quickDylib
             do {
-                let platformLib = "__PLATFORM__/../../usr/lib"
-                let platformFrameworks = "__PLATFORM__/../../Library/Frameworks"
+                let platform = "\"__PLATFORM__\"/../../"
+                let platformLib = platform+"usr/lib"
+                let platformFrameworks = platform+"Library/Frameworks"
                 try link(dylib: dylib, compileCommand: compileCommand, contents: """
                     \(logsDir.path)/../../Build/Products/\(Self.quickFiles) \
                     \(platformLib)/libXCTestSwiftSupport.dylib \
@@ -511,15 +512,16 @@ public class SwiftEval: NSObject {
         var sdk = "\(xcodeDev)/Platforms/\(platform).platform/Developer/SDKs/\(platform).sdk"
         if let match = Self.parsePlatform.firstMatch(in: compileCommand,
             options: [], range: NSMakeRange(0, compileCommand.utf16.count)) {
-            if let sdkRange = Range(match.range(at: 1), in: compileCommand) {
-                sdk = String(compileCommand[sdkRange])
+            func extract(group: Int, into: inout String) {
+                if let range = Range(match.range(at: group), in: compileCommand) {
+                    into = compileCommand[range]
+                        .replacingOccurrences(of: #"\\(.)"#, with: "$1",
+                                              options: .regularExpression)
+                }
             }
-            if let devRange = Range(match.range(at: 2), in: compileCommand) {
-                xcodeDev = String(compileCommand[devRange])
-            }
-            if let pltRange = Range(match.range(at: 4), in: compileCommand) {
-                platform = String(compileCommand[pltRange])
-            }
+            extract(group: 1, into: &sdk)
+            extract(group: 2, into: &xcodeDev)
+            extract(group: 4, into: &platform)
         } else {
             _ = evalError("Unable to parse SDK from: \(compileCommand)")
         }

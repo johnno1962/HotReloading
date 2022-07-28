@@ -11,8 +11,9 @@ Then, you can inject function implementations without having to rebuild your app
 To try out an example project that is already set-up, clone this fork of
 [SwiftUI-Kit](https://github.com/johnno1962/SwiftUI-Kit).
 
-To use on your project, simply add this repo as a Swift Package. You no longer need 
-to add linker flags or a "Run Script" build phase unless you want to inject on a device, 
+To use on your project, simply add this repo as a Swift Package and add "Other Linker Flags":
+-Xlinker -interposable -Xlinker -undefined -Xlinker dynamic_lookup. You no longer need
+to add a "Run Script" build phase unless you want to inject on a device, 
 in which case see the notes below on how to configure the InjectionIII app.
 
 ***Remember not to release your app with this package configured.***

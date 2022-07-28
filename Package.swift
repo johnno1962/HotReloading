@@ -2,7 +2,7 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
 //  Repo: https://github.com/johnno1962/HotReloading
-//  $Id: //depot/HotReloading/Package.swift#149 $
+//  $Id: //depot/HotReloading/Package.swift#150 $
 //
 
 import PackageDescription
@@ -47,8 +47,8 @@ let package = Package(
         .target(name: "HotReloading", dependencies: ["HotReloadingGuts",
              "SwiftTrace", .product(name: "Xprobe", package: "XprobePlugin"),
                  "DLKit", .product(name: "SwiftRegex", package: "SwiftRegex"),
-                 "InjectionScratch"], linkerSettings: [.unsafeFlags([
-                    "-Xlinker", "-interposable", "-undefined", "dynamic_lookup"])]),
+                 "InjectionScratch"]/*, linkerSettings: [.unsafeFlags([
+                    "-Xlinker", "-interposable", "-undefined", "dynamic_lookup"])]*/),
         .target(name: "HotReloadingGuts",
                 cSettings: [.define("DEVELOPER_HOST", to: "\"\(hostname)\"")]),
         .target(name: "injectiondGuts"),

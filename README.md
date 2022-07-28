@@ -11,14 +11,9 @@ Then, you can inject function implementations without having to rebuild your app
 To try out an example project that is already set-up, clone this fork of
 [SwiftUI-Kit](https://github.com/johnno1962/SwiftUI-Kit).
 
-To use on your project, simply add this repo as a Swift Package, add the following
-`-Xlinker -interposable` to Debug "Other Linker Flags", and then rebuild.
-You no longer need to add a "Run Script" build phase unless you want to inject 
-on a device, in which case see the notes below on how to configure the InjectionIII app. 
-
-If you encounter undefined `FSEventStream*` symbols, this is due to using a macOS 
-api in the simulator and you should find this goes away if add the following additional 
-"Other Linker Flags": `-Xlinker -undefined -Xlinker dynamic_lookup`.
+To use on your project, simply add this repo as a Swift Package. You no longer need 
+to add linker flags or a "Run Script" build phase unless you want to inject on a device, 
+in which case see the notes below on how to configure the InjectionIII app.
 
 ***Remember not to release your app with this package configured.***
 
@@ -86,14 +81,8 @@ then run vapour from inside Xcode. It will ask you to run a script to start
 the associated daemon processes which watches for source file changes
 from inside project directory. It's not possible to inject closures that have
 already been registered with routes however but if you delegate their 
-implementation to the method of a class it can be injected. If you want to 
-delegate to a top level function or the method of a struct you'll need to 
-add the following to the executable target to enable "interposing":
+implementation to the method of a class it can be injected.
 
-```
-    , linkerSettings: [
-        .unsafeFlags(["-Xlinker", "-interposable"])]
-```
 ### Thanks to...
 
 The App Tracing functionality uses the [OliverLetterer/imp_implementationForwardingToSelector](https://github.com/OliverLetterer/imp_implementationForwardingToSelector) trampoline implementation
@@ -117,4 +106,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2022/06/07 $
+$Date: 2022/07/28 $

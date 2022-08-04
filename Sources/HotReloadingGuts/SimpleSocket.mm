@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#25 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#27 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -33,7 +33,10 @@
 }
 
 + (void)startServer:(NSString *)address {
-    [self performSelectorInBackground:@selector(runServer:) withObject:address];
+    dispatch_async(
+       dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+           [self runServer:address];
+       });
 }
 
 + (void)runServer:(NSString *)address {
@@ -142,7 +145,10 @@
 }
 
 - (void)run {
-    [self performSelectorInBackground:@selector(runInBackground) withObject:nil];
+    dispatch_async(
+       dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+           [self runInBackground];
+       });
 }
 
 - (void)runInBackground {
@@ -293,8 +299,10 @@ struct multicast_socket_packet {
     else if (setsockopt(multicastSocket, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0)
         [self error:@"Could not add membersip of multicast socket: %s"];
     else
-        [self performSelectorInBackground:@selector(multicastListen:)
-                               withObject:[NSNumber numberWithInt:multicastSocket]];
+        dispatch_async(
+           dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+               [self multicastListen:[NSNumber numberWithInt:multicastSocket]];
+        });
 }
 
 /// Listens for clients looking to connect and if the hash matches, replies.

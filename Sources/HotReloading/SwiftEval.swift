@@ -536,7 +536,7 @@ public class SwiftEval: NSObject {
             osSpecific = "-mtvos-simulator-version-min=9.0"
         case "AppleTVOS":
             osSpecific = "-mtvos-version-min=9.0"
-        case "MacOS":
+        case "MacOSX":
             let target = compileCommand
                 .replacingOccurrences(of: #"^.*( -target \S+).*$"#,
                                       with: "$1", options: .regularExpression)

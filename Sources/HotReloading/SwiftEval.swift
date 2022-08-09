@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#69 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#70 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -536,7 +536,7 @@ public class SwiftEval: NSObject {
             osSpecific = "-mtvos-simulator-version-min=9.0"
         case "AppleTVOS":
             osSpecific = "-mtvos-version-min=9.0"
-        case "MacOS":
+        case "MacOSX":
             let target = compileCommand
                 .replacingOccurrences(of: #"^.*( -target \S+).*$"#,
                                       with: "$1", options: .regularExpression)

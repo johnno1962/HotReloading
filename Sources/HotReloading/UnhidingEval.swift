@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#15 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#16 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -148,5 +148,30 @@ public class UnhidingEval: SwiftEval {
         // Replace path(s) of all object files to a single one
         return super.xcode13Fix(sourceFile: sourceFile,
                                 compileCommand: &compileCommand)
+    }
+
+    /// Per-object file version of unhiding on injection to export some symbols
+    /// - Parameters:
+    ///   - executable: Path to app executable to extract module name
+    ///   - objcClassRefs: Array to accumulate class referrences
+    ///   - descriptorRefs: Array to accumulate "l.got" references to "fixup"
+    override func createUnhider(executable: String, _ objcClassRefs: NSMutableArray,
+                                _ descriptorRefs: NSMutableArray) {
+        let appModule = URL(fileURLWithPath: executable)
+            .lastPathComponent.replacingOccurrences(of: " ", with: "_")
+        let appPrefix = "$s\(appModule.count)\(appModule)"
+        objectUnhider = { object_file in
+            let logfile = "/tmp/unhide_object.log"
+            if let log = fopen(logfile, "w") {
+                setbuf(log, nil)
+                objcClassRefs.removeAllObjects()
+                descriptorRefs.removeAllObjects()
+                unhide_object(object_file, appPrefix, log,
+                              objcClassRefs, descriptorRefs)
+//                self.log("Unhidden: \(object_file) -- \(appPrefix) -- \(self.objcClassRefs)")
+            } else {
+//                self.log("Could not log to \(logfile)")
+            }
+        }
     }
 }

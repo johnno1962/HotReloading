@@ -31,8 +31,8 @@ public struct HotReloading {
 @objc(InjectionClient)
 public class InjectionClient: SimpleSocket, InjectionReader {
 
-    let injectionQueue = dlsym(SwiftMeta.RTLD_DEFAULT, VAPOUR_SYMBOL) != nil ?
-        DispatchQueue(label: "InjectionQueue") : DispatchQueue.main
+    let injectionQueue = //dlsym(SwiftMeta.RTLD_DEFAULT, VAPOUR_SYMBOL) != nil ?
+        DispatchQueue(label: "InjectionQueue") //: DispatchQueue.main
 
     open func log(_ msg: String) {
         print(APP_PREFIX+msg)
@@ -269,7 +269,7 @@ public class InjectionClient: SimpleSocket, InjectionReader {
             needsTracing()
         case .copy:
             if let data = readData() {
-                DispatchQueue.main.async {
+                injectionQueue.async {
                     do {
                         builder.injectionNumber += 1
                         try data.write(to: URL(fileURLWithPath: "\(builder.tmpfile).dylib"))
@@ -315,7 +315,7 @@ public class InjectionClient: SimpleSocket, InjectionReader {
             guard let imageEnd = loadScratchImage(imagePointer,
                 self.readInt(), self, &percent) else { return }
 
-            DispatchQueue.main.async {
+            injectionQueue.async {
                 do {
                     builder.injectionNumber += 1
                     let tmpfile = String(cString: searchLastLoaded())

@@ -11,19 +11,19 @@ Then, you can inject function implementations without having to rebuild your app
 To try out an example project that is already set-up, clone this fork of
 [SwiftUI-Kit](https://github.com/johnno1962/SwiftUI-Kit).
 
-To use on your project, simply add this repo as a Swift Package and add "Other Linker Flags":
--Xlinker -interposable -Xlinker -undefined -Xlinker dynamic_lookup. You no longer need
-to add a "Run Script" build phase unless you want to inject on a device, 
-in which case see the notes below on how to configure the InjectionIII app.
+To use on your project, add this repo as a Swift Package and add 
+"Other Linker Flags": -Xlinker -interposable. You no longer need
+to add a "Run Script" build phase. If want to inject on a device, 
+see the notes below on how to configure the InjectionIII app.
 
 ***Remember not to release your app with this package configured.***
 
-You should see a message that the app has connected and which
-directories it is watching for source file changes. You can change
-these by using comma separated list in the environment variable
-`INJECTION_DIRECTORIES`.  You can choose to connect to the 
-InjectionIII.app when using the simulator, by adding the environment 
-variable `INJECTION_DAEMON` to your scheme to have your app connect.
+You should see a message that the app is watching for source file 
+changes in your home directory. You can change this scope by
+adding comma separated list in the environment variable
+`INJECTION_DIRECTORIES`.  Should you want to connect to the 
+InjectionIII.app when using the simulator, add the environment 
+variable `INJECTION_DAEMON` to your scheme.
 
 Consult the README of the [InjectionIII](https://github.com/johnno1962/InjectionIII)
 project for more information in particular how to use it to inject `SwiftUI` using the
@@ -38,18 +38,15 @@ form of "VScode Previews". Consult [this project](https://github.com/markst/hotr
 
 This version of the HotReloading project and it's dependencies now support
 injection on a real iOS or tvOS device. It's early days and this version
-should still be considered beta software. The binary framework from
-the InjectionScratch repo that makes this possible is time limited for now 
-to expire on September 15th 2022 until I find a more sustainable licensing 
-solution should people find it useful. If your device doesn't connect, 
+should still be considered alpha software. If your device doesn't connect, 
 clone this project and configure your mac's WiFi IP address into the 
 `hostname` variable in Package.swift. Then drag the clone onto your 
 project to have it take the place of the configured Swift Package.
 
 Device injection now connects to the [InjectionIII.app](https://github.com/johnno1962/InjectionIII)
-([github release](https://github.com/johnno1962/InjectionIII/releases) 4.2.8 or above) and 
-requires you type the following command into a Terminal to opt into 
-receiving remote connections from the device then restart the InjectionIII app:
+([github release](https://github.com/johnno1962/InjectionIII/releases)
+4.2.8 or above) and requires you type the following command into a Terminal 
+then restart the app to opt into receiving remote connections from a device:
 
     $ defaults write com.johnholdsworth.InjectionIII deviceUnlock any
 
@@ -107,4 +104,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2022/07/28 $
+$Date: 2022/08/31 $

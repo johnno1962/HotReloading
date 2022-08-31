@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 08/03/2015.
 //  Copyright (c) 2015 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#5 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#6 $
 //
 //  Simple abstraction to watch files under a directory.
 //
@@ -14,6 +14,7 @@
 import Foundation
 #if SWIFT_PACKAGE
 import HotReloadingGuts
+import SwiftTrace
 #endif
 
 let INJECTABLE_PATTERN = "[^~]\\.(mm?|cpp|swift|storyboard|xib)$"
@@ -32,6 +33,9 @@ public class FileWatcher: NSObject {
         context.info = unsafeBitCast(self, to: UnsafeMutableRawPointer.self)
         #else
         watcher = self
+        guard let FSEventStreamCreate = FSEventStreamCreate else {
+            fatalError("Could not locate FSEventStreamCreate")
+        }
         #endif
         fileEvents = FSEventStreamCreate(kCFAllocatorDefault,
              { (streamRef: FSEventStreamRef,
@@ -125,12 +129,18 @@ typealias FSEventStreamEventFlags = UInt32
 
 typealias FSEventStreamCallback = @convention(c) (ConstFSEventStreamRef, UnsafeMutableRawPointer?, Int, UnsafeMutableRawPointer, UnsafePointer<FSEventStreamEventFlags>, UnsafePointer<FSEventStreamEventId>) -> Void
 
+#if true // avoid linker flags -undefined dynamic_lookup
+let FSEventStreamCreate = unsafeBitCast(dlsym(SwiftMeta.RTLD_DEFAULT, "FSEventStreamCreate"), to: (@convention(c) (_ allocator: CFAllocator?, _ callback: FSEventStreamCallback, _ context: UnsafeMutableRawPointer?, _ pathsToWatch: CFArray, _ sinceWhen: FSEventStreamEventId, _ latency: CFTimeInterval, _ flags: FSEventStreamCreateFlags) -> FSEventStreamRef?)?.self)
+let FSEventStreamScheduleWithRunLoop = unsafeBitCast(dlsym(SwiftMeta.RTLD_DEFAULT, "FSEventStreamScheduleWithRunLoop"), to: (@convention(c) (_ streamRef: FSEventStreamRef, _ runLoop: CFRunLoop, _ runLoopMode: CFString) -> Void).self)
+let FSEventStreamStart = unsafeBitCast(dlsym(SwiftMeta.RTLD_DEFAULT, "FSEventStreamStart"), to: (@convention(c) (_ streamRef: FSEventStreamRef) -> Bool).self)
+#else
 @_silgen_name("FSEventStreamCreate")
 func FSEventStreamCreate(_ allocator: CFAllocator?, _ callback: FSEventStreamCallback, _ context: UnsafeMutablePointer<FSEventStreamContext>?, _ pathsToWatch: CFArray, _ sinceWhen: FSEventStreamEventId, _ latency: CFTimeInterval, _ flags: FSEventStreamCreateFlags) -> FSEventStreamRef?
 @_silgen_name("FSEventStreamScheduleWithRunLoop")
 func FSEventStreamScheduleWithRunLoop(_ streamRef: FSEventStreamRef, _ runLoop: CFRunLoop, _ runLoopMode: CFString)
 @_silgen_name("FSEventStreamStart")
 func FSEventStreamStart(_ streamRef: FSEventStreamRef) -> Bool
+#endif
 
 let kFSEventStreamEventIdSinceNow: UInt64 = 18446744073709551615
 let kFSEventStreamCreateFlagUseCFTypes: FSEventStreamCreateFlags = 1

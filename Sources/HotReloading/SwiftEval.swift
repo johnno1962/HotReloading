@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#73 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#75 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -283,9 +283,9 @@ public class SwiftEval: NSObject {
         injectionNumber += 1
 
         // messy but fast
-        let finder = """
+        guard shell(command: """
             # search through build logs, most recent first
-            cd "\(logsDir.path.escaping("$"))"
+            cd "\(logsDir.path.escaping("$"))" &&
             for log in `ls -t *.xcactivitylog`; do
                 #echo "Scanning $log"
                 /usr/bin/env perl <(cat <<'PERL'
@@ -316,15 +316,13 @@ public class SwiftEval: NSObject {
                 ) "$log" >"\(tmpfile).sh" && exit 0
             done
             exit 1;
-            """
-
-        guard shell(command: finder) else {
-            throw evalError("Could not locate storyboard compile")
+            """) else {
+            throw scriptError("Locating storyboard compile")
         }
 
         guard let resources = try? String(contentsOfFile: "\(tmpfile).sh")
             .trimmingCharacters(in: .whitespaces) else {
-            throw evalError("Could not locate storyboard resources: \(finder)")
+            throw scriptError("Locating product")
         }
 
         guard shell(command: """

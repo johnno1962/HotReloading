@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#170 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#171 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -646,6 +646,9 @@ public class SwiftInjectionEval: UnhidingEval {
         SwiftTrace.forAllClasses(bundlePath: searchLastLoaded()) {
             aClass, stop in
             classes.append(aClass)
+        }
+        if classes.count > 0 {
+            print("\(APP_PREFIX)Loaded .dylib - Ignore any duplicate class warning ⬆️")
         }
         #if false // Just too dubious
         // Determine any generic classes being injected.

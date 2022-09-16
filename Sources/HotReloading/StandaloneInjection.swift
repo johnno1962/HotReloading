@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#14 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#16 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -66,8 +66,8 @@ class StandaloneInjection: InjectionClient {
                 dirs = String(cString: extra).components(separatedBy: ",")
                     .map { $0[#"^~"#, substitute: home] } // expand ~ in paths
             }
-            for dir in dirs {
-                watchers.append(FileWatcher(root: dir, callback: { filesChanged, idePath in
+            watchers.append(FileWatcher(roots: dirs,
+                                        callback: { filesChanged, idePath in
                     if idePath == "" && builder.derivedLogs == nil {
                         self.log("⚠️ Project unknown, please build it once.")
                         return
@@ -99,7 +99,6 @@ class StandaloneInjection: InjectionClient {
                         }
                     }
                 }))
-            }
             log("HotReloading available for sources under \(dirs)")
             Self.singleton = self
         } else {

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 08/03/2015.
 //  Copyright (c) 2015 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#15 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#16 $
 //
 //  Started out as an abstraction to watch files under a directory.
 //  "Enhanced" to extract the last modified build log directory by
@@ -38,7 +38,7 @@ public class FileWatcher: NSObject {
     var callback: InjectionCallback
     var context = FSEventStreamContext()
 
-    @objc public init(root: String, callback: @escaping InjectionCallback) {
+    @objc public init(roots: [String], callback: @escaping InjectionCallback) {
         self.callback = callback
         super.init()
         #if os(macOS)
@@ -74,7 +74,7 @@ public class FileWatcher: NSObject {
                      }
                  }
              },
-             &self.context, [root] as CFArray, since, 0.1,
+             &self.context, roots as CFArray, since, 0.1,
              FSEventStreamCreateFlags(kFSEventStreamCreateFlagUseCFTypes |
                 kFSEventStreamCreateFlagFileEvents))!
         #if !os(macOS)

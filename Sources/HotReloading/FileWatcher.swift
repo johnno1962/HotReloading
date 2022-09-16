@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 08/03/2015.
 //  Copyright (c) 2015 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#16 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#20 $
 //
 //  Started out as an abstraction to watch files under a directory.
 //  "Enhanced" to extract the last modified build log directory by
@@ -21,9 +21,7 @@ import HotReloadingGuts
 public class FileWatcher: NSObject {
     public typealias InjectionCallback = (_ filesChanged: NSArray, _ ideProcPath: String) -> Void
 
-    static let isStandalone = Bundle.main.executableURL?
-        .lastPathComponent != "InjectionIII"
-    static let logsPref = "HotReloadingLogsPref"
+    static let logsPref = "HotReloadingBuildLogDir"
     static var idePath =
         UserDefaults.standard.string(forKey: logsPref) ?? ""
     static var INJECTABLE_PATTERN = try! NSRegularExpression(
@@ -48,7 +46,8 @@ public class FileWatcher: NSObject {
             fatalError("Could not locate FSEventStreamCreate")
         }
         #endif
-        initStream = { since in
+        initStream = { [weak self] since in
+            guard let self = self else { return }
             let fileEvents = FSEventStreamCreate(kCFAllocatorDefault,
              { (streamRef: FSEventStreamRef,
                 clientCallBackInfo: UnsafeMutableRawPointer?,
@@ -90,28 +89,29 @@ public class FileWatcher: NSObject {
 
     func filesChanged(changes: NSArray) {
         var changed = Set<String>()
+        #if !INJECTION_III_APP
         let eventId = FSEventStreamGetLatestEventId(fileEvents)
-        if Self.isStandalone {
-            if eventId != kFSEventStreamEventIdSinceNow &&
-                eventsStart == kFSEventStreamEventIdSinceNow {
-                eventsStart = eventId
-                FSEventStreamStop(fileEvents)
-                initStream(max(0, eventsStart-eventsToBackdate))
-                return
-            }
+        if eventId != kFSEventStreamEventIdSinceNow &&
+            eventsStart == kFSEventStreamEventIdSinceNow {
+            eventsStart = eventId
+            FSEventStreamStop(fileEvents)
+            initStream(max(0, eventsStart-eventsToBackdate))
+            return
         }
+        #endif
+
         for path in changes {
             guard let path = path as? String else { continue }
-            if Self.isStandalone {
-                if path.hasSuffix(".xcactivitylog") &&
-                    path.contains("/Logs/Build/") {
-                    Self.idePath = URL(fileURLWithPath: path)
-                        .deletingLastPathComponent().path
-                    UserDefaults.standard.set(Self.idePath,
-                                              forKey: Self.logsPref)
-                }
-                if eventId < eventsStart { continue }
+            #if !INJECTION_III_APP
+            if path.hasSuffix(".xcactivitylog") &&
+                path.contains("/Logs/Build/") {
+                Self.idePath = URL(fileURLWithPath: path)
+                    .deletingLastPathComponent().path
+                UserDefaults.standard.set(Self.idePath,
+                                          forKey: Self.logsPref)
             }
+            if eventId < eventsStart { continue }
+            #endif
 
             if Self.INJECTABLE_PATTERN.firstMatch(in: path,
                 range: NSMakeRange(0, path.utf16.count)) != nil &&
@@ -123,9 +123,8 @@ public class FileWatcher: NSObject {
         }
 
         if changed.count != 0 {
-            #if os(macOS)
-            if !Self.isStandalone,
-                let application = NSWorkspace.shared.frontmostApplication {
+            #if os(macOS) && INJECTION_III_APP
+            if let application = NSWorkspace.shared.frontmostApplication {
                 Self.idePath = getProcPath(pid: application.processIdentifier)
             }
             #endif
@@ -168,7 +167,7 @@ typealias FSEventStreamEventFlags = UInt32
 
 typealias FSEventStreamCallback = @convention(c) (ConstFSEventStreamRef, UnsafeMutableRawPointer?, Int, UnsafeMutableRawPointer, UnsafePointer<FSEventStreamEventFlags>, UnsafePointer<FSEventStreamEventId>) -> Void
 
-#if true // avoids linker flags -undefined dynamic_lookup
+#if true // avoid linker flags -undefined dynamic_lookup
 let RTLD_DEFAULT = UnsafeMutableRawPointer(bitPattern: -2)
 let FSEventStreamCreate = unsafeBitCast(dlsym(RTLD_DEFAULT, "FSEventStreamCreate"), to: (@convention(c) (_ allocator: CFAllocator?, _ callback: FSEventStreamCallback, _ context: UnsafeMutableRawPointer?, _ pathsToWatch: CFArray, _ sinceWhen: FSEventStreamEventId, _ latency: CFTimeInterval, _ flags: FSEventStreamCreateFlags) -> FSEventStreamRef?)?.self)
 let FSEventStreamScheduleWithRunLoop = unsafeBitCast(dlsym(RTLD_DEFAULT, "FSEventStreamScheduleWithRunLoop"), to: (@convention(c) (_ streamRef: FSEventStreamRef, _ runLoop: CFRunLoop, _ runLoopMode: CFString) -> Void).self)

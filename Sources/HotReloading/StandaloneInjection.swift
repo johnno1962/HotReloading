@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#16 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#17 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -68,13 +68,13 @@ class StandaloneInjection: InjectionClient {
             }
             watchers.append(FileWatcher(roots: dirs,
                                         callback: { filesChanged, idePath in
-                    if idePath == "" && builder.derivedLogs == nil {
+                    if builder.derivedLogs == nil && FileWatcher.derivedLogs == "" {
                         self.log("⚠️ Project unknown, please build it once.")
                         return
                     }
-                    if builder.derivedLogs != idePath {
-                        self.log("Using logs: \(idePath).")
-                        builder.derivedLogs = idePath
+                    if builder.derivedLogs != FileWatcher.derivedLogs {
+                        builder.derivedLogs = FileWatcher.derivedLogs
+                        self.log("Using logs: \(FileWatcher.derivedLogs).")
                     }
                     for changed in filesChanged {
                         guard let changed = changed as? String,

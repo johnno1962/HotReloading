@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 08/03/2015.
 //  Copyright (c) 2015 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#20 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#23 $
 //
 //  Started out as an abstraction to watch files under a directory.
 //  "Enhanced" to extract the last modified build log directory by
@@ -20,12 +20,16 @@ import HotReloadingGuts
 
 public class FileWatcher: NSObject {
     public typealias InjectionCallback = (_ filesChanged: NSArray, _ ideProcPath: String) -> Void
-
-    static let logsPref = "HotReloadingBuildLogDir"
-    static var idePath =
-        UserDefaults.standard.string(forKey: logsPref) ?? ""
     static var INJECTABLE_PATTERN = try! NSRegularExpression(
         pattern: "[^~]\\.(mm?|cpp|swift|storyboard|xib)$")
+
+    static let logsPref = "HotReloadingBuildLogsDir"
+    static var derivedLogs =
+        UserDefaults.standard.string(forKey: logsPref) ?? "" {
+        didSet {
+            UserDefaults.standard.set(derivedLogs, forKey: logsPref)
+        }
+    }
 
     var initStream: ((FSEventStreamEventId) -> Void)!
     var eventsStart =
@@ -105,10 +109,8 @@ public class FileWatcher: NSObject {
             #if !INJECTION_III_APP
             if path.hasSuffix(".xcactivitylog") &&
                 path.contains("/Logs/Build/") {
-                Self.idePath = URL(fileURLWithPath: path)
+                Self.derivedLogs = URL(fileURLWithPath: path)
                     .deletingLastPathComponent().path
-                UserDefaults.standard.set(Self.idePath,
-                                          forKey: Self.logsPref)
             }
             if eventId < eventsStart { continue }
             #endif
@@ -123,12 +125,13 @@ public class FileWatcher: NSObject {
         }
 
         if changed.count != 0 {
+            var path = ""
             #if os(macOS) && INJECTION_III_APP
             if let application = NSWorkspace.shared.frontmostApplication {
-                Self.idePath = getProcPath(pid: application.processIdentifier)
+                path = getProcPath(pid: application.processIdentifier)
             }
             #endif
-            callback(Array(changed) as NSArray, Self.idePath)
+            callback(Array(changed) as NSArray, path)
         }
     }
 

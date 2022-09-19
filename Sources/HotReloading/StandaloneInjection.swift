@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#11 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#17 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -16,9 +16,11 @@
 //
 
 #if targetEnvironment(simulator) || os(macOS)
+#if SWIFT_PACKAGE
 import HotReloadingGuts
 import SwiftTraceGuts
 import SwiftRegex
+#endif
 
 @objc(StandaloneInjection)
 class StandaloneInjection: InjectionClient {
@@ -28,14 +30,20 @@ class StandaloneInjection: InjectionClient {
 
     override func runInBackground() {
         let builder = SwiftInjectionEval.sharedInstance()
-        let swiftTracePath = String(cString: swiftTrace_path())
+        #if os(macOS)
         builder.tmpDir = NSTemporaryDirectory()
+        #else
+        builder.tmpDir = "/tmp"
+        #endif
+        #if SWIFT_PACKAGE
+        let swiftTracePath = String(cString: swiftTrace_path())
         builder.derivedLogs = swiftTracePath[
             #"SourcePackages/checkouts/SwiftTrace/SwiftTraceGuts/SwiftTrace.mm$"#,
             substitute: "Logs/Build"] // convert SwiftTrace path into path to logs.
         if builder.derivedLogs == swiftTracePath {
             log("⚠️ HotReloading could find log directory from: \(swiftTracePath)")
         }
+        #endif
         builder.signer = { _ in return true }
         builder.HRLog = { (what: Any...) in }
         signal(SIGPIPE, {_ in
@@ -58,8 +66,16 @@ class StandaloneInjection: InjectionClient {
                 dirs = String(cString: extra).components(separatedBy: ",")
                     .map { $0[#"^~"#, substitute: home] } // expand ~ in paths
             }
-            for dir in dirs {
-                watchers.append(FileWatcher(root: dir, callback: { filesChanged, _ in
+            watchers.append(FileWatcher(roots: dirs,
+                                        callback: { filesChanged, idePath in
+                    if builder.derivedLogs == nil && FileWatcher.derivedLogs == "" {
+                        self.log("⚠️ Project unknown, please build it once.")
+                        return
+                    }
+                    if builder.derivedLogs != FileWatcher.derivedLogs {
+                        builder.derivedLogs = FileWatcher.derivedLogs
+                        self.log("Using logs: \(FileWatcher.derivedLogs).")
+                    }
                     for changed in filesChanged {
                         guard let changed = changed as? String,
                               !changed.hasPrefix(home+"/Library/"),
@@ -83,7 +99,6 @@ class StandaloneInjection: InjectionClient {
                         }
                     }
                 }))
-            }
             log("HotReloading available for sources under \(dirs)")
             Self.singleton = self
         } else {

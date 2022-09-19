@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#47 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#48 $
 //
 
 import Cocoa
@@ -347,7 +347,7 @@ public class InjectionServer: SimpleSocket {
     }
 
     public func watchDirectory(_ directory: String) {
-        fileWatchers.append(FileWatcher(root: directory,
+        fileWatchers.append(FileWatcher(roots: [directory],
                                         callback: fileChangeHandler))
         sendCommand(.watching, with: directory)
     }

@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#17 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#18 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -59,6 +59,9 @@ class StandaloneInjection: InjectionClient {
                                   SwiftInjection.descriptorRefs)
         }
 
+        let minInterval = 0.33
+        var lastInjected = [String: TimeInterval]()
+
         if let home = NSHomeDirectory()[#"/Users/[^/]+"#] as String? {
             var dirs = [home]
             if let extra = getenv("INJECTION_PROJECT_ROOT") ??
@@ -79,7 +82,10 @@ class StandaloneInjection: InjectionClient {
                     for changed in filesChanged {
                         guard let changed = changed as? String,
                               !changed.hasPrefix(home+"/Library/"),
-                              !changed.contains("/.") else {
+                              !changed.contains("/."),
+                              Date.timeIntervalSinceReferenceDate -
+                                lastInjected[changed, default: 0.0] >
+                                minInterval else {
                             continue
                         }
                         if changed.hasSuffix("storyboard") ||
@@ -97,6 +103,7 @@ class StandaloneInjection: InjectionClient {
                             try SwiftInjection.inject(tmpfile: tmpfile)
                         } catch {
                         }
+                        lastInjected[changed] = Date.timeIntervalSinceReferenceDate
                     }
                 }))
             log("HotReloading available for sources under \(dirs)")

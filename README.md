@@ -15,6 +15,8 @@ To use on your project, add this repo as a Swift Package and add
 "Other Linker Flags": -Xlinker -interposable. You no longer need
 to add a "Run Script" build phase. If want to inject on a device, 
 see the notes below on how to configure the InjectionIII app.
+Note however, on an M1/M2 Mac this project only works with 
+an iOS/tvOS 14 or later simulator.
 
 ***Remember not to release your app with this package configured.***
 
@@ -104,4 +106,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2022/08/31 $
+$Date: 2022/10/01 $

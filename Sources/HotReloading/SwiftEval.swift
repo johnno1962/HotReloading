@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#76 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#81 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -748,7 +748,7 @@ public class SwiftEval: NSObject {
                     $INPUT_RECORD_SEPARATOR = "\r";
 
                     # format is gzip
-                    open GUNZIP, "/usr/bin/gunzip <\"$ARGV[0]\" 2>/dev/null |" or die;
+                    open GUNZIP, "/usr/bin/gunzip <\"$ARGV[0]\" 2>/dev/null |" or die "gnozip";
 
                     # grep the log until there is a match
                     my ($realPath, $command);
@@ -810,6 +810,17 @@ public class SwiftEval: NSObject {
             done
             exit 1;
             """) else {
+            #if targetEnvironment(simulator)
+            if #available(iOS 14.0, tvOS 14.0, *) {
+            } else {
+                print(APP_PREFIX+"""
+                    ⚠️ Injection unable to search logs. \
+                    Try a more recent iOS 14+ simulator \
+                    or, download a release directly from \
+                    https://github.com/johnno1962/InjectionIII/releases
+                    """)
+            }
+            #endif
             if let log = try? String(contentsOfFile: "\(tmpfile).err"),
                log.contains("error") {
                 throw evalError(log)
@@ -990,10 +1001,11 @@ public class SwiftEval: NSObject {
         task.arguments = [cmdfile]
         task.launch()
         task.waitUntilExit()
-        return task.terminationStatus == EXIT_SUCCESS
+        let status = task.terminationStatus
         #else
-        return runner.run(script: cmdfile)
+        let status = runner.run(script: cmdfile)
         #endif
+        return status == EXIT_SUCCESS
     }
 
     #if !os(macOS)
@@ -1033,7 +1045,7 @@ public class SwiftEval: NSObject {
 
                     var status: Int32 = 0
                     while waitpid(pid, &status, 0) == -1 {}
-                    fputs("\(status >> 8)\n", statusesOut)
+                    fputs("\(status)\n", statusesOut)
                 }
 
                 exit(0)
@@ -1047,11 +1059,12 @@ public class SwiftEval: NSObject {
             setbuf(commandsOut, nil)
         }
 
-        func run(script: String) -> Bool {
+        func run(script: String) -> Int32 {
             fputs("\(script)\n", commandsOut)
-            var buffer = [Int8](repeating: 0, count: 10)
+            var buffer = [Int8](repeating: 0, count: 20)
             fgets(&buffer, Int32(buffer.count), statusesIn)
-            return atoi(buffer) == EXIT_SUCCESS
+            let status = atoi(buffer)
+            return status >> 8 | status & 0xff
         }
     }
     #endif

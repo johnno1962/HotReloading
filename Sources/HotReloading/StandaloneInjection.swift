@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#28 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#33 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -13,6 +13,10 @@
 //  package which defines various subscripting operators on a string with
 //  a Regex. When a second string is supplied this acts as a inline string
 //  substitution. Regex patterns are raw strings to emphasise this role.
+//  The most recent change was for the InjectionIII.app injection bundles
+//  to fall back to this implementation if the user is not running the app.
+//  This was made possible by using the FileWatcher to find the build log
+//  directory in DerivedData of the most recently built project.
 //
 
 #if targetEnvironment(simulator) || os(macOS)
@@ -68,11 +72,11 @@ class StandaloneInjection: InjectionClient {
             watchers.append(FileWatcher(roots: dirs,
                                         callback: { filesChanged, idePath in
                     if builder.derivedLogs == nil {
-                        if let lastChanged = FileWatcher.derivedLogs {
-                            builder.derivedLogs = lastChanged
-                            self.log("Using logs: \(lastChanged).")
+                        if let lastBuilt = FileWatcher.derivedLogs {
+                            builder.derivedLogs = lastBuilt
+                            self.log("Using logs: \(lastBuilt).")
                         } else {
-                            self.log("⚠️ Unknown project, please build it.")
+                            self.log("⚠️ Project unknown, please build it.")
                             return
                         }
                     }

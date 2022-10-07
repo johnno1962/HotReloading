@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 08/03/2015.
 //  Copyright (c) 2015 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#23 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#24 $
 //
 //  Started out as an abstraction to watch files under a directory.
 //  "Enhanced" to extract the last modified build log directory by
@@ -25,7 +25,7 @@ public class FileWatcher: NSObject {
 
     static let logsPref = "HotReloadingBuildLogsDir"
     static var derivedLogs =
-        UserDefaults.standard.string(forKey: logsPref) ?? "" {
+        UserDefaults.standard.string(forKey: logsPref) {
         didSet {
             UserDefaults.standard.set(derivedLogs, forKey: logsPref)
         }

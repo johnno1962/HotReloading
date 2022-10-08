@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 08/03/2015.
 //  Copyright (c) 2015 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#24 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#25 $
 //
 //  Started out as an abstraction to watch files under a directory.
 //  "Enhanced" to extract the last modified build log directory by
@@ -34,7 +34,7 @@ public class FileWatcher: NSObject {
     var initStream: ((FSEventStreamEventId) -> Void)!
     var eventsStart =
         FSEventStreamEventId(kFSEventStreamEventIdSinceNow)
-    var eventsToBackdate: UInt64 = 10_000
+    var eventsToBackdate: UInt64 = 50_000
 
     var fileEvents: FSEventStreamRef! = nil
     var callback: InjectionCallback

@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#22 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#33 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -13,6 +13,10 @@
 //  package which defines various subscripting operators on a string with
 //  a Regex. When a second string is supplied this acts as a inline string
 //  substitution. Regex patterns are raw strings to emphasise this role.
+//  The most recent change was for the InjectionIII.app injection bundles
+//  to fall back to this implementation if the user is not running the app.
+//  This was made possible by using the FileWatcher to find the build log
+//  directory in DerivedData of the most recently built project.
 //
 
 #if targetEnvironment(simulator) || os(macOS)
@@ -55,12 +59,6 @@ class StandaloneInjection: InjectionClient {
         builder.forceUnhide = { builder.startUnhide() }
         SwiftInjection.traceInjection = getenv("INJECTION_TRACE") != nil
 
-        if let executable = Bundle.main.executablePath {
-            builder.createUnhider(executable: executable,
-                                  SwiftInjection.objcClassRefs,
-                                  SwiftInjection.descriptorRefs)
-        }
-
         let minInterval = 0.33
         var lastInjected = [String: TimeInterval]()
 
@@ -73,13 +71,14 @@ class StandaloneInjection: InjectionClient {
             }
             watchers.append(FileWatcher(roots: dirs,
                                         callback: { filesChanged, idePath in
-                    if builder.derivedLogs == nil && FileWatcher.derivedLogs == "" {
-                        self.log("⚠️ Project unknown, please build it once.")
-                        return
-                    }
-                    if builder.derivedLogs != FileWatcher.derivedLogs {
-                        builder.derivedLogs = FileWatcher.derivedLogs
-                        self.log("Using logs: \(FileWatcher.derivedLogs).")
+                    if builder.derivedLogs == nil {
+                        if let lastBuilt = FileWatcher.derivedLogs {
+                            builder.derivedLogs = lastBuilt
+                            self.log("Using logs: \(lastBuilt).")
+                        } else {
+                            self.log("⚠️ Project unknown, please build it.")
+                            return
+                        }
                     }
                     for changed in filesChanged {
                         guard let changed = changed as? String,
@@ -112,6 +111,11 @@ class StandaloneInjection: InjectionClient {
             if #available(iOS 14.0, tvOS 14.0, *) {
             } else {
                 log("ℹ️ HotReloading not available on Apple Silicon before iOS 14.0")
+            }
+            if let executable = Bundle.main.executablePath {
+                builder.createUnhider(executable: executable,
+                                      SwiftInjection.objcClassRefs,
+                                      SwiftInjection.descriptorRefs)
             }
             Self.singleton = self
         } else {

@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#33 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#35 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -25,6 +25,7 @@ import HotReloadingGuts
 import SwiftTraceGuts
 import SwiftRegex
 #endif
+import SwiftTrace
 
 @objc(StandaloneInjection)
 class StandaloneInjection: InjectionClient {
@@ -57,7 +58,7 @@ class StandaloneInjection: InjectionClient {
         })
 
         builder.forceUnhide = { builder.startUnhide() }
-        SwiftInjection.traceInjection = getenv("INJECTION_TRACE") != nil
+        maybeTrace()
 
         let minInterval = 0.33
         var lastInjected = [String: TimeInterval]()
@@ -80,6 +81,7 @@ class StandaloneInjection: InjectionClient {
                             return
                         }
                     }
+                    self.maybeTrace()
                     for changed in filesChanged {
                         guard let changed = changed as? String,
                               !changed.hasPrefix(home+"/Library/"),
@@ -120,6 +122,21 @@ class StandaloneInjection: InjectionClient {
             Self.singleton = self
         } else {
             log("⚠️ HotReloading could not parse home directory.")
+        }
+    }
+
+    var swiftTracing: String?
+
+    func maybeTrace() {
+        if let pattern = getenv("INJECTION_TRACE")
+            .flatMap({String(cString: $0)}), pattern != swiftTracing {
+            if pattern == "" {
+                SwiftInjection.traceInjection = true
+            } else {
+                _ = SwiftTrace.interpose(aBundle: searchBundleImages(),
+                                         methodName: pattern)
+            }
+            swiftTracing = pattern
         }
     }
 }

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 08/03/2015.
 //  Copyright (c) 2015 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#25 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#32 $
 //
 //  Started out as an abstraction to watch files under a directory.
 //  "Enhanced" to extract the last modified build log directory by
@@ -34,7 +34,11 @@ public class FileWatcher: NSObject {
     var initStream: ((FSEventStreamEventId) -> Void)!
     var eventsStart =
         FSEventStreamEventId(kFSEventStreamEventIdSinceNow)
+    #if SWIFT_PACKAGE
+    var eventsToBackdate: UInt64 = 10_000
+    #else
     var eventsToBackdate: UInt64 = 50_000
+    #endif
 
     var fileEvents: FSEventStreamRef! = nil
     var callback: InjectionCallback
@@ -126,7 +130,7 @@ public class FileWatcher: NSObject {
 
         if changed.count != 0 {
             var path = ""
-            #if os(macOS) && INJECTION_III_APP
+            #if os(macOS)
             if let application = NSWorkspace.shared.frontmostApplication {
                 path = getProcPath(pid: application.processIdentifier)
             }
@@ -154,7 +158,7 @@ public class FileWatcher: NSObject {
     #endif
 }
 
-#if !os(macOS) // Yes, this is available in the simulator...
+#if !os(macOS) // Yes, this api is available inside the simulator...
 typealias FSEventStreamRef = OpaquePointer
 typealias ConstFSEventStreamRef = OpaquePointer
 struct FSEventStreamContext {

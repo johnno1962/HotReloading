@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#36 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#42 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -19,7 +19,7 @@
 //  directory in DerivedData of the most recently built project.
 //
 
-#if targetEnvironment(simulator) || os(macOS)
+#if targetEnvironment(simulator) && !APP_SANDBOXED || os(macOS)
 #if SWIFT_PACKAGE
 import HotReloadingGuts
 import SwiftTraceGuts
@@ -134,6 +134,7 @@ class StandaloneInjection: InjectionClient {
             if pattern == "" {
                 SwiftInjection.traceInjection = true
             } else {
+                // This will not work for non-final class methods.
                 _ = SwiftTrace.interpose(aBundle: searchBundleImages(),
                                          methodName: pattern)
             }

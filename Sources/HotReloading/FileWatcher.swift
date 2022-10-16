@@ -5,14 +5,14 @@
 //  Created by John Holdsworth on 08/03/2015.
 //  Copyright (c) 2015 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#32 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#36 $
 //
 //  Started out as an abstraction to watch files under a directory.
 //  "Enhanced" to extract the last modified build log directory by
 //  backdating the event stream to just before the app launched.
 //
 
-#if targetEnvironment(simulator) || os(macOS)
+#if targetEnvironment(simulator) && !APP_SANDBOXED || os(macOS)
 import Foundation
 #if SWIFT_PACKAGE
 import HotReloadingGuts

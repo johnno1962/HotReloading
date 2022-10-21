@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#82 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#89 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -178,8 +178,13 @@ public class SwiftEval: NSObject {
     /// Additional logging to /tmp/hot\_reloading.log for "HotReloading" version of injection.
     var HRLog = { (what: Any...) in
         #if SWIFT_PACKAGE
-        NSLog("\(APP_PREFIX)***** %@", what.map {"\($0)"}.joined(separator: " "))
+        let log = true
+        #else
+        let log = getenv("INJECTION_LOG") != nil
         #endif
+        if log {
+            NSLog("\(APP_PREFIX)***** %@", what.map {"\($0)"}.joined(separator: " "))
+        }
     }
 
     // Xcode related info
@@ -375,6 +380,12 @@ public class SwiftEval: NSObject {
 
         injectionNumber += 1
 
+        if projectFile.lastPathComponent == "WORKSPACE",
+            let dylib = try bazelRecompile(workspace: projectFile,
+                                           sourceFile: classNameOrFile) {
+            return dylib
+        }
+
         guard var (compileCommand, sourceFile) = try
             compileByClass[classNameOrFile] ??
             findCompileCommand(logsDir: logsDir,
@@ -503,14 +514,129 @@ public class SwiftEval: NSObject {
         return (speclib != "" ? speclib+Self.dylibDelim : "")+tmpfile
     }
 
+    func bazelRecompile(workspace: URL, sourceFile: String) throws -> String? {
+        let projectRoot = workspace.deletingLastPathComponent().path
+        let relativePath = sourceFile.replacingOccurrences(of: workspace.deletingLastPathComponent().path+"/", with: "")
+        let bazelRulesSwift = projectRoot + "/bazel-out/../external/build_bazel_rules_swift"
+        let responseScanner = tmpDir+"/bazel.pl"
+        HRLog(workspace, relativePath, bazelRulesSwift, responseScanner)
+
+        try #"""
+            use JSON::PP;
+            use English;
+            use strict;
+
+            my ($resp, $relative) = @ARGV;
+            my $args = join('', (IO::File->new( "< $resp" )
+                or die "Could not open response '$resp'")->getlines());
+            my ($filemap) = $args =~ /"-output-file-map"\n"([^"]+)"/;
+            my $file_handle = IO::File->new( "< $filemap" )
+                or die "Could not open filemap '$filemap'";
+            my $json_text = join'', $file_handle->getlines();
+            my $json_map = decode_json( $json_text, { utf8  => 1 } );
+
+            if (my $info = $json_map->{$relative}) {
+                $args =~ s/"-(emit-module-path"\n"[^"]+|color-diagnostics)"\n//g;
+                IO::File->new("> $resp")->print($args);
+                print "$resp\n$info->{object}\n";
+                exit 0;
+            }
+            # source file not found
+            exit 1;
+            """#.write(toFile: responseScanner,
+                       atomically: false, encoding: .utf8)
+
+        guard shell(command: """
+            # search through bazel args, most recent first
+            cd "\(projectRoot)/bazel-out/../external/build_bazel_rules_swift" 2>"\(tmpfile).err" &&
+            grep module_name_ tools/worker/swift_runner.h >/dev/null ||
+            (git apply -v <<'BAZEL_PATCH' 2>>"\(tmpfile).err" && echo "⚠️ bazel patched, restart app" >>"\(tmpfile).err" && exit 1) &&
+            diff --git a/tools/worker/swift_runner.cc b/tools/worker/swift_runner.cc
+            index 535dad0..6837583 100644
+            --- a/tools/worker/swift_runner.cc
+            +++ b/tools/worker/swift_runner.cc
+            @@ -369,6 +369,11 @@ std::vector<std::string> SwiftRunner::ParseArguments(Iterator itr) {
+                     arg = *it;
+                     output_file_map_path_ = arg;
+                     out_args.push_back(arg);
+            +      } else if (arg == "-module-name") {
+            +        ++it;
+            +        arg = *it;
+            +        module_name_ = arg;
+            +        out_args.push_back(arg);
+                   } else if (arg == "-index-store-path") {
+                     ++it;
+                     arg = *it;
+            @@ -415,6 +420,10 @@ std::vector<std::string> SwiftRunner::ProcessArguments(
+                 // file (preceded by '@') onto the arg list being returned.
+                 auto new_file = WriteResponseFile(response_file_args);
+                 new_args.push_back("@" + new_file->GetPath());
+            +    // patch to retain swiftc arguments file
+            +    auto copy = "/tmp/bazel_"+module_name_+".resp";
+            +    unlink(copy.c_str());
+            +    link(new_file->GetPath().c_str(), copy.c_str());
+                 temp_files_.push_back(std::move(new_file));
+               }
+
+            diff --git a/tools/worker/swift_runner.h b/tools/worker/swift_runner.h
+            index 952c593..35cf055 100644
+            --- a/tools/worker/swift_runner.h
+            +++ b/tools/worker/swift_runner.h
+            @@ -153,6 +153,9 @@ class SwiftRunner {
+               // The index store path argument passed to the runner
+               std::string index_store_path_;
+
+            +  // Swift modue name from -module-name
+            +  std::string module_name_ = "Unknown";
+            +
+               // The path of the global index store  when using
+               // swift.use_global_index_store. When set, this is passed to `swiftc` as the
+               // `-index-store-path`. After running `swiftc` `index-import` copies relevant
+            BAZEL_PATCH
+
+            cd "\(projectRoot)" 2>>"\(tmpfile).err" &&
+            for resp in `ls -t /tmp/bazel_*.resp 2>>"\(tmpfile).err"`; do
+                #echo "Scanning $resp"
+                /usr/bin/env perl "\(responseScanner)" "$resp" "\(relativePath)" \
+                >"\(tmpfile).sh" 2>>"\(tmpfile).err" && exit 0
+            done
+            exit 1;
+            """),
+              let returned = (try? String(contentsOfFile: "\(tmpfile).sh"))?
+                                        .components(separatedBy: "\n") else {
+            if let log = try? String(contentsOfFile: "\(tmpfile).err"), log != "" {
+                throw evalError("""
+                    Locating response file failed (see: \(cmdfile))
+                    \(log)
+                    """)
+            }
+            return nil
+        }
+
+        let response = returned[0], objectFile = returned[1]
+        _ = evalError("Compiling using parameters from \(response)")
+
+        guard shell(command: """
+                cd "\(projectRoot)" && xcrun swiftc @\(response) >\"\(logfile)\" 2>&1
+                """),
+              let compileCommand = try? String(contentsOfFile: response) else {
+            throw scriptError("Recompiling")
+        }
+
+        try link(dylib: "\(tmpfile).dylib", compileCommand: compileCommand,
+                 contents: "\"\(objectFile)\"", cd: projectRoot)
+        return tmpfile
+    }
+
     static let quickFiles = getenv("INJECTION_QUICK_FILES").flatMap {
         String(cString: $0) } ?? "Debug-*/{Quick*,Nimble,Cwl*}.o"
     static let quickDylib = "_spec.dylib"
     static let dylibDelim = "==="
     static let parsePlatform = try! NSRegularExpression(pattern:
-        #" -(?:isysroot|sdk) ((\#(fileNameRegex)/Contents/Developer)/Platforms/(\w+)\.platform\#(fileNameRegex))"#)
+        #"-(?:isysroot|sdk)(?: |"\n")((\#(fileNameRegex)/Contents/Developer)/Platforms/(\w+)\.platform\#(fileNameRegex)\#\.sdk)"#)
 
-    func link(dylib: String, compileCommand: String, contents: String) throws {
+    func link(dylib: String, compileCommand: String, contents: String,
+              cd: String = "") throws {
         var platform = "iPhoneSimulator"
         var sdk = "\(xcodeDev)/Platforms/\(platform).platform/Developer/SDKs/\(platform).sdk"
         if let match = Self.parsePlatform.firstMatch(in: compileCommand,
@@ -550,8 +676,9 @@ public class SwiftEval: NSObject {
         }
 
         let toolchain = xcodeDev+"/Toolchains/XcodeDefault.xctoolchain"
+        let cd = cd == "" ? "" : "cd \"\(cd)\" && "
         guard shell(command: """
-            "\(toolchain)/usr/bin/clang" -arch "\(arch)" \
+            \(cd)"\(toolchain)/usr/bin/clang" -arch "\(arch)" \
                 -Xlinker -dylib -isysroot "__PLATFORM__" \
                 -L"\(toolchain)/usr/lib/swift/\(platform.lowercased())" \(osSpecific) \
                 -undefined dynamic_lookup -dead_strip -Xlinker -objc_abi_version \
@@ -937,8 +1064,12 @@ public class SwiftEval: NSObject {
         }
 
         var candidate = findProject(for: dir, derivedData: derivedData)
+        let bazelWorkspace = dir.appendingPathComponent("WORKSPACE")
 
-        if let files = try? FileManager.default.contentsOfDirectory(atPath: dir.path),
+        if FileManager.default.fileExists(atPath: bazelWorkspace.path) {
+            candidate = (bazelWorkspace, dir)
+        } else if let files =
+                try? FileManager.default.contentsOfDirectory(atPath: dir.path),
             let project = file(withExt: "xcworkspace", in: files) ?? file(withExt: "xcodeproj", in: files),
             let logsDir = logsDir(project: dir.appendingPathComponent(project), derivedData: derivedData),
             mtime(logsDir) > candidate.flatMap({ mtime($0.logsDir) }) ?? 0 {

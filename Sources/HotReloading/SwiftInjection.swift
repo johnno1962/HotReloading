@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#171 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#172 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -178,9 +178,10 @@ public class SwiftInjection: NSObject {
 
     @objc
     open class func inject(tmpfile: String, newClasses: [AnyClass]) throws {
-        var sweepClasses = [AnyClass]()
         var totalPatched = 0, totalSwizzled = 0
         var injectedGenerics = Set<String>()
+        var injectedClasses = [AnyClass]()
+        var sweepClasses = [AnyClass]()
         var testClasses = [AnyClass]()
 
         injectionDetail = getenv(INJECTION_DETAIL) != nil
@@ -268,6 +269,8 @@ public class SwiftInjection: NSObject {
                 newClass.isSubclass(of: XCTestCase) {
                 testClasses.append(newClass)
             }
+
+            injectedClasses.append(newClass)
         }
 
         // (Reverse) interposing, reducers, operation on a device etc.
@@ -288,7 +291,14 @@ public class SwiftInjection: NSObject {
                 })
                 RunLoop.main.add(timer, forMode: RunLoop.Mode.common)
             }
-        } else {
+        } else { // implemented class and instance injected() method
+            typealias ClassIMP = @convention(c) (AnyClass, Selector) -> ()
+            for cls in injectedClasses {
+                if let classMethod = class_getClassMethod(cls, injectedSEL) {
+                    let classIMP = method_getImplementation(classMethod)
+                    unsafeBitCast(classIMP, to: ClassIMP.self)(cls, injectedSEL)
+                }
+            }
             performSweep(oldClasses: sweepClasses, tmpfile,
                 getenv(INJECTION_OF_GENERICS) != nil ? injectedGenerics : [])
 

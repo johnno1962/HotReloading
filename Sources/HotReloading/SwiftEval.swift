@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#89 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#92 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -518,8 +518,12 @@ public class SwiftEval: NSObject {
         let projectRoot = workspace.deletingLastPathComponent().path
         let relativePath = sourceFile.replacingOccurrences(of: workspace.deletingLastPathComponent().path+"/", with: "")
         let bazelRulesSwift = projectRoot + "/bazel-out/../external/build_bazel_rules_swift"
-        let responseScanner = tmpDir+"/bazel.pl"
+        let responseScanner = tmpDir + "/bazel.pl"
         HRLog(workspace, relativePath, bazelRulesSwift, responseScanner)
+
+        if !sourceFile.hasSuffix(".swift") {
+            throw evalError("Only swift sources can be injected with bazel")
+        }
 
         try #"""
             use JSON::PP;
@@ -537,7 +541,10 @@ public class SwiftEval: NSObject {
 
             if (my $info = $json_map->{$relative}) {
                 $args =~ s/"-(emit-module-path"\n"[^"]+|color-diagnostics)"\n//g;
-                IO::File->new("> $resp")->print($args);
+                my $respfile = IO::File->new("> $resp");
+                binmode $respfile, ':utf8';
+                $respfile->print($args);
+                $respfile->close();
                 print "$resp\n$info->{object}\n";
                 exit 0;
             }
@@ -546,13 +553,14 @@ public class SwiftEval: NSObject {
             """#.write(toFile: responseScanner,
                        atomically: false, encoding: .utf8)
 
+        let errfile = "\(tmpfile).err"
         guard shell(command: """
             # search through bazel args, most recent first
-            cd "\(projectRoot)/bazel-out/../external/build_bazel_rules_swift" 2>"\(tmpfile).err" &&
-            grep module_name_ tools/worker/swift_runner.h >/dev/null ||
-            (git apply -v <<'BAZEL_PATCH' 2>>"\(tmpfile).err" && echo "⚠️ bazel patched, restart app" >>"\(tmpfile).err" && exit 1) &&
+            cd "\(projectRoot)/bazel-out/../external/build_bazel_rules_swift" 2>"\(errfile)" &&
+            grep module_name_ tools/worker/swift_runner.h >/dev/null 2>>"\(errfile)" ||
+            (git apply -v <<'BAZEL_PATCH' 2>>"\(errfile)" && echo "⚠️ bazel patched, restart app" >>"\(errfile)" && exit 1) &&
             diff --git a/tools/worker/swift_runner.cc b/tools/worker/swift_runner.cc
-            index 535dad0..6837583 100644
+            index 535dad0..3ae653d 100644
             --- a/tools/worker/swift_runner.cc
             +++ b/tools/worker/swift_runner.cc
             @@ -369,6 +369,11 @@ std::vector<std::string> SwiftRunner::ParseArguments(Iterator itr) {
@@ -567,7 +575,13 @@ public class SwiftEval: NSObject {
                    } else if (arg == "-index-store-path") {
                      ++it;
                      arg = *it;
-            @@ -415,6 +420,10 @@ std::vector<std::string> SwiftRunner::ProcessArguments(
+            @@ -410,11 +415,15 @@ std::vector<std::string> SwiftRunner::ProcessArguments(
+                 ++it;
+               }
+
+            -  if (force_response_file_) {
+            +  if (force_response_file_ || 1) {
+                 // Write the processed args to the response file, and push the path to that
                  // file (preceded by '@') onto the arg list being returned.
                  auto new_file = WriteResponseFile(response_file_args);
                  new_args.push_back("@" + new_file->GetPath());
@@ -594,18 +608,21 @@ public class SwiftEval: NSObject {
                // `-index-store-path`. After running `swiftc` `index-import` copies relevant
             BAZEL_PATCH
 
-            cd "\(projectRoot)" 2>>"\(tmpfile).err" &&
-            for resp in `ls -t /tmp/bazel_*.resp 2>>"\(tmpfile).err"`; do
+            cd "\(projectRoot)" 2>>"\(errfile)" &&
+            for resp in `ls -t /tmp/bazel_*.resp 2>>"\(errfile)"`; do
                 #echo "Scanning $resp"
                 /usr/bin/env perl "\(responseScanner)" "$resp" "\(relativePath)" \
-                >"\(tmpfile).sh" 2>>"\(tmpfile).err" && exit 0
+                >"\(tmpfile).sh" 2>>"\(errfile)" && exit 0
             done
             exit 1;
             """),
               let returned = (try? String(contentsOfFile: "\(tmpfile).sh"))?
                                         .components(separatedBy: "\n") else {
-            if let log = try? String(contentsOfFile: "\(tmpfile).err"), log != "" {
-                throw evalError("""
+            if let log = try? String(contentsOfFile: errfile), log != "" {
+                throw evalError(log.contains("ls: /tmp/bazel_*.resp") ? """
+                    \(log)Response files not available (see: \(cmdfile))
+                    Edit and save a swift source file and restart app.
+                    """ : """
                     Locating response file failed (see: \(cmdfile))
                     \(log)
                     """)

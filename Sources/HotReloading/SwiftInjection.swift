@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#172 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#173 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -291,7 +291,7 @@ public class SwiftInjection: NSObject {
                 })
                 RunLoop.main.add(timer, forMode: RunLoop.Mode.common)
             }
-        } else { // implemented class and instance injected() method
+        } else { // implement class and instance injected() methods
             typealias ClassIMP = @convention(c) (AnyClass, Selector) -> ()
             for cls in injectedClasses {
                 if let classMethod = class_getClassMethod(cls, injectedSEL) {

@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#42 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#43 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -35,11 +35,7 @@ class StandaloneInjection: InjectionClient {
 
     override func runInBackground() {
         let builder = SwiftInjectionEval.sharedInstance()
-        #if os(macOS)
         builder.tmpDir = NSTemporaryDirectory()
-        #else
-        builder.tmpDir = "/tmp"
-        #endif
         #if SWIFT_PACKAGE
         let swiftTracePath = String(cString: swiftTrace_path())
         builder.derivedLogs = swiftTracePath[

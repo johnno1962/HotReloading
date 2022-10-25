@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#94 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#95 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -174,6 +174,9 @@ public class SwiftEval: NSObject {
     var forceUnhide = {}
     var objectUnhider: ((String) -> Void)?
     var linkerOptions = ""
+
+    let legacyBazel = getenv("INJECTION_BAZEL") != nil
+    let skipBazelLink = "-interposable_not"
 
     /// Additional logging to /tmp/hot\_reloading.log for "HotReloading" version of injection.
     var HRLog = { (what: Any...) in
@@ -470,10 +473,11 @@ public class SwiftEval: NSObject {
         _ = evalError("Compiling \(sourceFile)")
 
         let projectDir = projectFile.deletingLastPathComponent().path
+        let bazelCompile = compileCommand.contains(skipBazelLink)
 
         guard shell(command: """
                 (cd "\(projectDir.escaping("$"))" && \(compileCommand) >\"\(logfile)\" 2>&1)
-                """) else {
+                """) || bazelCompile else {
             compileByClass.removeValue(forKey: classNameOrFile)
             throw scriptError("Re-compilation")
         }
@@ -484,6 +488,27 @@ public class SwiftEval: NSObject {
             SwiftEval.longTermCache[classNameOrFile] = compileCommand
             SwiftEval.longTermCache.write(toFile: SwiftEval.buildCacheFile,
                                           atomically: false)
+        }
+
+        if bazelCompile {
+            var st = stat()
+            _ = stat(sourceFile, &st)
+            let since = max(time(nil) - st.st_mtimespec.tv_sec,1)
+            let objectList = "\(tmpfile).olist"
+            guard shell(command: """
+                cd "\(objectFile)" && find bazel-out/* \
+                -newerct '\(since) seconds ago' -a -name '*.o' | \
+                grep _swift_incremental >"\(objectList)"
+                """), let objects = (try? String(contentsOfFile: objectList))?
+                .components(separatedBy: "\n").dropLast() else {
+                throw evalError("Finding Objects failed. Did you actually make a change to \(sourceFile) and does it compile?")
+            }
+
+            try link(dylib: "\(tmpfile).dylib", compileCommand: compileCommand,
+                     contents: objects.map({ "\"\($0)\""})
+                .joined(separator: " "), cd: objectFile)
+
+            return tmpfile
         }
 
         // link resulting object file to create dynamic library
@@ -669,7 +694,7 @@ public class SwiftEval: NSObject {
             extract(group: 1, into: &sdk)
             extract(group: 2, into: &xcodeDev)
             extract(group: 4, into: &platform)
-        } else {
+        } else if compileCommand.contains(" -o ") {
             _ = evalError("Unable to parse SDK from: \(compileCommand)")
         }
 
@@ -762,6 +787,12 @@ public class SwiftEval: NSObject {
         } else {
             compileCommand = compileCommand
                 .components(separatedBy: " -o ")[0]
+        }
+        if compileCommand.contains("/bazel ") {
+            // force ld to fail as it is not needed
+            compileCommand["-interposable(?!_not)"] = skipBazelLink
+            // return path to workspace instead of object file
+            return compileCommand[#"^cd "([^"]+)""#] ?? "dir?"
         }
         compileCommand += " -o "+tmpfile+".o"
         return tmpfile+".o"
@@ -935,6 +966,10 @@ public class SwiftEval: NSObject {
                             $command = $line
                             #exit 0;
                         }
+                        elsif (my ($bazel, $dir) = $line =~ /^Running "([^"]+)".* (?:patching output for workspace root|with project path) at ("[^"]+")/) {
+                            $command = "cd $dir && $bazel";
+                            last;
+                        }
                     }
 
                     if ($command) {
@@ -1084,7 +1119,8 @@ public class SwiftEval: NSObject {
         var candidate = findProject(for: dir, derivedData: derivedData)
         let bazelWorkspace = dir.appendingPathComponent("WORKSPACE")
 
-        if FileManager.default.fileExists(atPath: bazelWorkspace.path) {
+        if legacyBazel && FileManager.default
+            .fileExists(atPath: bazelWorkspace.path) {
             candidate = (bazelWorkspace, dir)
         } else if let files =
                 try? FileManager.default.contentsOfDirectory(atPath: dir.path),
@@ -1171,6 +1207,11 @@ public class SwiftEval: NSObject {
             var statusesPipe = [Int32](repeating: 0, count: 2)
             pipe(&commandsPipe)
             pipe(&statusesPipe)
+
+            var envp = [UnsafeMutablePointer<CChar>?](repeating: nil, count: 2)
+            if let home = getenv("HOME") {
+                envp[0] = strdup("HOME=\(home)")!
+            }
 
             if fork() == 0 {
                 let commandsIn = fdopen(commandsPipe[ForReading], "r")

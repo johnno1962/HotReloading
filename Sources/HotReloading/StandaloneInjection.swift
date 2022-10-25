@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#43 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#44 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -61,6 +61,7 @@ class StandaloneInjection: InjectionClient {
 
         if let home = NSHomeDirectory()[#"/Users/[^/]+"#] as String? {
             var dirs = [home]
+            setenv("HOME", home, 1)
             if let extra = getenv("INJECTION_PROJECT_ROOT") ??
                             getenv("INJECTION_DIRECTORIES") {
                 dirs = String(cString: extra).components(separatedBy: ",")

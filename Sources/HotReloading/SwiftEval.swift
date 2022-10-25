@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#92 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#94 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -541,11 +541,12 @@ public class SwiftEval: NSObject {
 
             if (my $info = $json_map->{$relative}) {
                 $args =~ s/"-(emit-module-path"\n"[^"]+|color-diagnostics)"\n//g;
-                my $respfile = IO::File->new("> $resp");
+                my $respcopy = "$resp.copy";
+                my $respfile = IO::File->new("> $respcopy");
                 binmode $respfile, ':utf8';
                 $respfile->print($args);
                 $respfile->close();
-                print "$resp\n$info->{object}\n";
+                print "$respcopy\n$info->{object}\n";
                 exit 0;
             }
             # source file not found

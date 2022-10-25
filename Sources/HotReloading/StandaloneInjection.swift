@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#44 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#45 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -52,6 +52,7 @@ class StandaloneInjection: InjectionClient {
         signal(SIGPIPE, {_ in
             print(APP_PREFIX+"⚠️ SIGPIPE")
         })
+        builder.legacyBazel = true
 
         builder.forceUnhide = { builder.startUnhide() }
         maybeTrace()

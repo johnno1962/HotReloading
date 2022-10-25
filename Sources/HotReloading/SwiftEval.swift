@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#95 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#99 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -175,8 +175,9 @@ public class SwiftEval: NSObject {
     var objectUnhider: ((String) -> Void)?
     var linkerOptions = ""
 
-    let legacyBazel = getenv("INJECTION_BAZEL") != nil
+    var legacyBazel = getenv("INJECTION_BAZEL") != nil
     let skipBazelLink = "-interposable_not"
+    let objectArgument = " -o "
 
     /// Additional logging to /tmp/hot\_reloading.log for "HotReloading" version of injection.
     var HRLog = { (what: Any...) in
@@ -501,7 +502,7 @@ public class SwiftEval: NSObject {
                 grep _swift_incremental >"\(objectList)"
                 """), let objects = (try? String(contentsOfFile: objectList))?
                 .components(separatedBy: "\n").dropLast() else {
-                throw evalError("Finding Objects failed. Did you actually make a change to \(sourceFile) and does it compile?")
+                throw evalError("Finding Objects failed. Did you actually make a change to \(sourceFile) and does it compile? (check logfile: \(logfile))")
             }
 
             try link(dylib: "\(tmpfile).dylib", compileCommand: compileCommand,
@@ -694,7 +695,7 @@ public class SwiftEval: NSObject {
             extract(group: 1, into: &sdk)
             extract(group: 2, into: &xcodeDev)
             extract(group: 4, into: &platform)
-        } else if compileCommand.contains(" -o ") {
+        } else if compileCommand.contains(objectArgument) {
             _ = evalError("Unable to parse SDK from: \(compileCommand)")
         }
 
@@ -780,13 +781,13 @@ public class SwiftEval: NSObject {
                     compileCommand: inout String) -> String {
         // Trim off junk at end of compile command
         if sourceFile.hasSuffix(".swift") {
-            compileCommand = compileCommand
-                .replacingOccurrences(of: " -o (\(Self.filePathRegex))",
-                                      with: "", options: .regularExpression)
+            compileCommand = compileCommand.replacingOccurrences(of:
+                objectArgument+"(\(Self.filePathRegex))",
+                with: "", options: .regularExpression)
                 .components(separatedBy: " -index-system-modules")[0]
         } else {
             compileCommand = compileCommand
-                .components(separatedBy: " -o ")[0]
+                .components(separatedBy: objectArgument)[0]
         }
         if compileCommand.contains("/bazel ") {
             // force ld to fail as it is not needed
@@ -794,7 +795,7 @@ public class SwiftEval: NSObject {
             // return path to workspace instead of object file
             return compileCommand[#"^cd "([^"]+)""#] ?? "dir?"
         }
-        compileCommand += " -o "+tmpfile+".o"
+        compileCommand += objectArgument+tmpfile+".o"
         return tmpfile+".o"
     }
 

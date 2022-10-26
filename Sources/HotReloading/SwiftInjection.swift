@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#173 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#174 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -575,71 +575,6 @@ public class SwiftInjection: NSObject {
         }
     }
     #endif
-
-    @objc open class func dumpStats(top: Int) {
-        let invocationCounts =  SwiftTrace.invocationCounts()
-        for (method, elapsed) in SwiftTrace.sortedElapsedTimes(onlyFirst: top) {
-            print("\(String(format: "%.1f", elapsed*1000.0))ms/\(invocationCounts[method] ?? 0)\t\(method)")
-        }
-    }
-
-    @objc open class func callOrder() -> [String] {
-        return SwiftTrace.callOrder().map { $0.signature }
-    }
-
-    @objc open class func fileOrder() {
-        let builder = SwiftEval.sharedInstance()
-        let signatures = callOrder()
-
-        guard let projectRoot = builder.projectFile.flatMap({
-                URL(fileURLWithPath: $0).deletingLastPathComponent().path+"/"
-            }),
-            let (_, logsDir) =
-                try? builder.determineEnvironment(classNameOrFile: "") else {
-            log("File ordering not available.")
-            return
-        }
-
-        let tmpfile = builder.tmpDir+"/eval101"
-        var found = false
-
-        SwiftEval.uniqueTypeNames(signatures: signatures) { typeName in
-            if !typeName.contains("("), let (_, foundSourceFile) =
-                try? builder.findCompileCommand(logsDir: logsDir,
-                    classNameOrFile: typeName, tmpfile: tmpfile) {
-                print(foundSourceFile
-                        .replacingOccurrences(of: projectRoot, with: ""))
-                found = true
-            }
-        }
-
-        if !found {
-            log("Do you have the right project selected?")
-        }
-    }
-
-    @objc open class func packageNames() -> [String] {
-        var packages = Set<String>()
-        for suffix in SwiftTrace.traceableFunctionSuffixes {
-            findSwiftSymbols(Bundle.main.executablePath!, suffix) {
-                (_, symname: UnsafePointer<Int8>, _, _) in
-                if let sym = SwiftMeta.demangle(symbol: String(cString: symname)),
-                    !sym.hasPrefix("(extension in "),
-                    let endPackage = sym.firstIndex(of: ".") {
-                    packages.insert(sym[..<(endPackage+0)])
-                }
-            }
-        }
-        return Array(packages)
-    }
-
-    @objc open class func objectCounts() {
-        for (className, count) in SwiftTrace.liveObjects
-            .map({(_typeName(autoBitCast($0.key)), $0.value.count)})
-            .sorted(by: {$0.0 < $1.0}) {
-            print("\(count)\t\(className)")
-        }
-    }
 }
 
 @objc

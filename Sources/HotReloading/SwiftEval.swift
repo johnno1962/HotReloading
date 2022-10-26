@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#99 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#114 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -177,6 +177,7 @@ public class SwiftEval: NSObject {
 
     var legacyBazel = getenv("INJECTION_BAZEL") != nil
     let skipBazelLink = "-interposable_not"
+    let bazelWorkspace = "WORKSPACE"
     let objectArgument = " -o "
 
     /// Additional logging to /tmp/hot\_reloading.log for "HotReloading" version of injection.
@@ -384,7 +385,7 @@ public class SwiftEval: NSObject {
 
         injectionNumber += 1
 
-        if projectFile.lastPathComponent == "WORKSPACE",
+        if projectFile.lastPathComponent == bazelWorkspace,
             let dylib = try bazelRecompile(workspace: projectFile,
                                            sourceFile: classNameOrFile) {
             return dylib
@@ -474,7 +475,7 @@ public class SwiftEval: NSObject {
         _ = evalError("Compiling \(sourceFile)")
 
         let projectDir = projectFile.deletingLastPathComponent().path
-        let bazelCompile = compileCommand.contains(skipBazelLink)
+        let bazelCompile = compileCommand.contains("/bazel ")
 
         guard shell(command: """
                 (cd "\(projectDir.escaping("$"))" && \(compileCommand) >\"\(logfile)\" 2>&1)
@@ -494,20 +495,64 @@ public class SwiftEval: NSObject {
         if bazelCompile {
             var st = stat()
             _ = stat(sourceFile, &st)
+            let workspacePath = objectFile
             let since = max(time(nil) - st.st_mtimespec.tv_sec,1)
             let objectList = "\(tmpfile).olist"
             guard shell(command: """
-                cd "\(objectFile)" && find bazel-out/* \
+                cd "\(workspacePath)" && find bazel-out/* \
                 -newerct '\(since) seconds ago' -a -name '*.o' | \
-                grep _swift_incremental >"\(objectList)"
-                """), let objects = (try? String(contentsOfFile: objectList))?
-                .components(separatedBy: "\n").dropLast() else {
-                throw evalError("Finding Objects failed. Did you actually make a change to \(sourceFile) and does it compile? (check logfile: \(logfile))")
+                egrep '(_swift_incremental|_objs)/' | \
+                grep -v /external/ >"\(objectList)"
+                """), var objects = (try? String(
+                    contentsOfFile: objectList)).flatMap({
+                    Set($0.components(separatedBy: "\n").dropLast()) }) else {
+                throw evalError("Finding Objects failed. Did you actually make a change to \(sourceFile) and does it compile? \(APP_NAME) does not support whole module optimization. (check logfile: \(logfile))")
             }
+
+            // precendence to incrementally compiled
+            let incremental = objects.filter({ $0.contains("_swift_incremental")})
+            if incremental.count > 0 {
+                objects = incremental
+            }
+
+            #if false
+            // Failed attempt to filter modified object files
+            // to find those related to the edited source file.
+            // With WMO, which modfies all objects in a target,
+            // you can't necessarilly dyanmically load a single
+            // object file due to "hidden" shared symbols.
+            if objects.count > 1 {
+                let mapList = "\(tmpfile).maps"
+                if shell(command: """
+                    cd "\(workspacePath)" && find bazel-out/* \
+                    -name '*output_file_map*.json' >"\(mapList)"
+                    """), let maps = (try? String(contentsOfFile: mapList))?
+                    .components(separatedBy: "\n").dropLast() {
+                    let relativePath = sourceFile .replacingOccurrences(
+                        of: workspacePath+"/", with: "")
+                    for map in maps {
+                        if let data = try? Data(contentsOf: URL(
+                            fileURLWithPath: workspacePath)
+                            .appendingPathComponent(map)),
+                           let json = try? JSONSerialization.jsonObject(
+                            with: data, options: []) as? [String: Any],
+                           let info = json[relativePath] as? [String: String] {
+                            if let object = info["object"],
+                               objects.contains(object) {
+                                objects = [object]
+                                break
+                            }
+                        }
+                    }
+                } else {
+                    _ = evalError("Error reading maps")
+                }
+            }
+            #endif
 
             try link(dylib: "\(tmpfile).dylib", compileCommand: compileCommand,
                      contents: objects.map({ "\"\($0)\""})
-                .joined(separator: " "), cd: objectFile)
+                .joined(separator: " "), cd: workspacePath)
 
             return tmpfile
         }
@@ -548,7 +593,7 @@ public class SwiftEval: NSObject {
         HRLog(workspace, relativePath, bazelRulesSwift, responseScanner)
 
         if !sourceFile.hasSuffix(".swift") {
-            throw evalError("Only swift sources can be injected with bazel")
+            throw evalError("Only Swift sources can be standalone injected with bazel")
         }
 
         try #"""
@@ -1118,11 +1163,11 @@ public class SwiftEval: NSObject {
         }
 
         var candidate = findProject(for: dir, derivedData: derivedData)
-        let bazelWorkspace = dir.appendingPathComponent("WORKSPACE")
+        let workspaceURL = dir.appendingPathComponent(bazelWorkspace)
 
         if legacyBazel && FileManager.default
-            .fileExists(atPath: bazelWorkspace.path) {
-            candidate = (bazelWorkspace, dir)
+            .fileExists(atPath: workspaceURL.path) {
+            candidate = (workspaceURL, dir)
         } else if let files =
                 try? FileManager.default.contentsOfDirectory(atPath: dir.path),
             let project = file(withExt: "xcworkspace", in: files) ?? file(withExt: "xcodeproj", in: files),

@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#16 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#17 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -130,7 +130,7 @@ public class UnhidingEval: SwiftEval {
         // avoids shuffling of object files due to how the compiler is coded
         compileCommand[#" -primary-file (\#(Self.filePathRegex+Self.fileNameRegex))"#] = {
             (groups: [String], stop) -> String in
-//            HRLog("PF: \(sourceName) \(groups)")
+//            debug("PF: \(sourceName) \(groups)")
             nPrimaries += 1
             return groups[2] == sourceName || groups[3] == sourceName ?
                 groups[0] : hasFileList ? "" : " "+groups[1]
@@ -144,7 +144,7 @@ public class UnhidingEval: SwiftEval {
         // which has just been changed to only ever be one so, strip them out
         compileCommand = compileCommand
             .replacingOccurrences(of: #" -(serialize-diagnostics|emit-(module(-doc|-source-info)?|(reference-)?dependencies)|index-unit-output)-path \#(Self.argumentRegex)"#, with: "", options: .regularExpression)
-        HRLog("Uniqued command:", compileCommand)
+        debug("Uniqued command:", compileCommand)
         // Replace path(s) of all object files to a single one
         return super.xcode13Fix(sourceFile: sourceFile,
                                 compileCommand: &compileCommand)

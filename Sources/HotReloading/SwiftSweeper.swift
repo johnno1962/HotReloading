@@ -7,7 +7,7 @@
 //  instance of classes that have been injected in order
 //  to be able to send them the @objc injected message.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#14 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#15 $
 //
 
 import Foundation
@@ -47,12 +47,7 @@ extension SwiftInjection {
     public class func performSweep(oldClasses: [AnyClass], _ tmpfile: String,
                                  _ injectedGenerics: Set<String>) {
         var injectedClasses = [AnyClass]()
-        typealias ClassIMP = @convention(c) (AnyClass, Selector) -> ()
         for cls in oldClasses {
-            if let classMethod = class_getClassMethod(cls, injectedSEL) {
-                let classIMP = method_getImplementation(classMethod)
-                unsafeBitCast(classIMP, to: ClassIMP.self)(cls, injectedSEL)
-            }
             if class_getInstanceMethod(cls, injectedSEL) != nil {
                 injectedClasses.append(cls)
                 if !sweepWarned {

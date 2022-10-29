@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#139 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#140 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -766,6 +766,9 @@ public class SwiftEval: NSObject {
 
         let toolchain = xcodeDev+"/Toolchains/XcodeDefault.xctoolchain"
         let cd = cd == "" ? "" : "cd \"\(cd)\" && "
+        if cd != "" && !contents.contains(arch) {
+            _ = evalError("Modified object files \(contents) not built for architecture \(arch)")
+        }
         guard shell(command: """
             \(cd)"\(toolchain)/usr/bin/clang" -arch "\(arch)" \
                 -Xlinker -dylib -isysroot "__PLATFORM__" \

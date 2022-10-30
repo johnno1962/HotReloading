@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#140 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#141 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -476,6 +476,11 @@ public class SwiftEval: NSObject {
 
         let projectDir = projectFile.deletingLastPathComponent().path
         let isBazelCompile = compileCommand.contains(skipBazelLinking)
+        if isBazelCompile, arch == "x86_64", !compileCommand.contains(arch) {
+            compileCommand = compileCommand
+                .replacingOccurrences(of: #"(--cpu=ios_)\w+"#,
+                  with: "$1\(arch)", options: .regularExpression)
+        }
 
         guard shell(command: """
                 (cd "\(projectDir.escaping("$"))" && \(compileCommand) >\"\(logfile)\" 2>&1)
@@ -629,7 +634,7 @@ public class SwiftEval: NSObject {
         let errfile = "\(tmpfile).err"
         guard shell(command: """
             # search through bazel args, most recent first
-            cd "\(projectRoot)/bazel-out/../external/build_bazel_rules_swift" 2>"\(errfile)" &&
+            cd "\(bazelRulesSwift)" 2>"\(errfile)" &&
             grep module_name_ tools/worker/swift_runner.h >/dev/null 2>>"\(errfile)" ||
             (git apply -v <<'BAZEL_PATCH' 2>>"\(errfile)" && echo "⚠️ bazel patched, restart app" >>"\(errfile)" && exit 1) &&
             diff --git a/tools/worker/swift_runner.cc b/tools/worker/swift_runner.cc

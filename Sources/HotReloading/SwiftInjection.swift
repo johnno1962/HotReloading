@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#174 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#175 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -292,6 +292,7 @@ public class SwiftInjection: NSObject {
                 RunLoop.main.add(timer, forMode: RunLoop.Mode.common)
             }
         } else { // implement class and instance injected() methods
+            #if targetEnvironment(simulator)
             typealias ClassIMP = @convention(c) (AnyClass, Selector) -> ()
             for cls in injectedClasses {
                 if let classMethod = class_getClassMethod(cls, injectedSEL) {
@@ -299,6 +300,7 @@ public class SwiftInjection: NSObject {
                     unsafeBitCast(classIMP, to: ClassIMP.self)(cls, injectedSEL)
                 }
             }
+            #endif
             performSweep(oldClasses: sweepClasses, tmpfile,
                 getenv(INJECTION_OF_GENERICS) != nil ? injectedGenerics : [])
 

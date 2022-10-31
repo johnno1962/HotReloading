@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#141 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#145 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -21,10 +21,6 @@ private let APP_PREFIX = "🔥 "
 #else
 private let APP_PREFIX = "💉 "
 #endif
-
-private func debug(_ str: String) {
-//    print(str)
-}
 
 @objc protocol SwiftEvalImpl {
     @objc optional func evalImpl(_ptr: UnsafeMutableRawPointer)
@@ -380,13 +376,14 @@ public class SwiftEval: NSObject {
         classNameOrFile: String, extra: String?) throws -> String {
         let (projectFile, logsDir) = try
             determineEnvironment(classNameOrFile: classNameOrFile)
+        let projectRoot = projectFile.deletingLastPathComponent().path
 
         // locate compile command for class
 
         injectionNumber += 1
 
         if projectFile.lastPathComponent == bazelWorkspace,
-            let dylib = try bazelLight(workspace: projectFile,
+            let dylib = try bazelLight(projectRoot: projectRoot,
                                        recompile: classNameOrFile) {
             return dylib
         }
@@ -470,11 +467,9 @@ public class SwiftEval: NSObject {
         // Extract object path (overidden in UnhidingEval.swift for Xcode 13)
         let objectFile = xcode13Fix(sourceFile: sourceFile,
                                     compileCommand: &compileCommand)
-        debug("Final command:", compileCommand, "-->", objectFile)
 
         _ = evalError("Compiling \(sourceFile)")
 
-        let projectDir = projectFile.deletingLastPathComponent().path
         let isBazelCompile = compileCommand.contains(skipBazelLinking)
         if isBazelCompile, arch == "x86_64", !compileCommand.contains(arch) {
             compileCommand = compileCommand
@@ -482,8 +477,10 @@ public class SwiftEval: NSObject {
                   with: "$1\(arch)", options: .regularExpression)
         }
 
+        debug("Final command:", compileCommand, "-->", objectFile)
         guard shell(command: """
-                (cd "\(projectDir.escaping("$"))" && \(compileCommand) >\"\(logfile)\" 2>&1)
+                (cd "\(projectRoot.escaping("$"))" && \
+                \(compileCommand) >\"\(logfile)\" 2>&1)
                 """) || isBazelCompile else {
             compileByClass.removeValue(forKey: classNameOrFile)
             throw scriptError("Re-compilation")
@@ -498,67 +495,9 @@ public class SwiftEval: NSObject {
         }
 
         if isBazelCompile {
-            let workspacePath = objectFile
-            let objectList = "\(tmpfile).olist"
-            guard shell(command: """
-                cd "\(workspacePath)" && find bazel-out/* \
-                -newer "\(sourceFile)" -a -name '*.o' | \
-                egrep '(_swift_incremental|_objs)/' | \
-                grep -v /external/ >"\(objectList)"
-                """), var objects = (try? String(
-                    contentsOfFile: objectList)).flatMap({
-                    Set($0.components(separatedBy: "\n").dropLast()) }) else {
-                throw evalError("Finding Objects failed. Did you actually make a change to \(sourceFile) and does it compile? \(APP_NAME) does not support whole module optimization. (check logfile: \(logfile))")
-            }
-
-            debug(bazelLight, projectFile, objects)
-            // precendence to incrementally compiled
-            let incremental = objects.filter({ $0.contains("_swift_incremental")})
-            if incremental.count > 0 {
-                objects = incremental
-            }
-            debug(objects)
-
-            #if false
-            // Failed attempt to filter modified object files
-            // to find those related to the edited source file.
-            // With WMO, which modfies all objects in a target,
-            // you can't necessarilly dyanmically load a single
-            // object file due to "hidden" shared symbols.
-            if objects.count > 1 {
-                let mapList = "\(tmpfile).maps"
-                if shell(command: """
-                    cd "\(workspacePath)" && find bazel-out/* \
-                    -name '*output_file_map*.json' >"\(mapList)"
-                    """), let maps = (try? String(contentsOfFile: mapList))?
-                    .components(separatedBy: "\n").dropLast() {
-                    let relativePath = sourceFile .replacingOccurrences(
-                        of: workspacePath+"/", with: "")
-                    for map in maps {
-                        if let data = try? Data(contentsOf: URL(
-                            fileURLWithPath: workspacePath)
-                            .appendingPathComponent(map)),
-                           let json = try? JSONSerialization.jsonObject(
-                            with: data, options: []) as? [String: Any],
-                           let info = json[relativePath] as? [String: String] {
-                            if let object = info["object"],
-                               objects.contains(object) {
-                                objects = [object]
-                                break
-                            }
-                        }
-                    }
-                } else {
-                    _ = evalError("Error reading maps")
-                }
-            }
-            #endif
-
-            try link(dylib: "\(tmpfile).dylib", compileCommand: compileCommand,
-                     contents: objects.map({ "\"\($0)\""})
-                .joined(separator: " "), cd: workspacePath)
-
-            return tmpfile
+            let projectRoot = objectFile // returned by xcode13Fix()
+            return try bazelLink(in: projectRoot, since: sourceFile,
+                                 compileCommand: compileCommand)
         }
 
         // link resulting object file to create dynamic library
@@ -589,14 +528,93 @@ public class SwiftEval: NSObject {
         return (speclib != "" ? speclib+Self.dylibDelim : "")+tmpfile
     }
 
-    func bazelLight(workspace: URL, recompile sourceFile: String) throws -> String? {
-        let projectRoot = workspace.deletingLastPathComponent().path
+    var moduleLibraries = Set<String>()
+
+    func bazelLink(in projectRoot: String, since sourceFile: String,
+                   compileCommand: String) throws -> String {
+        guard var objects = bazelFiles(under: projectRoot, where: """
+            -newer "\(sourceFile)" -a -name '*.o' | \
+            egrep '(_swift_incremental|_objs)/' | grep -v /external/
+            """) else {
+            throw evalError("Finding Objects failed. Did you actually make a change to \(sourceFile) and does it compile? \(APP_NAME) does not support whole module optimization. (check logfile: \(logfile))")
+        }
+
+        debug(bazelLight, projectRoot, objects)
+        // precendence to incrementally compiled
+        let incremental = objects.filter({ $0.contains("_swift_incremental") })
+        if incremental.count > 0 {
+            objects = incremental
+        }
+
+        #if true
+        // With WMO, which modifies all object files
+        // we need a way to filter them down to that
+        // of the source file and its related module
+        // library to provide shared "hidden" symbols.
+        // We use the related Swift "output_file_map"
+        // for the module name to include its library.
+        if objects.count > 1 {
+            let objectSet = Set(objects)
+            if let maps  = bazelFiles(under: projectRoot,
+                                      where: "-name '*output_file_map*.json'") {
+                let relativePath = sourceFile .replacingOccurrences(
+                    of: projectRoot+"/", with: "")
+                for map in maps {
+                    if let data = try? Data(contentsOf: URL(
+                        fileURLWithPath: projectRoot)
+                        .appendingPathComponent(map)),
+                       let json = try? JSONSerialization.jsonObject(
+                        with: data, options: []) as? [String: Any],
+                       let info = json[relativePath] as? [String: String] {
+                        if let object = info["object"],
+                           objectSet.contains(object) {
+                            objects = [object]
+                            if let module =
+                                map[#"(\w+)\.output_file_map"#] as String? {
+                                for lib in bazelFiles(under: projectRoot,
+                                    where: "-name 'lib\(module).a'") ?? [] {
+                                    moduleLibraries.insert(lib)
+                                }
+                            }
+                            break
+                        }
+                    }
+                }
+            } else {
+                _ = evalError("Error reading maps")
+            }
+        }
+        #endif
+
+        objects += moduleLibraries
+        debug(objects)
+
+        try link(dylib: "\(tmpfile).dylib", compileCommand: compileCommand,
+                 contents: objects.map({ "\"\($0)\""}).joined(separator: " "),
+                 cd: projectRoot)
+        return tmpfile
+    }
+
+    func bazelFiles(under projectRoot: String, where clause:  String,
+                    ext: String = "files") -> [String]? {
+        let list = "\(tmpfile).\(ext)"
+        if shell(command: """
+            cd "\(projectRoot)" && \
+            find bazel-out/* \(clause) >"\(list)" 2>>\"\(logfile)\"
+            """), let files = (try? String(contentsOfFile: list))?
+            .components(separatedBy: "\n").dropLast() {
+            return Array(files)
+        }
+        return nil
+    }
+
+    func bazelLight(projectRoot: String, recompile sourceFile: String) throws -> String? {
         let relativePath = sourceFile.replacingOccurrences(of:
-            workspace.deletingLastPathComponent().path+"/", with: "")
+            projectRoot+"/", with: "")
         let bazelRulesSwift = projectRoot +
             "/bazel-out/../external/build_bazel_rules_swift"
         let paramsScanner = tmpDir + "/bazel.pl"
-        debug(workspace, relativePath, bazelRulesSwift, paramsScanner)
+        debug(projectRoot, relativePath, bazelRulesSwift, paramsScanner)
 
         if !sourceFile.hasSuffix(".swift") {
             throw evalError("Only Swift sources can be standalone injected with bazel")
@@ -707,19 +725,20 @@ public class SwiftEval: NSObject {
             return nil
         }
 
-        let response = returned[0], objectFile = returned[1]
-        _ = evalError("Compiling using parameters from \(response)")
+        let params = returned[0]
+        _ = evalError("Compiling using parameters from \(params)")
 
         guard shell(command: """
-                cd "\(projectRoot)" && xcrun swiftc @\(response) >\"\(logfile)\" 2>&1
+                cd "\(projectRoot)" && \
+                chmod +w `find bazel-out/* -name '*.o'`; \
+                xcrun swiftc @\(params) >\"\(logfile)\" 2>&1
                 """),
-              let compileCommand = try? String(contentsOfFile: response) else {
+              let compileCommand = try? String(contentsOfFile: params) else {
             throw scriptError("Recompiling")
         }
 
-        try link(dylib: "\(tmpfile).dylib", compileCommand: compileCommand,
-                 contents: "\"\(objectFile)\"", cd: projectRoot)
-        return tmpfile
+        return try bazelLink(in: projectRoot, since: sourceFile,
+                             compileCommand: compileCommand)
     }
 
     static let quickFiles = getenv("INJECTION_QUICK_FILES").flatMap {

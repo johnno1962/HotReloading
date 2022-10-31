@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#40 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#41 $
 //
 
 #import <Foundation/Foundation.h>
@@ -17,6 +17,7 @@
 #import <mach-o/stab.h>
 #import <sys/stat.h>
 #import <string>
+#import <vector>
 #import <map>
 
 extern "C" {
@@ -125,6 +126,8 @@ int unhide_object(const char *object_file, const char *framework, FILE *log,
 //            dylib->nlocalsym = 0;
 #endif
             size_t isReverseInterpose = class_references ? strlen(framework) : 0;
+            typedef std::pair<uint64_t, const char *> class_pair;
+            std::vector<class_pair> class_refs;
             for (int i=0 ; i<symtab->nsyms ; i++) {
                 struct nlist_64 &symbol = all_symbols64[i];
                 if (symbol.n_sect == NO_SECT)
@@ -135,8 +138,8 @@ int unhide_object(const char *object_file, const char *framework, FILE *log,
                     static char classRef[] = {"l_OBJC_CLASS_REF_$_"};
                     int clasRefSize = sizeof classRef-1;
                     if (strncmp(symname, classRef, clasRefSize) == 0)
-                        [class_references addObject:[NSString
-                         stringWithUTF8String:symname + clasRefSize]];
+                        class_refs.push_back({symbol.n_value,
+                            symname + clasRefSize});
                 }
 
                 if (descriptor_refs) {
@@ -208,6 +211,18 @@ int unhide_object(const char *object_file, const char *framework, FILE *log,
                            symbol.n_type, symbol.n_desc,
                            symbol.n_sect, symname);
                 }
+            }
+
+            if (class_references) {
+                auto cmp = [&] (const class_pair &l, const class_pair &r) {
+                    return l.first < r.first;
+                };
+
+                sort(class_refs.begin(), class_refs.end(), cmp);
+
+                for (auto &cr : class_refs)
+                    [class_references addObject:[NSString
+                                                 stringWithUTF8String:cr.second]];
             }
 
             if (exported && ![patched writeToFile:file atomically:YES])

@@ -2,7 +2,7 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
 //  Repo: https://github.com/johnno1962/HotReloading
-//  $Id: //depot/HotReloading/Package.swift#154 $
+//  $Id: //depot/HotReloading/Package.swift#156 $
 //
 
 import PackageDescription
@@ -56,5 +56,6 @@ let package = Package(
                                    .product(name: "SwiftRegex", package: "SwiftRegex"),
                                    .product(name: "XprobeUI", package: "XprobePlugin"),
                                    .product(name: "RemoteUI", package: "RemotePlugin")],
-                swiftSettings: [.define("INJECTION_III_APP")])]
+                swiftSettings: [.define("INJECTION_III_APP")])],
+    cxxLanguageStandard: .cxx11
 )

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#175 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#177 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -250,7 +250,7 @@ public class SwiftInjection: NSObject {
                 }
 
                 var swizzled: Int
-                if lastPseudoImage() == nil {
+                if !SwiftTrace.deviceInjection {
                 // old-school swizzle Objective-C class & instance methods
                     swizzled = injection(swizzle: object_getClass(newClass),
                                          onto: object_getClass(oldClass)) +
@@ -292,15 +292,15 @@ public class SwiftInjection: NSObject {
                 RunLoop.main.add(timer, forMode: RunLoop.Mode.common)
             }
         } else { // implement class and instance injected() methods
-            #if targetEnvironment(simulator)
-            typealias ClassIMP = @convention(c) (AnyClass, Selector) -> ()
-            for cls in injectedClasses {
-                if let classMethod = class_getClassMethod(cls, injectedSEL) {
-                    let classIMP = method_getImplementation(classMethod)
-                    unsafeBitCast(classIMP, to: ClassIMP.self)(cls, injectedSEL)
+            if !SwiftTrace.deviceInjection {
+                typealias ClassIMP = @convention(c) (AnyClass, Selector) -> ()
+                for cls in injectedClasses {
+                    if let classMethod = class_getClassMethod(cls, injectedSEL) {
+                        let classIMP = method_getImplementation(classMethod)
+                        unsafeBitCast(classIMP, to: ClassIMP.self)(cls, injectedSEL)
+                    }
                 }
             }
-            #endif
             performSweep(oldClasses: sweepClasses, tmpfile,
                 getenv(INJECTION_OF_GENERICS) != nil ? injectedGenerics : [])
 
@@ -352,7 +352,7 @@ public class SwiftInjection: NSObject {
                 }
                 ntypes += 1
                 log("Injected type #\(ntypes) '\(name)'")
-                if lastPseudoImage() != nil {
+                if SwiftTrace.deviceInjection {
                     SwiftMeta.cloneValueWitness(from: existing, onto: autoBitCast(typePtr))
                 }
                 let newSize = SwiftMeta.sizeof(anyType: autoBitCast(typePtr))
@@ -362,7 +362,7 @@ public class SwiftInjection: NSObject {
             }
         }
 
-        if false && npreviews > 0 && ntypes > 2 && lastPseudoImage() != nil {
+        if false && npreviews > 0 && ntypes > 2 && SwiftTrace.deviceInjection {
             log("⚠️ Device injection may fail if you have more than one type from the injected file referred to in a SwiftUI View.")
         }
 

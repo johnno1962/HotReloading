@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#41 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#43 $
 //
 
 #import <Foundation/Foundation.h>
@@ -214,11 +214,10 @@ int unhide_object(const char *object_file, const char *framework, FILE *log,
             }
 
             if (class_references) {
-                auto cmp = [&] (const class_pair &l, const class_pair &r) {
+                sort(class_refs.begin(), class_refs.end(),
+                     [&] (const class_pair &l, const class_pair &r) {
                     return l.first < r.first;
-                };
-
-                sort(class_refs.begin(), class_refs.end(), cmp);
+                });
 
                 for (auto &cr : class_refs)
                     [class_references addObject:[NSString

@@ -5,7 +5,7 @@
 //
 //  Interpose processing (-Xlinker -interposable).
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInterpose.swift#4 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInterpose.swift#5 $
 //
 
 import Foundation
@@ -152,7 +152,7 @@ extension SwiftInjection {
         var staticsAccessors = [rebinding]()
         var already = Set<UnsafeRawPointer>()
         var symbolSuffixes = ["Wl"] // Witness table accessors
-        if false && lastPseudoImage() != nil {
+        if false && SwiftTrace.deviceInjection {
             symbolSuffixes.append("Ma") // meta data accessors
         }
         if SwiftTrace.preserveStatics {

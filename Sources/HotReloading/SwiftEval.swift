@@ -912,9 +912,42 @@ public class SwiftEval: NSObject {
         }
     }()
 
+    lazy var loadTestsBundle: () = {
+        do {
+            guard let testsBundlePath = try testsBundlePath() else {
+                debug("Tests bundle wasn't found - did you run the tests target before running the application?")
+                return
+            }
+            guard let bundle = Bundle(path: testsBundlePath), bundle.load() else {
+                debug("Failed loading tests bundle")
+                return
+            }
+        } catch {
+            debug("Error while searching for the tests bundle: \(error)")
+            return
+        }
+    }()
+
+    func testsBundlePath() throws -> String? {
+        guard let pluginsDirectory = Bundle.main.path(forResource: "PlugIns", ofType: nil) else {
+            return nil
+        }
+
+        let bundlePaths: [String] = try FileManager.default.contentsOfDirectory(atPath: pluginsDirectory)
+            .filter { $0.hasSuffix(".xctest") }
+            .map { directoryName in
+                return "\(pluginsDirectory)/\(directoryName)"
+            }
+        if bundlePaths.count > 1 {
+            debug("Found more than one tests bundle, using the first one")
+        }
+        return bundlePaths.first
+    }
+
     @objc func loadAndInject(tmpfile: String, oldClass: AnyClass? = nil)
         throws -> [AnyClass] {
         _ = loadXCTest
+        _ = loadTestsBundle
 
         print("\(APP_PREFIX)Loading .dylib ...")
         // load patched .dylib into process with new version of class

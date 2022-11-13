@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#145 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#146 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -656,7 +656,7 @@ public class SwiftEval: NSObject {
             grep module_name_ tools/worker/swift_runner.h >/dev/null 2>>"\(errfile)" ||
             (git apply -v <<'BAZEL_PATCH' 2>>"\(errfile)" && echo "⚠️ bazel patched, restart app" >>"\(errfile)" && exit 1) &&
             diff --git a/tools/worker/swift_runner.cc b/tools/worker/swift_runner.cc
-            index 535dad0..3ae653d 100644
+            index 535dad0..19e1a6d 100644
             --- a/tools/worker/swift_runner.cc
             +++ b/tools/worker/swift_runner.cc
             @@ -369,6 +369,11 @@ std::vector<std::string> SwiftRunner::ParseArguments(Iterator itr) {
@@ -671,23 +671,35 @@ public class SwiftEval: NSObject {
                    } else if (arg == "-index-store-path") {
                      ++it;
                      arg = *it;
-            @@ -410,11 +415,15 @@ std::vector<std::string> SwiftRunner::ProcessArguments(
+            @@ -410,12 +415,28 @@ std::vector<std::string> SwiftRunner::ProcessArguments(
                  ++it;
                }
 
-            -  if (force_response_file_) {
-            +  if (force_response_file_ || 1) {
+            +  auto copy = "/tmp/bazel_"+module_name_+".params";
+            +  unlink(copy.c_str());
+               if (force_response_file_) {
                  // Write the processed args to the response file, and push the path to that
                  // file (preceded by '@') onto the arg list being returned.
                  auto new_file = WriteResponseFile(response_file_args);
                  new_args.push_back("@" + new_file->GetPath());
+            +
             +    // patch to retain swiftc arguments file
-            +    auto copy = "/tmp/bazel_"+module_name_+".params";
-            +    unlink(copy.c_str());
             +    link(new_file->GetPath().c_str(), copy.c_str());
                  temp_files_.push_back(std::move(new_file));
+            +  } else if (FILE *fp = fopen("/tmp/forced_params.txt", "w+")) {
+            +    // alternate patch to capture arguments file
+            +    for (auto &a : args_destination) {
+            +      const char *carg = a.c_str();
+            +      fprintf(fp, "%s\\n", carg);
+            +      if (carg[0] != '@')
+            +          continue;
+            +      link(carg+1, copy.c_str());
+            +      fprintf(fp, "Linked %s to %s\\n", copy.c_str(), carg+1);
+            +    }
+            +    fclose(fp);
                }
 
+               return new_args;
             diff --git a/tools/worker/swift_runner.h b/tools/worker/swift_runner.h
             index 952c593..35cf055 100644
             --- a/tools/worker/swift_runner.h
@@ -1190,7 +1202,8 @@ public class SwiftEval: NSObject {
         }
 
         var candidate = findProject(for: dir, derivedData: derivedData)
-        let workspaceURL = dir.appendingPathComponent(bazelWorkspace)
+        let workspaceURL = dir.deletingLastPathComponent()
+            .appendingPathComponent(bazelWorkspace)
 
         if bazelLight && FileManager.default
             .fileExists(atPath: workspaceURL.path) {
@@ -1303,7 +1316,7 @@ public class SwiftEval: NSObject {
                         var argv = [UnsafeMutablePointer<Int8>?](repeating: nil, count: 3)
                         argv[0] = strdup("/bin/bash")!
                         argv[1] = strdup(script)!
-                        _ = execve(argv[0], &argv, nil)
+                        _ = execve(argv[0], &argv, &envp)
                         fatalError("execve() fails \(String(cString: strerror(errno)))")
                     }
 

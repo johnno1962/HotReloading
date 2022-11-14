@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#146 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#150 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -744,6 +744,10 @@ public class SwiftEval: NSObject {
                 cd "\(projectRoot)" && \
                 chmod +w `find bazel-out/* -name '*.o'`; \
                 xcrun swiftc @\(params) >\"\(logfile)\" 2>&1
+                """) || shell(command: """
+                cd `readlink "\(projectRoot)/bazel-out"`/.. && \
+                chmod +w `find bazel-out/* -name '*.o'`; \
+                xcrun swiftc @\(params) >>\"\(logfile)\" 2>&1
                 """),
               let compileCommand = try? String(contentsOfFile: params) else {
             throw scriptError("Recompiling")
@@ -1201,16 +1205,20 @@ public class SwiftEval: NSObject {
             return nil
         }
 
-        var candidate = findProject(for: dir, derivedData: derivedData)
-        let workspaceURL = dir.deletingLastPathComponent()
-            .appendingPathComponent(bazelWorkspace)
+        if bazelLight {
+            let workspaceURL = dir.deletingLastPathComponent()
+                .appendingPathComponent(bazelWorkspace)
+            if FileManager.default.fileExists(atPath: workspaceURL.path) {
+                return (workspaceURL, derivedLogs.flatMap({
+                    URL(fileURLWithPath: $0)}) ?? dir)
+            }
+        }
 
-        if bazelLight && FileManager.default
-            .fileExists(atPath: workspaceURL.path) {
-            candidate = (workspaceURL, dir)
-        } else if let files =
+        var candidate = findProject(for: dir, derivedData: derivedData)
+        if let files =
                 try? FileManager.default.contentsOfDirectory(atPath: dir.path),
-            let project = file(withExt: "xcworkspace", in: files) ?? file(withExt: "xcodeproj", in: files),
+            let project = file(withExt: ".xcworkspace", in: files) ??
+                            file(withExt: ".xcodeproj", in: files),
             let logsDir = logsDir(project: dir.appendingPathComponent(project), derivedData: derivedData),
             mtime(logsDir) > candidate.flatMap({ mtime($0.logsDir) }) ?? 0 {
                 candidate = (dir.appendingPathComponent(project), logsDir)
@@ -1220,7 +1228,7 @@ public class SwiftEval: NSObject {
     }
 
     func file(withExt ext: String, in files: [String]) -> String? {
-        return files.first { URL(fileURLWithPath: $0).pathExtension == ext }
+        return files.first { $0.hasSuffix(ext) }
     }
 
     func mtime(_ url: URL) -> time_t {
@@ -1295,7 +1303,7 @@ public class SwiftEval: NSObject {
             pipe(&statusesPipe)
 
             var envp = [UnsafeMutablePointer<CChar>?](repeating: nil, count: 2)
-            if let home = getenv("HOME") {
+            if let home = getenv("USER_HOME") {
                 envp[0] = strdup("HOME=\(home)")!
             }
 

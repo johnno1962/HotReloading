@@ -5,7 +5,7 @@
 //  Created by User on 20/10/2020.
 //  Copyright © 2020 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#24 $
+//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#25 $
 //
 
 import Cocoa
@@ -243,10 +243,6 @@ extension AppDelegate {
                                     OTHER_LDFLAGS = (
                                         "-Xlinker",
                                         "-interposable",
-                                        "-Xlinker",
-                                        "-undefined",
-                                        "-Xlinker",
-                                        dynamic_lookup,
                                     );
                                     ENABLE_BITCODE = NO;
                     $2

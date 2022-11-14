@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#150 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#151 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -635,7 +635,7 @@ public class SwiftEval: NSObject {
             my $json_map = decode_json( $json_text, { utf8  => 1 } );
 
             if (my $info = $json_map->{$relative}) {
-                $args =~ s/"-(emit-module-path"\n"[^"]+)"\n//g;
+                $args =~ s/"-(emit-(module|objc-header)-path"\n"[^"]+)"\n//g;
                 my $paramscopy = "$params.copy";
                 my $paramsfile = IO::File->new("> $paramscopy");
                 binmode $paramsfile, ':utf8';

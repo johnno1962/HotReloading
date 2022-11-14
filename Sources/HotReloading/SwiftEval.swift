@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#151 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#156 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -857,7 +857,7 @@ public class SwiftEval: NSObject {
 
 
     /// Regex for path argument, perhaps containg escaped spaces
-    static let argumentRegex = #"[^ \\]*(?:\\.[^ \\]*)*"#
+    static let argumentRegex = #"[^\s\\]*(?:\\.[^\s\\]*)*"#
     /// Regex to extract filename base, perhaps containg escaped spaces
     static let fileNameRegex = #"/(\#(argumentRegex))\.\w+"#
     /// Extract full file path and name either quoted or escaped

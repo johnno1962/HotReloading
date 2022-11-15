@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#28 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#30 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -28,7 +28,8 @@
 @implementation SimpleSocket
 
 + (int)error:(NSString *)message {
-    NSLog(message, strerror(errno));
+    NSLog([@"%@/" stringByAppendingString:message],
+          self, strerror(errno));
     return -1;
 }
 

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#177 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#178 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -88,7 +88,7 @@ public class SwiftInjection: NSObject {
 
     @objc static var traceInjection = false
 
-    // Constants for environment variables
+    // The various environment variables
     static let INJECTION_DETAIL = "INJECTION_DETAIL"
     static let INJECTION_PROJECT_ROOT = "INJECTION_PROJECT_ROOT"
     static let INJECTION_DYNAMIC_CAST = "INJECTION_DYNAMIC_CAST"
@@ -97,6 +97,14 @@ public class SwiftInjection: NSObject {
     static let INJECTION_SWEEP_EXCLUDE = "INJECTION_SWEEP_EXCLUDE"
     static let INJECTION_OF_GENERICS = "INJECTION_OF_GENERICS"
     static let INJECTION_UNHIDE = "INJECTION_UNHIDE"
+    static let INJECTION_QUICK_FILES = "INJECTION_QUICK_FILES"
+    static let INJECTION_DIRECTORIES = "INJECTION_DIRECTORIES"
+    static let INJECTION_STANDALONE = "INJECTION_STANDALONE"
+    static let INJECTION_DAEMON = "INJECTION_DAEMON"
+    static let INJECTION_LOOKUP = "INJECTION_LOOKUP"
+    static let INJECTION_TRACE = "INJECTION_TRACE"
+    static let INJECTION_BAZEL = "INJECTION_BAZEL"
+    static let INJECTION_DEBUG = "INJECTION_DEBUG"
 
     static let testQueue = DispatchQueue(label: "INTestQueue")
     static let injectedSEL = #selector(SwiftInjected.injected)

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 08/03/2015.
 //  Copyright (c) 2015 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#36 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#37 $
 //
 //  Started out as an abstraction to watch files under a directory.
 //  "Enhanced" to extract the last modified build log directory by
@@ -24,10 +24,10 @@ public class FileWatcher: NSObject {
         pattern: "[^~]\\.(mm?|cpp|swift|storyboard|xib)$")
 
     static let logsPref = "HotReloadingBuildLogsDir"
-    static var derivedLogs =
+    static var derivedLog =
         UserDefaults.standard.string(forKey: logsPref) {
         didSet {
-            UserDefaults.standard.set(derivedLogs, forKey: logsPref)
+            UserDefaults.standard.set(derivedLog, forKey: logsPref)
         }
     }
 
@@ -113,15 +113,14 @@ public class FileWatcher: NSObject {
             #if !INJECTION_III_APP
             if path.hasSuffix(".xcactivitylog") &&
                 path.contains("/Logs/Build/") {
-                Self.derivedLogs = URL(fileURLWithPath: path)
-                    .deletingLastPathComponent().path
+                Self.derivedLog = path
             }
             if eventId < eventsStart { continue }
             #endif
 
             if Self.INJECTABLE_PATTERN.firstMatch(in: path,
                 range: NSMakeRange(0, path.utf16.count)) != nil &&
-                path.range(of: "DerivedData/|InjectionProject/|main.mm?$",
+                path.range(of: "DerivedData/|InjectionProject/|.DocumentRevisions-|main.mm?$",
                             options:.regularExpression) == nil &&
                 FileManager.default.fileExists(atPath: path as String) {
                 changed.insert(path)

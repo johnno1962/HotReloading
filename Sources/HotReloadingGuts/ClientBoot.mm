@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#75 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#76 $
 //
 //  Initiate connection to server side of InjectionIII/HotReloading.
 //
@@ -77,7 +77,8 @@ NSString *injectionHost = @"127.0.0.1";
 
 #if TARGET_IPHONE_SIMULATOR || TARGET_OS_OSX
     BOOL usingInjectPackage = dlsym(RTLD_DEFAULT, "$s6InjectAAON") != nullptr;
-    if (usingInjectPackage && !getenv("INJECTION_STANDALONE")) {
+    if ((usingInjectPackage || getenv("INJECTION_DAEMON")) &&
+        !getenv("INJECTION_STANDALONE")) {
         printf(APP_PREFIX"Not falling back to standalone HotReloading as you are using the ‘Inject’ package. "
                "Use MenuBar app to control Injection status or opt in by using INJECTION_STANDALONE env var.\n");
         return;

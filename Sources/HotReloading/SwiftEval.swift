@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#157 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#158 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -15,7 +15,9 @@
 
 #if arch(x86_64) || arch(i386) || arch(arm64) // simulator/macOS only
 import Foundation
+import SwiftTrace
 #if SWIFT_PACKAGE
+import SwiftTraceGuts
 import HotReloadingGuts
 private let APP_PREFIX = "🔥 "
 #else
@@ -953,7 +955,7 @@ public class SwiftEval: NSObject {
         // load patched .dylib into process with new version of class
         var dl: UnsafeMutableRawPointer?
         for dylib in "\(tmpfile).dylib".components(separatedBy: Self.dylibDelim) {
-            dl = dlopen(dylib, RTLD_NOW)
+            dl = fast_dlopen(dylib, RTLD_NOW)
             guard dl != nil else {
                 var error = String(cString: dlerror())
                 if error.contains("___llvm_profile_runtime") {

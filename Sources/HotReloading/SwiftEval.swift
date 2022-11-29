@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#158 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#163 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -15,13 +15,18 @@
 
 #if arch(x86_64) || arch(i386) || arch(arm64) // simulator/macOS only
 import Foundation
-import SwiftTrace
 #if SWIFT_PACKAGE
-import SwiftTraceGuts
 import HotReloadingGuts
 private let APP_PREFIX = "🔥 "
 #else
 private let APP_PREFIX = "💉 "
+#endif
+
+#if !INJECTION_III_APP
+#if canImport(SwiftTraceGuts)
+import SwiftTraceGuts
+#elseif canImport(SwiftTrace)
+import SwiftTrace
 #endif
 
 @objc protocol SwiftEvalImpl {
@@ -129,6 +134,7 @@ extension NSObject {
         return out
     }
 }
+#endif
 
 fileprivate extension StringProtocol {
     subscript(range: NSRange) -> String? {
@@ -538,7 +544,7 @@ public class SwiftEval: NSObject {
             -newer "\(sourceFile)" -a -name '*.o' | \
             egrep '(_swift_incremental|_objs)/' | grep -v /external/
             """) else {
-            throw evalError("Finding Objects failed. Did you actually make a change to \(sourceFile) and does it compile? \(APP_NAME) does not support whole module optimization. (check logfile: \(logfile))")
+            throw evalError("Finding Objects failed. Did you actually make a change to \(sourceFile) and does it compile? InjectionIII does not support whole module optimization. (check logfile: \(logfile))")
         }
 
         debug(bazelLight, projectRoot, objects)
@@ -571,8 +577,8 @@ public class SwiftEval: NSObject {
                         if let object = info["object"],
                            objectSet.contains(object) {
                             objects = [object]
-                            if let module =
-                                map[#"(\w+)\.output_file_map"#] as String? {
+                            if let module: String =
+                                map[#"(\w+)\.output_file_map"#] {
                                 for lib in bazelFiles(under: projectRoot,
                                     where: "-name 'lib\(module).a'") ?? [] {
                                     moduleLibraries.insert(lib)
@@ -893,6 +899,7 @@ public class SwiftEval: NSObject {
                        _ descriptorRefs: NSMutableArray) {
     }
 
+    #if !INJECTION_III_APP
     lazy var loadXCTest: () = {
         #if os(macOS)
         let sdk = "MacOSX"
@@ -955,7 +962,11 @@ public class SwiftEval: NSObject {
         // load patched .dylib into process with new version of class
         var dl: UnsafeMutableRawPointer?
         for dylib in "\(tmpfile).dylib".components(separatedBy: Self.dylibDelim) {
+            #if canImport(SwiftTrace)
             dl = fast_dlopen(dylib, RTLD_NOW)
+            #else
+            dl = dlopen(dylib, RTLD_NOW)
+            #endif
             guard dl != nil else {
                 var error = String(cString: dlerror())
                 if error.contains("___llvm_profile_runtime") {
@@ -998,6 +1009,7 @@ public class SwiftEval: NSObject {
             return try extractClasses(dl: dl!, tmpfile: tmpfile)
         }
     }
+    #endif
 
     func startUnhide() {
     }

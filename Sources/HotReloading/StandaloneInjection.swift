@@ -4,15 +4,13 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#52 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#54 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
 //  add HotReloading to a project without having to add a "Run Script"
-//  build phase to run the daemon process. This file uses the SwiftRegex5
-//  package which defines various subscripting operators on a string with
-//  a Regex. When a second string is supplied this acts as a inline string
-//  substitution. Regex patterns are raw strings to emphasise this role.
+//  build phase to run the daemon process.
+//
 //  The most recent change was for the InjectionIII.app injection bundles
 //  to fall back to this implementation if the user is not running the app.
 //  This was made possible by using the FileWatcher to find the build log
@@ -23,7 +21,6 @@
 #if SWIFT_PACKAGE
 import HotReloadingGuts
 import SwiftTraceGuts
-import SwiftRegex
 #endif
 import SwiftTrace
 
@@ -38,9 +35,10 @@ class StandaloneInjection: InjectionClient {
         builder.tmpDir = NSTemporaryDirectory()
         #if SWIFT_PACKAGE
         let swiftTracePath = String(cString: swiftTrace_path())
-        builder.derivedLogs = swiftTracePath[
+        // convert SwiftTrace path into path to logs.
+        builder.derivedLogs = swiftTracePath.replacingOccurrences(of:
             #"SourcePackages/checkouts/SwiftTrace/SwiftTraceGuts/SwiftTrace.mm$"#,
-            substitute: "Logs/Build"] // convert SwiftTrace path into path to logs.
+            with: "Logs/Build", options: .regularExpression)
         if builder.derivedLogs == swiftTracePath {
             log("⚠️ HotReloading could find log directory from: \(swiftTracePath)")
             builder.derivedLogs = nil // let FileWatcher find logs
@@ -55,13 +53,10 @@ class StandaloneInjection: InjectionClient {
         builder.bazelLight = true
         maybeTrace()
 
-        var home = NSHomeDirectory()
-        if let users: String = home[#"^/Users/[^/]+"#] {
-            setenv("USER_HOME", users, 1)
-            home = users
-        } else {
-            log("⚠️ HotReloading could not parse home directory \(home).")
-        }
+        let home = NSHomeDirectory()
+            .replacingOccurrences(of: #"(/Users/[^/]+).*"#, with: "$1",
+            options: .regularExpression)
+        setenv("USER_HOME", home, 1)
 
         var dirs = [home]
         let library = home+"/Library"

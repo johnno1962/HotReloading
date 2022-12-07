@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#178 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#179 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -602,7 +602,7 @@ public class SwiftInjectionEval: UnhidingEval {
             aClass, stop in
             classes.append(aClass)
         }
-        if classes.count > 0 {
+        if classes.count > 0 && !SwiftTrace.deviceInjection {
             print("\(APP_PREFIX)Loaded .dylib - Ignore any duplicate class warning ⬆️")
         }
         #if false // Just too dubious

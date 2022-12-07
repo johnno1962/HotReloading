@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#163 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#164 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -983,6 +983,12 @@ public class SwiftEval: NSObject {
                         re-running your project (without a build clean) can resolve this.
                         """
                     forceUnhide()
+                } else if error.contains("code signature invalid") {
+                    error += """
+                        \n\(APP_PREFIX)⚠️ Loading .dylib has failed due to invalid code signing.
+                        \(APP_PREFIX)Add the following as a Run Script/Build Phase:
+                        defaults write com.johnholdsworth.InjectionIII "$PROJECT_FILE_PATH" "$EXPANDED_CODE_SIGN_IDENTITY"
+                        """
                 }
                 throw evalError("dlopen() error: \(error)")
             }

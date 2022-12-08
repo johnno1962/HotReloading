@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#43 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#44 $
 //
 
 #import <Foundation/Foundation.h>
@@ -16,6 +16,7 @@
 #import <mach-o/nlist.h>
 #import <mach-o/stab.h>
 #import <sys/stat.h>
+#import <algorithm>
 #import <string>
 #import <vector>
 #import <map>

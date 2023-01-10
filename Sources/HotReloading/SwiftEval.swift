@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#164 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#165 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -1164,8 +1164,8 @@ public class SwiftEval: NSObject {
 //            .replacingOccurrences(of: "[()](?=(?:(?:[^\"]*\"){2})*[^\"]$)", with: "\\\\$0", options: [.regularExpression])
             // (logs of new build system escape ', $ and ")
         debug("Found command:", compileCommand)
-        compileCommand = compileCommand
-            .replacingOccurrences(of: #"builtin-swift(DriverJob|Task)Execution --"#,
+        compileCommand = compileCommand.replacingOccurrences(of:
+                #"builtin-swift(DriverJob|Task)Execution --|-frontend-parseable-output|\r$"#,
                                   with: "", options: .regularExpression)
 //            // remove excess escaping in new build system (no linger necessary)
 //            .replacingOccurrences(of: #"\\([\"'\\])"#, with: "$1", options: [.regularExpression])

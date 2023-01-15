@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/ObjcInjection.swift#10 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/ObjcInjection.swift#14 $
 //
 //  Code specific to "classic" Objective-C method swizzling.
 //
@@ -41,9 +41,13 @@ extension SwiftInjection {
     ///   - tmpfile: no longer used
     /// - Returns: # methods swizzled
     public class func swizzle(oldClass: AnyClass, selector: Selector,
-                            _ tmpfile: String) -> Int {
+                              _ tmpfile: String) -> Int {
         var swizzled = 0
-        if let method = class_getInstanceMethod(oldClass, selector),
+        let selectorName = sel_getName(selector)
+        let setterOrGetter = strncmp(selectorName, "set", 3) == 0 ||
+            class_getProperty(oldClass, selectorName) != nil
+        if !setterOrGetter,
+            let method = class_getInstanceMethod(oldClass, selector),
             let existing = unsafeBitCast(method_getImplementation(method),
                                          to: UnsafeMutableRawPointer?.self),
             let selsym = originalSym(for: existing) {
@@ -79,7 +83,8 @@ extension SwiftInjection {
     ///   - newClass: Newly loaded class
     ///   - oldClass: Original class to be swizzle
     /// - Returns: # of methods swizzled
-    public class func injection(swizzle newClass: AnyClass?, onto oldClass: AnyClass?) -> Int {
+    public class func injection(swizzle newClass: AnyClass?,
+                                onto oldClass: AnyClass?) -> Int {
         var methodCount: UInt32 = 0, swizzled = 0
         if let methods = class_copyMethodList(newClass, &methodCount) {
             for i in 0 ..< Int(methodCount) {

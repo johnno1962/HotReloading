@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#179 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#181 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -282,7 +282,7 @@ public class SwiftInjection: NSObject {
         }
 
         // (Reverse) interposing, reducers, operation on a device etc.
-        let totalInterposed = newerProcessing(tmpfile: tmpfile)
+        let totalInterposed = newerProcessing(tmpfile: tmpfile, sweepClasses)
         if totalPatched + totalSwizzled + totalInterposed + testClasses.count == 0 {
             log("⚠️ Injection may have failed. Have you added -Xlinker -interposable to the \"Other Linker Flags\" of the executable/framework? ⚠️")
         }
@@ -327,7 +327,8 @@ public class SwiftInjection: NSObject {
         return false
     }
 
-    open class func newerProcessing(tmpfile: String) -> Int {
+    open class func newerProcessing(tmpfile: String,
+                                    _ sweepClasses: [AnyClass]) -> Int {
         // new mechanism for injection of Swift functions,
         // using "interpose" API from dynamic loader along
         // with -Xlinker -interposable "Other Linker Flags".
@@ -341,7 +342,7 @@ public class SwiftInjection: NSObject {
 
         #if !targetEnvironment(simulator) && SWIFT_PACKAGE
         if let pseudoImage = lastPseudoImage() {
-            onDeviceSpecificProcessing(for: pseudoImage)
+            onDeviceSpecificProcessing(for: pseudoImage, sweepClasses)
         }
         #endif
 

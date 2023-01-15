@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#9 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#12 $
 //
 //  Code specific to injecting on an actual device.
 //
@@ -21,7 +21,7 @@ extension SwiftInjection {
     /// Emulate remaining functions of the dynamic linker.
     /// - Parameter pseudoImage: last image read into memory
     public class func onDeviceSpecificProcessing(
-        for pseudoImage: UnsafePointer<mach_header>) {
+        for pseudoImage: UnsafePointer<mach_header>, _ sweepClasses: [AnyClass]) {
         // register types, protocols, conformances...
         var section_size: UInt64 = 0
         for (section, regsiter) in [
@@ -41,6 +41,14 @@ extension SwiftInjection {
         reverse_symbolics(pseudoImage)
         // Fixup references to Objective-C classes
         fixupObjcClassReferences(in: pseudoImage)
+        // Attempt to fix up messages to super
+        var supersSize: UInt64 = 0
+        if let injectedClass = sweepClasses.first,
+            let supersSection: UnsafeMutablePointer<AnyClass?> = autoBitCast(
+                getsectdatafromheader_64(autoBitCast(pseudoImage), SEG_DATA,
+                    "__objc_superrefs", &supersSize)), supersSize != 0 {
+            supersSection[0] = injectedClass
+        }
         // Populate "l_got.*" descriptor references
         bindDescriptorReferences(in: pseudoImage)
     }

@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#44 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#47 $
 //
 
 #import <Foundation/Foundation.h>
@@ -338,6 +338,7 @@ int unhide_framework(const char *framework, FILE *log) {
     return totalExported;
 }
 
+#import <objc/runtime.h>
 #import <mach-o/getsect.h>
 #import <mach/vm_param.h>
 #import <sys/mman.h>
@@ -453,6 +454,24 @@ void reverse_symbolics(const void *image) {
 //            else
 //                break;
         }
+    });
+
+    // fix-up ivar offsets
+    static char ivars[] = {"_OBJC_IVAR_$_"};
+    fast_dlscan(image, STVisibilityAny, ^BOOL(const char *symname) {
+        return strncmp(symname, ivars, sizeof ivars-1) == 0;
+    }, ^(const void * _Nonnull address, const char * _Nonnull symname, void * _Nonnull typeref, void * _Nonnull typeend) {
+        char *classname = strdup(symname + sizeof ivars-2);
+        char *ivarname = strchr(classname, '.');
+        *ivarname++ = '\000';
+
+        if (Class cls = objc_getClass(classname))
+            if (Ivar ivar = class_getInstanceVariable(cls, ivarname))
+//                printf("%s %s %d %d\n", classname, ivarname,
+//                       *(uintptr_t *)address, ivar_getOffset(ivar)),
+                *(ptrdiff_t *)address = ivar_getOffset(ivar);
+
+        free(classname);
     });
 
     #if 000

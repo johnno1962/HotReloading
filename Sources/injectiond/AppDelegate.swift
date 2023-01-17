@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#64 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#65 $
 //
 
 import Cocoa
@@ -186,7 +186,15 @@ class AppDelegate : NSObject, NSApplicationDelegate {
         }
         #endif
         statusItem.title = appName
-        statusMenu.item(at: statusMenu.items.count-1)?.title = "Quit "+appName
+        if let quit = statusMenu.item(at: statusMenu.items.count-1) {
+            quit.title = "Quit "+appName
+            #if !SWIFT_PACKAGE
+            if let build = Bundle.main
+                .infoDictionary?[kCFBundleVersionKey as String] {
+                quit.toolTip = "Quit (build #\(build))"
+            }
+            #endif
+        }
     }
 
     func application(_ theApplication: NSApplication, openFile filename: String) -> Bool {

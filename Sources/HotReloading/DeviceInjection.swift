@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#12 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#13 $
 //
 //  Code specific to injecting on an actual device.
 //
@@ -57,23 +57,20 @@ extension SwiftInjection {
     public class func fixupObjcClassReferences(
         in pseudoImage: UnsafePointer<mach_header>) {
         var typeref_size: UInt64 = 0
-        if var refs = objcClassRefs as? [String], refs.first != "",
-           let typeref_start = getsectdatafromheader_64(autoBitCast(pseudoImage),
-                                    SEG_DATA, "__objc_classrefs", &typeref_size) {
-            let classRefPtr:
-                UnsafeMutablePointer<AnyClass?> = autoBitCast(typeref_start)
+        if let classNames = objcClassRefs as? [String], classNames.first != "",
+           let classRefsSection: UnsafeMutablePointer<AnyClass?> = autoBitCast(
+                getsectdatafromheader_64(autoBitCast(pseudoImage),
+                    SEG_DATA, "__objc_classrefs", &typeref_size)) {
             let nClassRefs = Int(typeref_size)/MemoryLayout<AnyClass>.size
-            if nClassRefs == refs.count {
+            let classes = classNames.compactMap {
+                return dlsym(SwiftMeta.RTLD_DEFAULT, "OBJC_CLASS_$_"+$0)
+            }
+            if nClassRefs == classes.count {
                 for i in 0 ..< nClassRefs {
-                    let classSymbol = "OBJC_CLASS_$_"+refs.removeFirst()
-                    if let classRef = dlsym(SwiftMeta.RTLD_DEFAULT, classSymbol) {
-                        classRefPtr[i] = autoBitCast(classRef)
-                    } else {
-                        log("⚠️ Could not lookup class reference \(classSymbol)")
-                    }
+                    classRefsSection[i] = autoBitCast(classes[i])
                 }
             } else {
-                log("⚠️ Number of class refs \(nClassRefs) does not equal \(refs)")
+                log("⚠️ Number of class refs \(nClassRefs) does not equal \(classNames)")
             }
         }
     }

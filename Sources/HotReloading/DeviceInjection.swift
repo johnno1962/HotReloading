@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#14 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#16 $
 //
 //  Code specific to injecting on an actual device.
 //
@@ -12,6 +12,7 @@
 #if !targetEnvironment(simulator)
 import SwiftTrace
 #if SWIFT_PACKAGE
+import SwiftRegex
 import SwiftTraceGuts
 import HotReloadingGuts
 #endif
@@ -40,10 +41,10 @@ extension SwiftInjection {
         // Redirect symbolic type references to main bundle
         reverse_symbolics(pseudoImage)
         // Initialise offsets to ivars
-        adjustIvarOffsets(pseudoImage)
+        adjustIvarOffsets(in: pseudoImage)
         // Fixup references to Objective-C classes
         fixupObjcClassReferences(in: pseudoImage)
-        // Attempt to fix up messages to super
+        // Fix Objective-C messages to super
         var supersSize: UInt64 = 0
         if let injectedClass = sweepClasses.first,
             let supersSection: UnsafeMutablePointer<AnyClass?> = autoBitCast(
@@ -56,9 +57,10 @@ extension SwiftInjection {
     }
 
     public class func adjustIvarOffsets(
-            _ pseudoImage: UnsafePointer<mach_header>) {
+        in pseudoImage: UnsafePointer<mach_header>) {
+        var ivarOffsetPtr: UnsafeMutablePointer<ptrdiff_t>?
 
-        // Objective-C source version
+        // Objective-C compiled version
         let ivarPrefix = "_OBJC_IVAR_$_", prefixLength = ivarPrefix.count
         fast_dlscan(pseudoImage, .any, {
             return strncmp($0, ivarPrefix, prefixLength) == 0;
@@ -67,17 +69,16 @@ extension SwiftInjection {
             let ivarname = strchr(classname, Int32(UInt8(ascii: ".")))+1;
             ivarname[-1] = 0;
 
-            if let cls = objc_getClass(classname) as? AnyClass {
-                if let ivar = class_getInstanceVariable(cls, ivarname) {
-                    let addresss: UnsafeMutablePointer<ptrdiff_t> = autoBitCast(address)
-                    addresss.pointee = ivar_getOffset(ivar);
-                }
+            if let cls = objc_getClass(classname) as? AnyClass,
+                let ivar = class_getInstanceVariable(cls, ivarname) {
+                ivarOffsetPtr = autoBitCast(address)
+                ivarOffsetPtr?.pointee = ivar_getOffset(ivar);
             }
 
             free(classname);
         })
 
-        // Swift source version
+        // Swift compiled version
         findHiddenSwiftSymbols(searchLastLoaded(), "Wvd", .any) {
             (address, symname, _, _) -> Void in
             if let fieldInfo = symname.demangled,
@@ -85,8 +86,8 @@ extension SwiftInjection {
                 fieldInfo[#"direct field offset for (\S+)\.\(?(\w+) "#],
                 let cls = objc_getClass(classname) as? AnyClass,
                 let ivar = class_getInstanceVariable(cls, ivarname) {
-                let addresss: UnsafeMutablePointer<ptrdiff_t> = autoBitCast(address)
-                addresss.pointee = ivar_getOffset(ivar);
+                ivarOffsetPtr = autoBitCast(address)
+                ivarOffsetPtr?.pointee = ivar_getOffset(ivar);
             }
         }
     }

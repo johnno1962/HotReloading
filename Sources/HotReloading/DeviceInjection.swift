@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#9 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#16 $
 //
 //  Code specific to injecting on an actual device.
 //
@@ -12,6 +12,7 @@
 #if !targetEnvironment(simulator)
 import SwiftTrace
 #if SWIFT_PACKAGE
+import SwiftRegex
 import SwiftTraceGuts
 import HotReloadingGuts
 #endif
@@ -21,7 +22,7 @@ extension SwiftInjection {
     /// Emulate remaining functions of the dynamic linker.
     /// - Parameter pseudoImage: last image read into memory
     public class func onDeviceSpecificProcessing(
-        for pseudoImage: UnsafePointer<mach_header>) {
+        for pseudoImage: UnsafePointer<mach_header>, _ sweepClasses: [AnyClass]) {
         // register types, protocols, conformances...
         var section_size: UInt64 = 0
         for (section, regsiter) in [
@@ -39,33 +40,76 @@ extension SwiftInjection {
         }
         // Redirect symbolic type references to main bundle
         reverse_symbolics(pseudoImage)
+        // Initialise offsets to ivars
+        adjustIvarOffsets(in: pseudoImage)
         // Fixup references to Objective-C classes
         fixupObjcClassReferences(in: pseudoImage)
+        // Fix Objective-C messages to super
+        var supersSize: UInt64 = 0
+        if let injectedClass = sweepClasses.first,
+            let supersSection: UnsafeMutablePointer<AnyClass?> = autoBitCast(
+                getsectdatafromheader_64(autoBitCast(pseudoImage), SEG_DATA,
+                    "__objc_superrefs", &supersSize)), supersSize != 0 {
+            supersSection[0] = injectedClass
+        }
         // Populate "l_got.*" descriptor references
         bindDescriptorReferences(in: pseudoImage)
+    }
+
+    public class func adjustIvarOffsets(
+        in pseudoImage: UnsafePointer<mach_header>) {
+        var ivarOffsetPtr: UnsafeMutablePointer<ptrdiff_t>?
+
+        // Objective-C compiled version
+        let ivarPrefix = "_OBJC_IVAR_$_", prefixLength = ivarPrefix.count
+        fast_dlscan(pseudoImage, .any, {
+            return strncmp($0, ivarPrefix, prefixLength) == 0;
+        }, { (address, symname, _, _) in
+            let classname = strdup(symname + prefixLength-1)!;
+            let ivarname = strchr(classname, Int32(UInt8(ascii: ".")))+1;
+            ivarname[-1] = 0;
+
+            if let cls = objc_getClass(classname) as? AnyClass,
+                let ivar = class_getInstanceVariable(cls, ivarname) {
+                ivarOffsetPtr = autoBitCast(address)
+                ivarOffsetPtr?.pointee = ivar_getOffset(ivar);
+            }
+
+            free(classname);
+        })
+
+        // Swift compiled version
+        findHiddenSwiftSymbols(searchLastLoaded(), "Wvd", .any) {
+            (address, symname, _, _) -> Void in
+            if let fieldInfo = symname.demangled,
+               let (classname, ivarname): (String, String) =
+                fieldInfo[#"direct field offset for (\S+)\.\(?(\w+) "#],
+                let cls = objc_getClass(classname) as? AnyClass,
+                let ivar = class_getInstanceVariable(cls, ivarname) {
+                ivarOffsetPtr = autoBitCast(address)
+                ivarOffsetPtr?.pointee = ivar_getOffset(ivar);
+            }
+        }
     }
 
     /// Fixup references to Objective-C classes on device
     public class func fixupObjcClassReferences(
         in pseudoImage: UnsafePointer<mach_header>) {
         var typeref_size: UInt64 = 0
-        if var refs = objcClassRefs as? [String], refs.first != "",
-           let typeref_start = getsectdatafromheader_64(autoBitCast(pseudoImage),
-                                    SEG_DATA, "__objc_classrefs", &typeref_size) {
-            let classRefPtr:
-                UnsafeMutablePointer<AnyClass?> = autoBitCast(typeref_start)
+        if let classNames = objcClassRefs as? [String], classNames.first != "",
+           let classRefsSection: UnsafeMutablePointer<AnyClass?> = autoBitCast(
+                getsectdatafromheader_64(autoBitCast(pseudoImage),
+                    SEG_DATA, "__objc_classrefs", &typeref_size)) {
             let nClassRefs = Int(typeref_size)/MemoryLayout<AnyClass>.size
-            if nClassRefs == refs.count {
+            let classes = classNames.compactMap {
+                return dlsym(SwiftMeta.RTLD_DEFAULT, "OBJC_CLASS_$_"+$0)
+            }
+            if nClassRefs == classes.count {
                 for i in 0 ..< nClassRefs {
-                    let classSymbol = "OBJC_CLASS_$_"+refs.removeFirst()
-                    if let classRef = dlsym(SwiftMeta.RTLD_DEFAULT, classSymbol) {
-                        classRefPtr[i] = autoBitCast(classRef)
-                    } else {
-                        log("⚠️ Could not lookup class reference \(classSymbol)")
-                    }
+                    classRefsSection[i] = autoBitCast(classes[i])
                 }
             } else {
-                log("⚠️ Number of class refs \(nClassRefs) does not equal \(refs)")
+                log("⚠️ Number of class refs \(nClassRefs) does not equal \(classNames)")
             }
         }
     }

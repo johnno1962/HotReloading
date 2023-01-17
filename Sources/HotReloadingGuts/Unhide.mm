@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#44 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#48 $
 //
 
 #import <Foundation/Foundation.h>

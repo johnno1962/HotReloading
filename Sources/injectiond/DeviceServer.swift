@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 13/01/2022.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#10 $
+//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#12 $
 //
 
 import Foundation
@@ -61,9 +61,20 @@ class DeviceServer: InjectionServer {
                 do {
                     let dylib = try self.builder.rebuildClass(oldClass: nil,
                                           classNameOrFile: source, extra: nil)
+                    if source[#"\.mm?$"#], // class references in Objective-C
+                       let sourceText = try? String(contentsOfFile: source) {
+                        self.objcClassRefs.removeAllObjects()
+                        var seen = Set<String>()
+                        for messagedClass: String
+                                in sourceText[#"\[([A-Z]\w+) "#] {
+                            if seen.insert(messagedClass).inserted {
+                                self.objcClassRefs.add(messagedClass)
+                            }
+                        }
+                    }
                     if let objcClasses = self.objcClassRefs as? [String],
                        let descriptors = self.descriptorRefs as? [String],
-                           let data = NSData(contentsOfFile: "\(dylib).dylib") {
+                       let data = NSData(contentsOfFile: "\(dylib).dylib") {
                         commandQueue.async {
                             self.writeCommand(InjectionCommand.objcClassRefs.rawValue,
                                               with: objcClasses.joined(separator: ","))

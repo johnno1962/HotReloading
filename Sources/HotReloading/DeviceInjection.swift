@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#13 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#14 $
 //
 //  Code specific to injecting on an actual device.
 //
@@ -39,6 +39,8 @@ extension SwiftInjection {
         }
         // Redirect symbolic type references to main bundle
         reverse_symbolics(pseudoImage)
+        // Initialise offsets to ivars
+        adjustIvarOffsets(pseudoImage)
         // Fixup references to Objective-C classes
         fixupObjcClassReferences(in: pseudoImage)
         // Attempt to fix up messages to super
@@ -51,6 +53,42 @@ extension SwiftInjection {
         }
         // Populate "l_got.*" descriptor references
         bindDescriptorReferences(in: pseudoImage)
+    }
+
+    public class func adjustIvarOffsets(
+            _ pseudoImage: UnsafePointer<mach_header>) {
+
+        // Objective-C source version
+        let ivarPrefix = "_OBJC_IVAR_$_", prefixLength = ivarPrefix.count
+        fast_dlscan(pseudoImage, .any, {
+            return strncmp($0, ivarPrefix, prefixLength) == 0;
+        }, { (address, symname, _, _) in
+            let classname = strdup(symname + prefixLength-1)!;
+            let ivarname = strchr(classname, Int32(UInt8(ascii: ".")))+1;
+            ivarname[-1] = 0;
+
+            if let cls = objc_getClass(classname) as? AnyClass {
+                if let ivar = class_getInstanceVariable(cls, ivarname) {
+                    let addresss: UnsafeMutablePointer<ptrdiff_t> = autoBitCast(address)
+                    addresss.pointee = ivar_getOffset(ivar);
+                }
+            }
+
+            free(classname);
+        })
+
+        // Swift source version
+        findHiddenSwiftSymbols(searchLastLoaded(), "Wvd", .any) {
+            (address, symname, _, _) -> Void in
+            if let fieldInfo = symname.demangled,
+               let (classname, ivarname): (String, String) =
+                fieldInfo[#"direct field offset for (\S+)\.\(?(\w+) "#],
+                let cls = objc_getClass(classname) as? AnyClass,
+                let ivar = class_getInstanceVariable(cls, ivarname) {
+                let addresss: UnsafeMutablePointer<ptrdiff_t> = autoBitCast(address)
+                addresss.pointee = ivar_getOffset(ivar);
+            }
+        }
     }
 
     /// Fixup references to Objective-C classes on device

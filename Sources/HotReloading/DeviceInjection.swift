@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#16 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#19 $
 //
 //  Code specific to injecting on an actual device.
 //
@@ -65,17 +65,21 @@ extension SwiftInjection {
         fast_dlscan(pseudoImage, .any, {
             return strncmp($0, ivarPrefix, prefixLength) == 0;
         }, { (address, symname, _, _) in
-            let classname = strdup(symname + prefixLength-1)!;
-            let ivarname = strchr(classname, Int32(UInt8(ascii: ".")))+1;
-            ivarname[-1] = 0;
+            if let classname = strdup(symname + prefixLength-1),
+               var ivarname = strchr(classname, Int32(UInt8(ascii: "."))) {
+               ivarname.pointee = 0
+               ivarname += 1
 
-            if let cls = objc_getClass(classname) as? AnyClass,
-                let ivar = class_getInstanceVariable(cls, ivarname) {
-                ivarOffsetPtr = autoBitCast(address)
-                ivarOffsetPtr?.pointee = ivar_getOffset(ivar);
+               if let cls = objc_getClass(classname) as? AnyClass,
+                  let ivar = class_getInstanceVariable(cls, ivarname) {
+                   ivarOffsetPtr = autoBitCast(address)
+                   ivarOffsetPtr?.pointee = ivar_getOffset(ivar);
+               }
+
+               free(classname)
+            } else {
+                log("⚠️ Could not parse ivar: \(String(cString: symname))")
             }
-
-            free(classname);
         })
 
         // Swift compiled version
@@ -88,6 +92,8 @@ extension SwiftInjection {
                 let ivar = class_getInstanceVariable(cls, ivarname) {
                 ivarOffsetPtr = autoBitCast(address)
                 ivarOffsetPtr?.pointee = ivar_getOffset(ivar);
+            } else {
+                log("⚠️ Could not parse ivar: \(String(cString: symname))")
             }
         }
     }

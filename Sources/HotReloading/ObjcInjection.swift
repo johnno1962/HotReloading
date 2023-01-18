@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/ObjcInjection.swift#14 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/ObjcInjection.swift#16 $
 //
 //  Code specific to "classic" Objective-C method swizzling.
 //
@@ -43,11 +43,7 @@ extension SwiftInjection {
     public class func swizzle(oldClass: AnyClass, selector: Selector,
                               _ tmpfile: String) -> Int {
         var swizzled = 0
-        let selectorName = sel_getName(selector)
-        let setterOrGetter = strncmp(selectorName, "set", 3) == 0 ||
-            class_getProperty(oldClass, selectorName) != nil
-        if !setterOrGetter,
-            let method = class_getInstanceMethod(oldClass, selector),
+        if let method = class_getInstanceMethod(oldClass, selector),
             let existing = unsafeBitCast(method_getImplementation(method),
                                          to: UnsafeMutableRawPointer?.self),
             let selsym = originalSym(for: existing) {

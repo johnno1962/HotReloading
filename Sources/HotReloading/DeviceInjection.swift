@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#26 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#27 $
 //
 //  Code specific to injecting on an actual device.
 //
@@ -19,10 +19,12 @@ import HotReloadingGuts
 
 extension SwiftInjection {
 
+    public typealias MachImage = UnsafePointer<mach_header>
+
     /// Emulate remaining functions of the dynamic linker.
     /// - Parameter pseudoImage: last image read into memory
     public class func onDeviceSpecificProcessing(
-        for pseudoImage: UnsafePointer<mach_header>, _ sweepClasses: [AnyClass]) {
+        for pseudoImage: MachImage, _ sweepClasses: [AnyClass]) {
         // register types, protocols, conformances...
         var section_size: UInt64 = 0
         for (section, regsiter) in [
@@ -56,7 +58,7 @@ extension SwiftInjection {
         bindDescriptorReferences(in: pseudoImage)
     }
 
-    class func prefix_scan(in pseudoImage: UnsafePointer<mach_header>,
+    class func prefix_scan(in pseudoImage: MachImage,
                            prefix: UnsafePointer<CChar>,
         apply: @escaping (UnsafeRawPointer, UnsafePointer<CChar>,
                           UnsafePointer<CChar>) -> Void) {
@@ -76,8 +78,7 @@ extension SwiftInjection {
         var data: UnsafePointer<ObjcReadOnlyMetaData>?
     }
 
-    public class func fillinObjcClassMetadata(
-        in pseudoImage: UnsafePointer<mach_header>) {
+    public class func fillinObjcClassMetadata(in pseudoImage: MachImage) {
         let emptyCache = dlsym(SwiftMeta.RTLD_DEFAULT, "_objc_empty_cache")!
 
         prefix_scan(in: pseudoImage, prefix: "_OBJC_METACLASS_$_") {
@@ -85,8 +86,8 @@ extension SwiftInjection {
             let metaData: UnsafeMutablePointer<ObjcClassMetaData> = autoBitCast(address)
             metaData.pointee.methodCache = emptyCache
             metaData.pointee.metaClass = object_getClass(NSObject.self)
-            if let cls = objc_getClass(suffix) as? AnyClass,
-                let superClass = class_getSuperclass(cls) {
+            if let oldClass = objc_getClass(suffix) as? AnyClass,
+                let superClass = class_getSuperclass(oldClass) {
                 metaData.pointee.superClass = object_getClass(superClass)
             }
             detail("\(metaData.pointee)")
@@ -96,8 +97,8 @@ extension SwiftInjection {
             (address, symname, suffix) in
             let metaData: UnsafeMutablePointer<ObjcClassMetaData> = autoBitCast(address)
             metaData.pointee.methodCache = emptyCache
-            if let cls = objc_getClass(suffix) as? AnyClass {
-                metaData.pointee.superClass = class_getSuperclass(cls)
+            if let oldClass = objc_getClass(suffix) as? AnyClass {
+                metaData.pointee.superClass = class_getSuperclass(oldClass)
 //                if #available(iOS 12.2, *) {
 //                    detail("\(metaData.pointee)")
 //                    _objc_realizeClassFromSwift(autoBitCast(address), nil)//autoBitCast(cls))
@@ -156,8 +157,7 @@ extension SwiftInjection {
         return swizzled
     }
 
-    public class func adjustIvarOffsets(
-        in pseudoImage: UnsafePointer<mach_header>) {
+    public class func adjustIvarOffsets(in pseudoImage: MachImage) {
         var ivarOffsetPtr: UnsafeMutablePointer<ptrdiff_t>?
 
         // Objective-C compiled version
@@ -168,8 +168,8 @@ extension SwiftInjection {
                ivarname[0] = 0
                ivarname += 1
 
-               if let cls = objc_getClass(classname) as? AnyClass,
-                  let ivar = class_getInstanceVariable(cls, ivarname) {
+               if let oldClass = objc_getClass(classname) as? AnyClass,
+                  let ivar = class_getInstanceVariable(oldClass, ivarname) {
                    ivarOffsetPtr = autoBitCast(address)
                    ivarOffsetPtr?.pointee = ivar_getOffset(ivar);
                }
@@ -186,8 +186,8 @@ extension SwiftInjection {
             if let fieldInfo = SwiftMeta.demangle(symbol: symname),
                let (classname, ivarname): (String, String) =
                 fieldInfo[#"direct field offset for (\S+)\.\(?(\w+) "#],
-                let cls = objc_getClass(classname) as? AnyClass,
-                let ivar = class_getInstanceVariable(cls, ivarname) {
+                let oldClass = objc_getClass(classname) as? AnyClass,
+                let ivar = class_getInstanceVariable(oldClass, ivarname) {
                 ivarOffsetPtr = autoBitCast(address)
                 ivarOffsetPtr?.pointee = ivar_getOffset(ivar);
             } else {
@@ -197,8 +197,7 @@ extension SwiftInjection {
     }
 
     /// Fixup references to Objective-C classes on device
-    public class func fixupObjcClassReferences(
-        in pseudoImage: UnsafePointer<mach_header>) {
+    public class func fixupObjcClassReferences(in pseudoImage: MachImage) {
         var sectionSize: UInt64 = 0
         if let classNames = objcClassRefs as? [String], classNames.first != "",
            let classRefsSection: UnsafeMutablePointer<AnyClass?> = autoBitCast(
@@ -220,8 +219,7 @@ extension SwiftInjection {
 
     /// Populate "l_got.*" external references to "descriptors"
     /// - Parameter pseudoImage: lastLoadedImage
-    public class func bindDescriptorReferences(
-        in pseudoImage: UnsafePointer<mach_header>) {
+    public class func bindDescriptorReferences(in pseudoImage: MachImage) {
         if let descriptorSyms = descriptorRefs as? [String],
             descriptorSyms.first != "" {
             var forces: UnsafeRawPointer?

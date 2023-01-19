@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#182 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#183 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -207,7 +207,7 @@ public class SwiftInjection: NSObject {
 
         #if !targetEnvironment(simulator) && SWIFT_PACKAGE
         if let pseudoImage = lastPseudoImage() {
-            initialiseObjcClassMetadata(in: pseudoImage)
+            fillinObjcClassMetadata(in: pseudoImage)
         }
         #endif
 
@@ -266,13 +266,17 @@ public class SwiftInjection: NSObject {
                 var swizzled: Int
                 if !SwiftTrace.deviceInjection {
                 // old-school swizzle Objective-C class & instance methods
-                    swizzled = injection(swizzle: object_getClass(newClass),
-                                         onto: object_getClass(oldClass)) +
-                               injection(swizzle: newClass, onto: oldClass)
+                    swizzled = injection(swizzle: object_getClass(oldClass),
+                                         from: object_getClass(newClass)) +
+                               injection(swizzle: oldClass, from: newClass)
                 } else {
+                    #if !targetEnvironment(simulator) && SWIFT_PACKAGE
+                    swizzled = onDevice(swizzle: oldClass, from: newClass)
+                    #else
                     swizzled = injection(swizzle: object_getClass(oldClass)!,
                                          tmpfile: tmpfile) +
                                injection(swizzle: oldClass, tmpfile: tmpfile)
+                    #endif
                 }
                 totalSwizzled += swizzled
 

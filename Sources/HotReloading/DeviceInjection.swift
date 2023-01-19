@@ -4,12 +4,12 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#20 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#21 $
 //
 //  Code specific to injecting on an actual device.
 //
 
-#if !targetEnvironment(simulator)
+#if !targetEnvironment(simulator) && SWIFT_PACKAGE
 import SwiftTrace
 #if SWIFT_PACKAGE
 import SwiftRegex
@@ -68,40 +68,88 @@ extension SwiftInjection {
         }
     }
 
-    public class func initialiseObjcClassMetadata(
-        in pseudoImage: UnsafePointer<mach_header>) {
-        struct ObjcClassMetaData {
-            var metaClass: AnyClass?
-            var superClass: AnyClass?
-            var methodCache: UnsafeMutableRawPointer
-            var unknown: UnsafeRawPointer?
-            var data: UnsafeRawPointer
-        }
+    struct ObjcClassMetaData {
+        var metaClass: AnyClass?
+        var superClass: AnyClass?
+        var methodCache: UnsafeMutableRawPointer
+        var unknown: UnsafeRawPointer?
+        var data: UnsafePointer<ObjcROMetaData>?
+    }
 
+    public class func fillinObjcClassMetadata(
+        in pseudoImage: UnsafePointer<mach_header>) {
         let emptyCache = dlsym(SwiftMeta.RTLD_DEFAULT, "_objc_empty_cache")!
 
         prefix_scan(in: pseudoImage, prefix: "_OBJC_METACLASS_$_") {
             (address, symname, suffix) in
             let metaData: UnsafeMutablePointer<ObjcClassMetaData> = autoBitCast(address)
-            metaData.pointee.metaClass = objc_getClass("NSObject") as? AnyClass
+            metaData.pointee.methodCache = emptyCache
+            metaData.pointee.metaClass = object_getClass(NSObject.self)
             if let cls = objc_getClass(suffix) as? AnyClass,
                 let superClass = class_getSuperclass(cls) {
                 metaData.pointee.superClass = object_getClass(superClass)
             }
-            metaData.pointee.methodCache = emptyCache
             detail("\(metaData.pointee)")
         }
 
         prefix_scan(in: pseudoImage, prefix: "_OBJC_CLASS_$_") {
             (address, symname, suffix) in
             let metaData: UnsafeMutablePointer<ObjcClassMetaData> = autoBitCast(address)
-            if let cls = objc_getClass(suffix) as? AnyClass {
-//                metaData.pointee.metaClass = object_getClass(cls)
-                metaData.pointee.superClass = class_getSuperclass(cls)
-            }
             metaData.pointee.methodCache = emptyCache
+            if let cls = objc_getClass(suffix) as? AnyClass {
+                metaData.pointee.superClass = class_getSuperclass(cls)
+//                if #available(iOS 12.2, *) {
+//                    detail("\(metaData.pointee)")
+//                    _objc_realizeClassFromSwift(autoBitCast(address), nil)//autoBitCast(cls))
+//                    detail("\(metaData.pointee)")
+//                } else {
+//                    // Fallback on earlier versions
+//                }
+            }
             detail("\(metaData.pointee)")
         }
+    }
+
+    struct ObjcMethodMetaData {
+        let name: UnsafePointer<CChar>
+        let type: UnsafePointer<CChar>
+        let impl: OpaquePointer
+    }
+
+    struct ObjcMethodsMetaData {
+        let flags: Int32, count: Int32
+        var firstMethod: ObjcMethodMetaData
+    }
+
+    struct ObjcROMetaData {
+        let skip: (Int32, Int32, Int32, Int32) = (0, 0, 0, 0)
+        let names: (UnsafeRawPointer?, UnsafePointer<CChar>?)
+        let methods: UnsafeMutablePointer<ObjcMethodsMetaData>?
+    }
+
+    public class func onDevice(swizzle oldClass: AnyClass,
+                               from newClass: AnyClass) -> Int {
+        var swizzled = 0
+        let metaData: UnsafePointer<ObjcClassMetaData> = autoBitCast(newClass)
+        if let metaClass = metaData.pointee.metaClass,
+           metaClass != object_getClass(NSObject.self),
+           let metaOldClass = object_getClass(oldClass) {
+            swizzled += onDevice(swizzle: metaOldClass, from: metaClass)
+        }
+
+        guard let roData = metaData.pointee.data,
+              let methodInfo = roData.pointee.methods else { return swizzled }
+
+        withUnsafePointer(to: &methodInfo.pointee.firstMethod) {
+            methods in
+            for i in 0 ..< Int(methodInfo.pointee.count) {
+                class_replaceMethod(oldClass, sel_registerName(methods[i].name),
+                                    methods[i].impl, methods[i].type)
+                swizzled += 1
+            }
+        }
+
+        return swizzled
     }
 
     public class func adjustIvarOffsets(

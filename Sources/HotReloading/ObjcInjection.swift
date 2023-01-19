@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/ObjcInjection.swift#17 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/ObjcInjection.swift#18 $
 //
 //  Code specific to "classic" Objective-C method swizzling.
 //
@@ -97,8 +97,7 @@ extension SwiftInjection {
                     if class_replaceMethod(oldClass, selector, replacement,
                         method_getTypeEncoding(methods[i])) != replacement {
                         swizzled += 1
-                        let which = class_isMetaClass(oldClass) ? "+" : "-"
-                        return "Sizzled \(which)[\(_typeName(oldClass!)) \(selector)]"
+                        return "Swizzled"
                     }
                     return nil
                 }

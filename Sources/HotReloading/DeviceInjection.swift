@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#27 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#31 $
 //
 //  Code specific to injecting on an actual device.
 //
@@ -148,9 +148,19 @@ extension SwiftInjection {
         withUnsafePointer(to: &methodInfo.pointee.firstMethod) {
             methods in
             for i in 0 ..< Int(methodInfo.pointee.methodCount) {
-                class_replaceMethod(oldClass, sel_registerName(methods[i].name),
-                                    methods[i].impl, methods[i].type)
-                swizzled += 1
+                let selector = sel_registerName(methods[i].name)
+                let method = class_getInstanceMethod(oldClass, selector)
+                let existing = method.flatMap { method_getImplementation($0) }
+                traceAndReplace(existing, replacement: autoBitCast(methods[i].impl),
+                                objcMethod: method, objcClass: newClass) {
+                    (replacement: IMP) -> String? in
+                    if class_replaceMethod(oldClass, selector, replacement,
+                                           methods[i].type) != replacement {
+                        swizzled += 1
+                        return "Swizzled"
+                    }
+                    return nil
+                }
             }
         }
 
@@ -160,7 +170,7 @@ extension SwiftInjection {
     public class func adjustIvarOffsets(in pseudoImage: MachImage) {
         var ivarOffsetPtr: UnsafeMutablePointer<ptrdiff_t>?
 
-        // Objective-C compiled version
+        // Objective-C source version
         prefix_scan(in: pseudoImage, prefix: "_OBJC_IVAR_$_") {
             (address, symname, suffix) in
             if let classname = strdup(suffix),
@@ -180,15 +190,22 @@ extension SwiftInjection {
             }
         }
 
-        // Swift compiled version
+        // Swift source version
+        let PAGE_SIZE = 16 * 1024
+        func PAGE_START(_ ptr: UnsafeMutableRawPointer) -> UnsafeMutableRawPointer {
+            return autoBitCast(autoBitCast(ptr) & ~(PAGE_SIZE-1))
+        }
+
         findHiddenSwiftSymbols(searchLastLoaded(), "Wvd", .any) {
             (address, symname, _, _) -> Void in
             if let fieldInfo = SwiftMeta.demangle(symbol: symname),
                let (classname, ivarname): (String, String) =
                 fieldInfo[#"direct field offset for (\S+)\.\(?(\w+) "#],
-                let oldClass = objc_getClass(classname) as? AnyClass,
-                let ivar = class_getInstanceVariable(oldClass, ivarname) {
+               let oldClass = objc_getClass(classname) as? AnyClass,
+               let ivar = class_getInstanceVariable(oldClass, ivarname) {
                 ivarOffsetPtr = autoBitCast(address)
+                mprotect(PAGE_START(autoBitCast(address)),
+                         PAGE_SIZE, PROT_READ|PROT_WRITE)
                 ivarOffsetPtr?.pointee = ivar_getOffset(ivar);
             } else {
                 log("⚠️ Could not parse ivar: \(String(cString: symname))")

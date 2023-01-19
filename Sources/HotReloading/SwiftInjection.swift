@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#181 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#182 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -204,6 +204,12 @@ public class SwiftInjection: NSObject {
                 injectedGenerics.insert(genericClassName)
             }
         }
+
+        #if !targetEnvironment(simulator) && SWIFT_PACKAGE
+        if let pseudoImage = lastPseudoImage() {
+            initialiseObjcClassMetadata(in: pseudoImage)
+        }
+        #endif
 
         // First, the old way for non-generics
         for var newClass: AnyClass in newClasses {

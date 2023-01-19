@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#19 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#20 $
 //
 //  Code specific to injecting on an actual device.
 //
@@ -56,16 +56,62 @@ extension SwiftInjection {
         bindDescriptorReferences(in: pseudoImage)
     }
 
+    class func prefix_scan(in pseudoImage: UnsafePointer<mach_header>,
+                           prefix: UnsafePointer<CChar>,
+        apply: @escaping (UnsafeRawPointer, UnsafePointer<CChar>,
+                          UnsafePointer<CChar>) -> Void) {
+        let prefixLen = strlen(prefix)
+        fast_dlscan(pseudoImage, .any, {
+            return strncmp($0, prefix, prefixLen) == 0}) {
+            (address, symname, _, _) in
+            apply(address, symname, symname + prefixLen - 1)
+        }
+    }
+
+    public class func initialiseObjcClassMetadata(
+        in pseudoImage: UnsafePointer<mach_header>) {
+        struct ObjcClassMetaData {
+            var metaClass: AnyClass?
+            var superClass: AnyClass?
+            var methodCache: UnsafeMutableRawPointer
+            var unknown: UnsafeRawPointer?
+            var data: UnsafeRawPointer
+        }
+
+        let emptyCache = dlsym(SwiftMeta.RTLD_DEFAULT, "_objc_empty_cache")!
+
+        prefix_scan(in: pseudoImage, prefix: "_OBJC_METACLASS_$_") {
+            (address, symname, suffix) in
+            let metaData: UnsafeMutablePointer<ObjcClassMetaData> = autoBitCast(address)
+            metaData.pointee.metaClass = objc_getClass("NSObject") as? AnyClass
+            if let cls = objc_getClass(suffix) as? AnyClass,
+                let superClass = class_getSuperclass(cls) {
+                metaData.pointee.superClass = object_getClass(superClass)
+            }
+            metaData.pointee.methodCache = emptyCache
+            detail("\(metaData.pointee)")
+        }
+
+        prefix_scan(in: pseudoImage, prefix: "_OBJC_CLASS_$_") {
+            (address, symname, suffix) in
+            let metaData: UnsafeMutablePointer<ObjcClassMetaData> = autoBitCast(address)
+            if let cls = objc_getClass(suffix) as? AnyClass {
+//                metaData.pointee.metaClass = object_getClass(cls)
+                metaData.pointee.superClass = class_getSuperclass(cls)
+            }
+            metaData.pointee.methodCache = emptyCache
+            detail("\(metaData.pointee)")
+        }
+    }
+
     public class func adjustIvarOffsets(
         in pseudoImage: UnsafePointer<mach_header>) {
         var ivarOffsetPtr: UnsafeMutablePointer<ptrdiff_t>?
 
         // Objective-C compiled version
-        let ivarPrefix = "_OBJC_IVAR_$_", prefixLength = ivarPrefix.count
-        fast_dlscan(pseudoImage, .any, {
-            return strncmp($0, ivarPrefix, prefixLength) == 0;
-        }, { (address, symname, _, _) in
-            if let classname = strdup(symname + prefixLength-1),
+        prefix_scan(in: pseudoImage, prefix: "_OBJC_IVAR_$_") {
+            (address, symname, suffix) in
+            if let classname = strdup(suffix),
                var ivarname = strchr(classname, Int32(UInt8(ascii: "."))) {
                ivarname.pointee = 0
                ivarname += 1
@@ -80,7 +126,7 @@ extension SwiftInjection {
             } else {
                 log("⚠️ Could not parse ivar: \(String(cString: symname))")
             }
-        })
+        }
 
         // Swift compiled version
         findHiddenSwiftSymbols(searchLastLoaded(), "Wvd", .any) {

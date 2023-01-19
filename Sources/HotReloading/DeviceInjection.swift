@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#21 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#26 $
 //
 //  Code specific to injecting on an actual device.
 //
@@ -73,7 +73,7 @@ extension SwiftInjection {
         var superClass: AnyClass?
         var methodCache: UnsafeMutableRawPointer
         var unknown: UnsafeRawPointer?
-        var data: UnsafePointer<ObjcROMetaData>?
+        var data: UnsafePointer<ObjcReadOnlyMetaData>?
     }
 
     public class func fillinObjcClassMetadata(
@@ -110,39 +110,43 @@ extension SwiftInjection {
         }
     }
 
+    // Used to enumerate methods
+    // on an "unrealised" class.
     struct ObjcMethodMetaData {
         let name: UnsafePointer<CChar>
         let type: UnsafePointer<CChar>
-        let impl: OpaquePointer
+        let impl: IMP
     }
 
-    struct ObjcMethodsMetaData {
-        let flags: Int32, count: Int32
+    struct ObjcMethodListMetaData {
+        let flags: Int32, methodCount: Int32
         var firstMethod: ObjcMethodMetaData
     }
 
-    struct ObjcROMetaData {
+    struct ObjcReadOnlyMetaData {
         let skip: (Int32, Int32, Int32, Int32) = (0, 0, 0, 0)
         let names: (UnsafeRawPointer?, UnsafePointer<CChar>?)
-        let methods: UnsafeMutablePointer<ObjcMethodsMetaData>?
+        let methods: UnsafeMutablePointer<ObjcMethodListMetaData>?
     }
 
     public class func onDevice(swizzle oldClass: AnyClass,
                                from newClass: AnyClass) -> Int {
         var swizzled = 0
         let metaData: UnsafePointer<ObjcClassMetaData> = autoBitCast(newClass)
-        if let metaClass = metaData.pointee.metaClass,
-           metaClass != object_getClass(NSObject.self),
+        if !class_isMetaClass(oldClass), // class methods...
+           let metaClass = metaData.pointee.metaClass,
            let metaOldClass = object_getClass(oldClass) {
             swizzled += onDevice(swizzle: metaOldClass, from: metaClass)
         }
 
-        guard let roData = metaData.pointee.data,
+        let pointerMask: uintptr_t = ~3
+        guard let roData: UnsafePointer<ObjcReadOnlyMetaData> =
+                autoBitCast(autoBitCast(metaData.pointee.data) & pointerMask),
               let methodInfo = roData.pointee.methods else { return swizzled }
 
         withUnsafePointer(to: &methodInfo.pointee.firstMethod) {
             methods in
-            for i in 0 ..< Int(methodInfo.pointee.count) {
+            for i in 0 ..< Int(methodInfo.pointee.methodCount) {
                 class_replaceMethod(oldClass, sel_registerName(methods[i].name),
                                     methods[i].impl, methods[i].type)
                 swizzled += 1
@@ -161,7 +165,7 @@ extension SwiftInjection {
             (address, symname, suffix) in
             if let classname = strdup(suffix),
                var ivarname = strchr(classname, Int32(UInt8(ascii: "."))) {
-               ivarname.pointee = 0
+               ivarname[0] = 0
                ivarname += 1
 
                if let cls = objc_getClass(classname) as? AnyClass,
@@ -179,7 +183,7 @@ extension SwiftInjection {
         // Swift compiled version
         findHiddenSwiftSymbols(searchLastLoaded(), "Wvd", .any) {
             (address, symname, _, _) -> Void in
-            if let fieldInfo = symname.demangled,
+            if let fieldInfo = SwiftMeta.demangle(symbol: symname),
                let (classname, ivarname): (String, String) =
                 fieldInfo[#"direct field offset for (\S+)\.\(?(\w+) "#],
                 let cls = objc_getClass(classname) as? AnyClass,
@@ -195,18 +199,18 @@ extension SwiftInjection {
     /// Fixup references to Objective-C classes on device
     public class func fixupObjcClassReferences(
         in pseudoImage: UnsafePointer<mach_header>) {
-        var typeref_size: UInt64 = 0
+        var sectionSize: UInt64 = 0
         if let classNames = objcClassRefs as? [String], classNames.first != "",
            let classRefsSection: UnsafeMutablePointer<AnyClass?> = autoBitCast(
                 getsectdatafromheader_64(autoBitCast(pseudoImage),
-                    SEG_DATA, "__objc_classrefs", &typeref_size)) {
-            let nClassRefs = Int(typeref_size)/MemoryLayout<AnyClass>.size
-            let classes = classNames.compactMap {
+                    SEG_DATA, "__objc_classrefs", &sectionSize)) {
+            let nClassRefs = Int(sectionSize)/MemoryLayout<AnyClass>.size
+            let objcClasses = classNames.compactMap {
                 return dlsym(SwiftMeta.RTLD_DEFAULT, "OBJC_CLASS_$_"+$0)
             }
-            if nClassRefs == classes.count {
+            if nClassRefs == objcClasses.count {
                 for i in 0 ..< nClassRefs {
-                    classRefsSection[i] = autoBitCast(classes[i])
+                    classRefsSection[i] = autoBitCast(objcClasses[i])
                 }
             } else {
                 log("⚠️ Number of class refs \(nClassRefs) does not equal \(classNames)")

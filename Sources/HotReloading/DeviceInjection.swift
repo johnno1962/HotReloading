@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#31 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#33 $
 //
 //  Code specific to injecting on an actual device.
 //
@@ -16,6 +16,19 @@ import SwiftRegex
 import SwiftTraceGuts
 import HotReloadingGuts
 #endif
+
+extension SwiftInjection.MachImage {
+    func symbols(withPrefix: UnsafePointer<CChar>,
+                 apply: @escaping (UnsafeRawPointer, UnsafePointer<CChar>,
+                                   UnsafePointer<CChar>) -> Void) {
+        let prefixLen = strlen(withPrefix)
+        fast_dlscan(self, .any, {
+            return strncmp($0, withPrefix, prefixLen) == 0}) {
+            (address, symname, _, _) in
+            apply(address, symname, symname + prefixLen - 1)
+        }
+    }
+}
 
 extension SwiftInjection {
 
@@ -58,18 +71,6 @@ extension SwiftInjection {
         bindDescriptorReferences(in: pseudoImage)
     }
 
-    class func prefix_scan(in pseudoImage: MachImage,
-                           prefix: UnsafePointer<CChar>,
-        apply: @escaping (UnsafeRawPointer, UnsafePointer<CChar>,
-                          UnsafePointer<CChar>) -> Void) {
-        let prefixLen = strlen(prefix)
-        fast_dlscan(pseudoImage, .any, {
-            return strncmp($0, prefix, prefixLen) == 0}) {
-            (address, symname, _, _) in
-            apply(address, symname, symname + prefixLen - 1)
-        }
-    }
-
     struct ObjcClassMetaData {
         var metaClass: AnyClass?
         var superClass: AnyClass?
@@ -81,7 +82,7 @@ extension SwiftInjection {
     public class func fillinObjcClassMetadata(in pseudoImage: MachImage) {
         let emptyCache = dlsym(SwiftMeta.RTLD_DEFAULT, "_objc_empty_cache")!
 
-        prefix_scan(in: pseudoImage, prefix: "_OBJC_METACLASS_$_") {
+        pseudoImage.symbols(withPrefix: "_OBJC_METACLASS_$_") {
             (address, symname, suffix) in
             let metaData: UnsafeMutablePointer<ObjcClassMetaData> = autoBitCast(address)
             metaData.pointee.methodCache = emptyCache
@@ -93,7 +94,7 @@ extension SwiftInjection {
             detail("\(metaData.pointee)")
         }
 
-        prefix_scan(in: pseudoImage, prefix: "_OBJC_CLASS_$_") {
+        pseudoImage.symbols(withPrefix: "_OBJC_CLASS_$_") {
             (address, symname, suffix) in
             let metaData: UnsafeMutablePointer<ObjcClassMetaData> = autoBitCast(address)
             metaData.pointee.methodCache = emptyCache
@@ -168,10 +169,10 @@ extension SwiftInjection {
     }
 
     public class func adjustIvarOffsets(in pseudoImage: MachImage) {
-        var ivarOffsetPtr: UnsafeMutablePointer<ptrdiff_t>?
+        var ivarOffsetPtr: UnsafeMutablePointer<ptrdiff_t>!
 
         // Objective-C source version
-        prefix_scan(in: pseudoImage, prefix: "_OBJC_IVAR_$_") {
+        pseudoImage.symbols(withPrefix: "_OBJC_IVAR_$_") {
             (address, symname, suffix) in
             if let classname = strdup(suffix),
                var ivarname = strchr(classname, Int32(UInt8(ascii: "."))) {
@@ -181,7 +182,7 @@ extension SwiftInjection {
                if let oldClass = objc_getClass(classname) as? AnyClass,
                   let ivar = class_getInstanceVariable(oldClass, ivarname) {
                    ivarOffsetPtr = autoBitCast(address)
-                   ivarOffsetPtr?.pointee = ivar_getOffset(ivar);
+                   ivarOffsetPtr.pointee = ivar_getOffset(ivar)
                }
 
                free(classname)
@@ -191,22 +192,16 @@ extension SwiftInjection {
         }
 
         // Swift source version
-        let PAGE_SIZE = 16 * 1024
-        func PAGE_START(_ ptr: UnsafeMutableRawPointer) -> UnsafeMutableRawPointer {
-            return autoBitCast(autoBitCast(ptr) & ~(PAGE_SIZE-1))
-        }
-
         findHiddenSwiftSymbols(searchLastLoaded(), "Wvd", .any) {
             (address, symname, _, _) -> Void in
             if let fieldInfo = SwiftMeta.demangle(symbol: symname),
                let (classname, ivarname): (String, String) =
                 fieldInfo[#"direct field offset for (\S+)\.\(?(\w+) "#],
                let oldClass = objc_getClass(classname) as? AnyClass,
-               let ivar = class_getInstanceVariable(oldClass, ivarname) {
+               let ivar = class_getInstanceVariable(oldClass, ivarname),
+               get_protection(autoBitCast(address)) & PROT_WRITE != 0 {
                 ivarOffsetPtr = autoBitCast(address)
-                mprotect(PAGE_START(autoBitCast(address)),
-                         PAGE_SIZE, PROT_READ|PROT_WRITE)
-                ivarOffsetPtr?.pointee = ivar_getOffset(ivar);
+                ivarOffsetPtr.pointee = ivar_getOffset(ivar);
             } else {
                 log("⚠️ Could not parse ivar: \(String(cString: symname))")
             }

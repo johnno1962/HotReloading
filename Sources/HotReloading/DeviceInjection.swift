@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#33 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#34 $
 //
 //  Code specific to injecting on an actual device.
 //
@@ -183,6 +183,9 @@ extension SwiftInjection {
                   let ivar = class_getInstanceVariable(oldClass, ivarname) {
                    ivarOffsetPtr = autoBitCast(address)
                    ivarOffsetPtr.pointee = ivar_getOffset(ivar)
+                   detail(String(cString: classname)+"." +
+                          String(cString: ivarname) +
+                          " offset: \(ivarOffsetPtr.pointee)")
                }
 
                free(classname)
@@ -201,7 +204,9 @@ extension SwiftInjection {
                let ivar = class_getInstanceVariable(oldClass, ivarname),
                get_protection(autoBitCast(address)) & PROT_WRITE != 0 {
                 ivarOffsetPtr = autoBitCast(address)
-                ivarOffsetPtr.pointee = ivar_getOffset(ivar);
+                ivarOffsetPtr.pointee = ivar_getOffset(ivar)
+                detail(classname+"."+ivarname +
+                       " direct offset: \(ivarOffsetPtr.pointee)")
             } else {
                 log("⚠️ Could not parse ivar: \(String(cString: symname))")
             }

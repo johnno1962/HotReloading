@@ -4,12 +4,12 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#19 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#34 $
 //
 //  Code specific to injecting on an actual device.
 //
 
-#if !targetEnvironment(simulator)
+#if !targetEnvironment(simulator) && SWIFT_PACKAGE
 import SwiftTrace
 #if SWIFT_PACKAGE
 import SwiftRegex
@@ -17,12 +17,27 @@ import SwiftTraceGuts
 import HotReloadingGuts
 #endif
 
+extension SwiftInjection.MachImage {
+    func symbols(withPrefix: UnsafePointer<CChar>,
+                 apply: @escaping (UnsafeRawPointer, UnsafePointer<CChar>,
+                                   UnsafePointer<CChar>) -> Void) {
+        let prefixLen = strlen(withPrefix)
+        fast_dlscan(self, .any, {
+            return strncmp($0, withPrefix, prefixLen) == 0}) {
+            (address, symname, _, _) in
+            apply(address, symname, symname + prefixLen - 1)
+        }
+    }
+}
+
 extension SwiftInjection {
+
+    public typealias MachImage = UnsafePointer<mach_header>
 
     /// Emulate remaining functions of the dynamic linker.
     /// - Parameter pseudoImage: last image read into memory
     public class func onDeviceSpecificProcessing(
-        for pseudoImage: UnsafePointer<mach_header>, _ sweepClasses: [AnyClass]) {
+        for pseudoImage: MachImage, _ sweepClasses: [AnyClass]) {
         // register types, protocols, conformances...
         var section_size: UInt64 = 0
         for (section, regsiter) in [
@@ -56,42 +71,142 @@ extension SwiftInjection {
         bindDescriptorReferences(in: pseudoImage)
     }
 
-    public class func adjustIvarOffsets(
-        in pseudoImage: UnsafePointer<mach_header>) {
-        var ivarOffsetPtr: UnsafeMutablePointer<ptrdiff_t>?
+    struct ObjcClassMetaData {
+        var metaClass: AnyClass?
+        var superClass: AnyClass?
+        var methodCache: UnsafeMutableRawPointer
+        var unknown: UnsafeRawPointer?
+        var data: UnsafePointer<ObjcReadOnlyMetaData>?
+    }
 
-        // Objective-C compiled version
-        let ivarPrefix = "_OBJC_IVAR_$_", prefixLength = ivarPrefix.count
-        fast_dlscan(pseudoImage, .any, {
-            return strncmp($0, ivarPrefix, prefixLength) == 0;
-        }, { (address, symname, _, _) in
-            if let classname = strdup(symname + prefixLength-1),
+    public class func fillinObjcClassMetadata(in pseudoImage: MachImage) {
+        let emptyCache = dlsym(SwiftMeta.RTLD_DEFAULT, "_objc_empty_cache")!
+
+        pseudoImage.symbols(withPrefix: "_OBJC_METACLASS_$_") {
+            (address, symname, suffix) in
+            let metaData: UnsafeMutablePointer<ObjcClassMetaData> = autoBitCast(address)
+            metaData.pointee.methodCache = emptyCache
+            metaData.pointee.metaClass = object_getClass(NSObject.self)
+            if let oldClass = objc_getClass(suffix) as? AnyClass,
+                let superClass = class_getSuperclass(oldClass) {
+                metaData.pointee.superClass = object_getClass(superClass)
+            }
+            detail("\(metaData.pointee)")
+        }
+
+        pseudoImage.symbols(withPrefix: "_OBJC_CLASS_$_") {
+            (address, symname, suffix) in
+            let metaData: UnsafeMutablePointer<ObjcClassMetaData> = autoBitCast(address)
+            metaData.pointee.methodCache = emptyCache
+            if let oldClass = objc_getClass(suffix) as? AnyClass {
+                metaData.pointee.superClass = class_getSuperclass(oldClass)
+//                if #available(iOS 12.2, *) {
+//                    detail("\(metaData.pointee)")
+//                    _objc_realizeClassFromSwift(autoBitCast(address), nil)//autoBitCast(cls))
+//                    detail("\(metaData.pointee)")
+//                } else {
+//                    // Fallback on earlier versions
+//                }
+            }
+            detail("\(metaData.pointee)")
+        }
+    }
+
+    // Used to enumerate methods
+    // on an "unrealised" class.
+    struct ObjcMethodMetaData {
+        let name: UnsafePointer<CChar>
+        let type: UnsafePointer<CChar>
+        let impl: IMP
+    }
+
+    struct ObjcMethodListMetaData {
+        let flags: Int32, methodCount: Int32
+        var firstMethod: ObjcMethodMetaData
+    }
+
+    struct ObjcReadOnlyMetaData {
+        let skip: (Int32, Int32, Int32, Int32) = (0, 0, 0, 0)
+        let names: (UnsafeRawPointer?, UnsafePointer<CChar>?)
+        let methods: UnsafeMutablePointer<ObjcMethodListMetaData>?
+    }
+
+    public class func onDevice(swizzle oldClass: AnyClass,
+                               from newClass: AnyClass) -> Int {
+        var swizzled = 0
+        let metaData: UnsafePointer<ObjcClassMetaData> = autoBitCast(newClass)
+        if !class_isMetaClass(oldClass), // class methods...
+           let metaClass = metaData.pointee.metaClass,
+           let metaOldClass = object_getClass(oldClass) {
+            swizzled += onDevice(swizzle: metaOldClass, from: metaClass)
+        }
+
+        let pointerMask: uintptr_t = ~3
+        guard let roData: UnsafePointer<ObjcReadOnlyMetaData> =
+                autoBitCast(autoBitCast(metaData.pointee.data) & pointerMask),
+              let methodInfo = roData.pointee.methods else { return swizzled }
+
+        withUnsafePointer(to: &methodInfo.pointee.firstMethod) {
+            methods in
+            for i in 0 ..< Int(methodInfo.pointee.methodCount) {
+                let selector = sel_registerName(methods[i].name)
+                let method = class_getInstanceMethod(oldClass, selector)
+                let existing = method.flatMap { method_getImplementation($0) }
+                traceAndReplace(existing, replacement: autoBitCast(methods[i].impl),
+                                objcMethod: method, objcClass: newClass) {
+                    (replacement: IMP) -> String? in
+                    if class_replaceMethod(oldClass, selector, replacement,
+                                           methods[i].type) != replacement {
+                        swizzled += 1
+                        return "Swizzled"
+                    }
+                    return nil
+                }
+            }
+        }
+
+        return swizzled
+    }
+
+    public class func adjustIvarOffsets(in pseudoImage: MachImage) {
+        var ivarOffsetPtr: UnsafeMutablePointer<ptrdiff_t>!
+
+        // Objective-C source version
+        pseudoImage.symbols(withPrefix: "_OBJC_IVAR_$_") {
+            (address, symname, suffix) in
+            if let classname = strdup(suffix),
                var ivarname = strchr(classname, Int32(UInt8(ascii: "."))) {
-               ivarname.pointee = 0
+               ivarname[0] = 0
                ivarname += 1
 
-               if let cls = objc_getClass(classname) as? AnyClass,
-                  let ivar = class_getInstanceVariable(cls, ivarname) {
+               if let oldClass = objc_getClass(classname) as? AnyClass,
+                  let ivar = class_getInstanceVariable(oldClass, ivarname) {
                    ivarOffsetPtr = autoBitCast(address)
-                   ivarOffsetPtr?.pointee = ivar_getOffset(ivar);
+                   ivarOffsetPtr.pointee = ivar_getOffset(ivar)
+                   detail(String(cString: classname)+"." +
+                          String(cString: ivarname) +
+                          " offset: \(ivarOffsetPtr.pointee)")
                }
 
                free(classname)
             } else {
                 log("⚠️ Could not parse ivar: \(String(cString: symname))")
             }
-        })
+        }
 
-        // Swift compiled version
+        // Swift source version
         findHiddenSwiftSymbols(searchLastLoaded(), "Wvd", .any) {
             (address, symname, _, _) -> Void in
-            if let fieldInfo = symname.demangled,
+            if let fieldInfo = SwiftMeta.demangle(symbol: symname),
                let (classname, ivarname): (String, String) =
                 fieldInfo[#"direct field offset for (\S+)\.\(?(\w+) "#],
-                let cls = objc_getClass(classname) as? AnyClass,
-                let ivar = class_getInstanceVariable(cls, ivarname) {
+               let oldClass = objc_getClass(classname) as? AnyClass,
+               let ivar = class_getInstanceVariable(oldClass, ivarname),
+               get_protection(autoBitCast(address)) & PROT_WRITE != 0 {
                 ivarOffsetPtr = autoBitCast(address)
-                ivarOffsetPtr?.pointee = ivar_getOffset(ivar);
+                ivarOffsetPtr.pointee = ivar_getOffset(ivar)
+                detail(classname+"."+ivarname +
+                       " direct offset: \(ivarOffsetPtr.pointee)")
             } else {
                 log("⚠️ Could not parse ivar: \(String(cString: symname))")
             }
@@ -99,20 +214,19 @@ extension SwiftInjection {
     }
 
     /// Fixup references to Objective-C classes on device
-    public class func fixupObjcClassReferences(
-        in pseudoImage: UnsafePointer<mach_header>) {
-        var typeref_size: UInt64 = 0
+    public class func fixupObjcClassReferences(in pseudoImage: MachImage) {
+        var sectionSize: UInt64 = 0
         if let classNames = objcClassRefs as? [String], classNames.first != "",
            let classRefsSection: UnsafeMutablePointer<AnyClass?> = autoBitCast(
                 getsectdatafromheader_64(autoBitCast(pseudoImage),
-                    SEG_DATA, "__objc_classrefs", &typeref_size)) {
-            let nClassRefs = Int(typeref_size)/MemoryLayout<AnyClass>.size
-            let classes = classNames.compactMap {
+                    SEG_DATA, "__objc_classrefs", &sectionSize)) {
+            let nClassRefs = Int(sectionSize)/MemoryLayout<AnyClass>.size
+            let objcClasses = classNames.compactMap {
                 return dlsym(SwiftMeta.RTLD_DEFAULT, "OBJC_CLASS_$_"+$0)
             }
-            if nClassRefs == classes.count {
+            if nClassRefs == objcClasses.count {
                 for i in 0 ..< nClassRefs {
-                    classRefsSection[i] = autoBitCast(classes[i])
+                    classRefsSection[i] = autoBitCast(objcClasses[i])
                 }
             } else {
                 log("⚠️ Number of class refs \(nClassRefs) does not equal \(classNames)")
@@ -122,8 +236,7 @@ extension SwiftInjection {
 
     /// Populate "l_got.*" external references to "descriptors"
     /// - Parameter pseudoImage: lastLoadedImage
-    public class func bindDescriptorReferences(
-        in pseudoImage: UnsafePointer<mach_header>) {
+    public class func bindDescriptorReferences(in pseudoImage: MachImage) {
         if let descriptorSyms = descriptorRefs as? [String],
             descriptorSyms.first != "" {
             var forces: UnsafeRawPointer?

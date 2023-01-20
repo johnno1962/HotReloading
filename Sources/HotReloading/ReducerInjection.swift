@@ -4,7 +4,12 @@
 //  Created by John Holdsworth on 09/06/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/ReducerInjection.swift#5 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/ReducerInjection.swift#8 $
+//
+//  Support for injecting "The Composble Architecture" Reducers using TCA fork:
+//  https://github.com/thebrowsercompany/swift-composable-architecture/tree/develop
+//  Top level Reducer var initialisations are wrapped in ARCInjectable() call.
+//  Reducers are now deprecated in favour of using the new "ReducerProtocol".
 //
 
 import Foundation

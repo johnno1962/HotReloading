@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/ObjcInjection.swift#16 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/ObjcInjection.swift#18 $
 //
 //  Code specific to "classic" Objective-C method swizzling.
 //
@@ -76,11 +76,11 @@ extension SwiftInjection {
 
     /// Original Objective-C swizzling
     /// - Parameters:
-    ///   - newClass: Newly loaded class
     ///   - oldClass: Original class to be swizzle
+    ///   - newClass: Newly loaded class
     /// - Returns: # of methods swizzled
-    public class func injection(swizzle newClass: AnyClass?,
-                                onto oldClass: AnyClass?) -> Int {
+    public class func injection(swizzle oldClass: AnyClass?,
+                                from newClass: AnyClass?) -> Int {
         var methodCount: UInt32 = 0, swizzled = 0
         if let methods = class_copyMethodList(newClass, &methodCount) {
             for i in 0 ..< Int(methodCount) {
@@ -97,8 +97,7 @@ extension SwiftInjection {
                     if class_replaceMethod(oldClass, selector, replacement,
                         method_getTypeEncoding(methods[i])) != replacement {
                         swizzled += 1
-                        let which = class_isMetaClass(oldClass) ? "+" : "-"
-                        return "Sizzled \(which)[\(_typeName(oldClass!)) \(selector)]"
+                        return "Swizzled"
                     }
                     return nil
                 }

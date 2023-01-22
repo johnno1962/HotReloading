@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#34 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#37 $
 //
 //  Code specific to injecting on an actual device.
 //
@@ -141,9 +141,9 @@ extension SwiftInjection {
             swizzled += onDevice(swizzle: metaOldClass, from: metaClass)
         }
 
-        let pointerMask: uintptr_t = ~3
+        let swiftBits: uintptr_t = 0x3
         guard let roData: UnsafePointer<ObjcReadOnlyMetaData> =
-                autoBitCast(autoBitCast(metaData.pointee.data) & pointerMask),
+                autoBitCast(autoBitCast(metaData.pointee.data) & ~swiftBits),
               let methodInfo = roData.pointee.methods else { return swizzled }
 
         withUnsafePointer(to: &methodInfo.pointee.firstMethod) {

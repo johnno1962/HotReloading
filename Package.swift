@@ -2,7 +2,7 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
 //  Repo: https://github.com/johnno1962/HotReloading
-//  $Id: //depot/HotReloading/Package.swift#171 $
+//  $Id: //depot/HotReloading/Package.swift#172 $
 //
 
 import PackageDescription
@@ -16,7 +16,7 @@ import Foundation
 // Then drag the clone onto your project to have it
 // take precedence over the configured version.
 var hostname = Host.current().name ?? "localhost"
-// hostname = "192.168.0.246" // for example
+// hostname = "192.168.0.243" // for example
 
 let package = Package(
     name: "HotReloading",

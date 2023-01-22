@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/ObjcInjection.swift#18 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/ObjcInjection.swift#19 $
 //
 //  Code specific to "classic" Objective-C method swizzling.
 //
@@ -54,7 +54,7 @@ extension SwiftInjection {
                     if class_replaceMethod(oldClass, selector, replacement,
                                            method_getTypeEncoding(method)) != nil {
                         swizzled += 1
-                        return "Swizzled "+describeImageSymbol(selsym)
+                        return "Swizzled"
                     }
                     return nil
                 }

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#165 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#166 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -475,6 +475,7 @@ public class SwiftEval: NSObject {
         // Extract object path (overidden in UnhidingEval.swift for Xcode 13)
         let objectFile = xcode13Fix(sourceFile: sourceFile,
                                     compileCommand: &compileCommand)
+        unlink(objectFile)
 
         _ = evalError("Compiling \(sourceFile)")
 

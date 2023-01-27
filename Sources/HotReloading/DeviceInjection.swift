@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#37 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#38 $
 //
 //  Code specific to injecting on an actual device.
 //
@@ -73,42 +73,60 @@ extension SwiftInjection {
 
     struct ObjcClassMetaData {
         var metaClass: AnyClass?
+        var metaData: UnsafeMutablePointer<ObjcClassMetaData>? {
+            return autoBitCast(metaClass)
+        }
         var superClass: AnyClass?
+        var superData: UnsafeMutablePointer<ObjcClassMetaData>? {
+            return autoBitCast(superClass)
+        }
         var methodCache: UnsafeMutableRawPointer
-        var unknown: UnsafeRawPointer?
-        var data: UnsafePointer<ObjcReadOnlyMetaData>?
+        var bits: uintptr_t
+        var data: UnsafeMutablePointer<ObjcReadOnlyMetaData>?
     }
 
     public class func fillinObjcClassMetadata(in pseudoImage: MachImage) {
-        let emptyCache = dlsym(SwiftMeta.RTLD_DEFAULT, "_objc_empty_cache")!
 
-        pseudoImage.symbols(withPrefix: "_OBJC_METACLASS_$_") {
-            (address, symname, suffix) in
-            let metaData: UnsafeMutablePointer<ObjcClassMetaData> = autoBitCast(address)
-            metaData.pointee.methodCache = emptyCache
-            metaData.pointee.metaClass = object_getClass(NSObject.self)
-            if let oldClass = objc_getClass(suffix) as? AnyClass,
-                let superClass = class_getSuperclass(oldClass) {
-                metaData.pointee.superClass = object_getClass(superClass)
-            }
-            detail("\(metaData.pointee)")
+        func getClass(_ sym: UnsafePointer<Int8>)
+            -> UnsafeMutablePointer<ObjcClassMetaData>? {
+            return autoBitCast(dlsym(SwiftMeta.RTLD_DEFAULT, sym))
         }
 
-        pseudoImage.symbols(withPrefix: "_OBJC_CLASS_$_") {
-            (address, symname, suffix) in
-            let metaData: UnsafeMutablePointer<ObjcClassMetaData> = autoBitCast(address)
-            metaData.pointee.methodCache = emptyCache
-            if let oldClass = objc_getClass(suffix) as? AnyClass {
-                metaData.pointee.superClass = class_getSuperclass(oldClass)
-//                if #available(iOS 12.2, *) {
-//                    detail("\(metaData.pointee)")
-//                    _objc_realizeClassFromSwift(autoBitCast(address), nil)//autoBitCast(cls))
-//                    detail("\(metaData.pointee)")
-//                } else {
-//                    // Fallback on earlier versions
-//                }
+        var sectionSize: UInt64 = 0
+        let info = getsectdatafromheader_64(autoBitCast(pseudoImage),
+                 SEG_DATA, "__objc_imageinfo", &sectionSize)
+        let metaNSObject = getClass("OBJC_CLASS_$_NSObject")
+        let emptyCache = dlsym(SwiftMeta.RTLD_DEFAULT, "_objc_empty_cache")!
+
+        func fillin(newClass: UnsafeRawPointer, symname: UnsafePointer<Int8>) {
+            let metaData:
+                UnsafeMutablePointer<ObjcClassMetaData> = autoBitCast(newClass)
+            if let oldClass = getClass(symname) {
+                metaData.pointee.methodCache = emptyCache
+                metaData.pointee.superClass = oldClass.pointee.superClass
+                metaData.pointee.metaData?.pointee.methodCache = emptyCache
+                metaData.pointee.metaData?.pointee.metaClass =
+                    metaNSObject?.pointee.metaClass
+                metaData.pointee.metaData?.pointee.superClass =
+                    oldClass.pointee.metaClass // should be super of metaclass..
+                if deviceRegister, #available(macOS 10.10, iOS 8.0, tvOS 9.0, *) {
+                    detail("\(newClass): \(metaData.pointee) -> " +
+                           "\((metaData.pointee.metaData ?? metaData).pointee)")
+//                    _objc_realizeClassFromSwift(autoBitCast(aClass), oldClass)
+                    objc_readClassPair(autoBitCast(newClass), autoBitCast(info))
+                } else {
+                    // Fallback on earlier versions
+                }
             }
-            detail("\(metaData.pointee)")
+        }
+
+        SwiftTrace.forAllClasses(bundlePath: searchLastLoaded()) {
+            (aClass, stop) in
+            var info = Dl_info()
+            let address: UnsafeRawPointer = autoBitCast(aClass)
+            if fast_dladdr(address, &info) != 0, let symname = info.dli_sname {
+                fillin(newClass: address, symname: symname)
+            }
         }
     }
 
@@ -202,7 +220,7 @@ extension SwiftInjection {
                 fieldInfo[#"direct field offset for (\S+)\.\(?(\w+) "#],
                let oldClass = objc_getClass(classname) as? AnyClass,
                let ivar = class_getInstanceVariable(oldClass, ivarname),
-               get_protection(autoBitCast(address)) & PROT_WRITE != 0 {
+               get_protection(autoBitCast(address)) & VM_PROT_WRITE != 0 {
                 ivarOffsetPtr = autoBitCast(address)
                 ivarOffsetPtr.pointee = ivar_getOffset(ivar)
                 detail(classname+"."+ivarname +
@@ -256,7 +274,7 @@ extension SwiftInjection {
                        descriptorRefs.pointee == nil {
                         descriptorRefs.pointee = value
                     } else {
-                        log("⚠️ Could not bind " + describeImageSymbol(descriptorSym))
+                        detail("⚠️ Could not bind " + describeImageSymbol(descriptorSym))
                     }
                 }
             } else {

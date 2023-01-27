@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#183 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#184 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -114,6 +114,7 @@ public class SwiftInjection: NSObject {
     static let notification = Notification.Name("INJECTION_BUNDLE_NOTIFICATION")
 
     static var injectionDetail = getenv(INJECTION_DETAIL) != nil
+    static let deviceRegister = false && SwiftTrace.deviceInjection
     static var objcClassRefs = NSMutableArray()
     static var descriptorRefs = NSMutableArray()
     static var injectedPrefix: String {
@@ -164,12 +165,15 @@ public class SwiftInjection: NSObject {
     }
 
     open class func versions(of aClass: AnyClass) -> [AnyClass] {
-        let named = class_getName(aClass)
-        var out = [AnyClass](), nc: UInt32 = 0
+        var out = [AnyClass](), nc: UInt32 = 0, info = Dl_info()
         if let classes = UnsafePointer(objc_copyClassList(&nc)) {
+            let named = class_getName(aClass)
             for i in 0 ..< Int(nc) {
                 if class_getSuperclass(classes[i]) != nil && classes[i] != aClass,
-                    strcmp(named, class_getName(classes[i])) == 0 {
+                   strcmp(class_getName(classes[i]), named) == 0,
+                   !(deviceRegister &&
+                     dladdr(autoBitCast(classes[i]), &info) != 0 &&
+                     strcmp(info.dli_sname, "injected_code") == 0) {
                     out.append(classes[i])
                 }
             }
@@ -264,7 +268,7 @@ public class SwiftInjection: NSObject {
                 }
 
                 var swizzled: Int
-                if !SwiftTrace.deviceInjection {
+                if !SwiftTrace.deviceInjection || deviceRegister {
                 // old-school swizzle Objective-C class & instance methods
                     swizzled = injection(swizzle: object_getClass(oldClass),
                                          from: object_getClass(newClass)) +

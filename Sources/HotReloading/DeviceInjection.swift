@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#38 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#39 $
 //
 //  Code specific to injecting on an actual device.
 //
@@ -109,7 +109,7 @@ extension SwiftInjection {
                     metaNSObject?.pointee.metaClass
                 metaData.pointee.metaData?.pointee.superClass =
                     oldClass.pointee.metaClass // should be super of metaclass..
-                if deviceRegister, #available(macOS 10.10, iOS 8.0, tvOS 9.0, *) {
+                if registerClasses, #available(macOS 10.10, iOS 8.0, tvOS 9.0, *) {
                     detail("\(newClass): \(metaData.pointee) -> " +
                            "\((metaData.pointee.metaData ?? metaData).pointee)")
 //                    _objc_realizeClassFromSwift(autoBitCast(aClass), oldClass)

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#184 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#185 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -114,7 +114,7 @@ public class SwiftInjection: NSObject {
     static let notification = Notification.Name("INJECTION_BUNDLE_NOTIFICATION")
 
     static var injectionDetail = getenv(INJECTION_DETAIL) != nil
-    static let deviceRegister = false && SwiftTrace.deviceInjection
+    static let registerClasses = false && SwiftTrace.deviceInjection
     static var objcClassRefs = NSMutableArray()
     static var descriptorRefs = NSMutableArray()
     static var injectedPrefix: String {
@@ -171,7 +171,7 @@ public class SwiftInjection: NSObject {
             for i in 0 ..< Int(nc) {
                 if class_getSuperclass(classes[i]) != nil && classes[i] != aClass,
                    strcmp(class_getName(classes[i]), named) == 0,
-                   !(deviceRegister &&
+                   !(registerClasses &&
                      dladdr(autoBitCast(classes[i]), &info) != 0 &&
                      strcmp(info.dli_sname, "injected_code") == 0) {
                     out.append(classes[i])
@@ -268,7 +268,7 @@ public class SwiftInjection: NSObject {
                 }
 
                 var swizzled: Int
-                if !SwiftTrace.deviceInjection || deviceRegister {
+                if !SwiftTrace.deviceInjection || registerClasses {
                 // old-school swizzle Objective-C class & instance methods
                     swizzled = injection(swizzle: object_getClass(oldClass),
                                          from: object_getClass(newClass)) +

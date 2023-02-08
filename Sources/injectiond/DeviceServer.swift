@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 13/01/2022.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#12 $
+//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#14 $
 //
 
 import Foundation
@@ -62,7 +62,8 @@ class DeviceServer: InjectionServer {
                     let dylib = try self.builder.rebuildClass(oldClass: nil,
                                           classNameOrFile: source, extra: nil)
                     if source[#"\.mm?$"#], // class references in Objective-C
-                       let sourceText = try? String(contentsOfFile: source) {
+                       var sourceText = try? String(contentsOfFile: source) {
+                        sourceText[#"//.*|/\*[^*]+\*/"#] = "" // zap comments
                         self.objcClassRefs.removeAllObjects()
                         var seen = Set<String>()
                         for messagedClass: String

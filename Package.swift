@@ -2,7 +2,7 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
 //  Repo: https://github.com/johnno1962/HotReloading
-//  $Id: //depot/HotReloading/Package.swift#172 $
+//  $Id: //depot/HotReloading/Package.swift#173 $
 //
 
 import PackageDescription
@@ -40,14 +40,14 @@ let package = Package(
                  .upToNextMinor(from: "2.3.5")),
         .package(url: "https://github.com/johnno1962/DLKit",
                  .upToNextMinor(from: "1.2.1")),
-        .package(url: "https://github.com/johnno1962/InjectionScratch",
-                 .upToNextMinor(from: "1.2.12")),
+//        .package(url: "https://github.com/johnno1962/InjectionScratch",
+//                 .upToNextMinor(from: "1.2.12")),
     ],
     targets: [
         .target(name: "HotReloading", dependencies: ["HotReloadingGuts",
              "SwiftTrace", .product(name: "Xprobe", package: "XprobePlugin"),
-                 "DLKit", .product(name: "SwiftRegex", package: "SwiftRegex"),
-                 "InjectionScratch"]/*, linkerSettings: [.unsafeFlags([
+                 "DLKit", .product(name: "SwiftRegex", package: "SwiftRegex")/*,
+                 "InjectionScratch"*/]/*, linkerSettings: [.unsafeFlags([
                     "-Xlinker", "-interposable", "-undefined", "dynamic_lookup"])]*/),
         .target(name: "HotReloadingGuts",
                 cSettings: [.define("DEVELOPER_HOST", to: "\"\(hostname)\"")]),

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#166 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#167 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -1112,6 +1112,9 @@ public class SwiftEval: NSObject {
                         elsif (my ($bazel, $dir) = $line =~ /^Running "([^"]+)".* (?:patching output for workspace root|with project path) at ("[^"]+")/) {
                             $command = "cd $dir && $bazel";
                             last;
+                        }
+                        elsif (my ($identity) = $line =~ m@/usr/bin/codesign --force --sign (\w+) --entitlements @) {
+                            system "defaults write com.johnholdsworth.InjectionIII \"\#(projectFile ?? "current project")\" \"$identity\"";
                         }
                     }
 

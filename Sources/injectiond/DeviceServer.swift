@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 13/01/2022.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#14 $
+//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#15 $
 //
 
 import Foundation
@@ -48,12 +48,12 @@ class DeviceServer: InjectionServer {
     }
 
     override func recompileAndInject(source: String) {
-        if let unlock = UserDefaults.standard
-            .string(forKey: UserDefaultsUnlock) {
-            writeCommand(InjectionCommand.pseudoUnlock.rawValue, with: unlock)
-        }
+        appDelegate.setMenuIcon(.busy)
         if let slide = self.scratchPointer {
-            appDelegate.setMenuIcon(.busy)
+            if let unlock = UserDefaults.standard
+                .string(forKey: UserDefaultsUnlock) {
+                writeCommand(InjectionCommand.pseudoUnlock.rawValue, with: unlock)
+            }
             compileQueue.async {
                 self.builder.linkerOptions =
                     " -Xlinker -image_base -Xlinker 0x" +
@@ -92,8 +92,30 @@ class DeviceServer: InjectionServer {
                     NSLog("\(error)")
                 }
             }
-        } else {
-            super.recompileAndInject(source: source)
+        } else { // You can load a dylib on device after all...
+            if !FileManager.default.fileExists(atPath: builder.tmpDir) {
+                builder.tmpDir = NSTemporaryDirectory()
+            }
+            compileQueue.async {
+                do {
+                    let dylib = try self.builder.rebuildClass(oldClass: nil,
+                                        classNameOrFile: source, extra: nil)
+                    self.sendCommand(.setXcodeDev, with: self.builder.xcodeDev)
+                    if let data = NSData(contentsOfFile: "\(dylib).dylib") {
+                        commandQueue.sync {
+                            self.write(InjectionCommand.copy.rawValue)
+                            self.write(data as Data)
+                            appDelegate.setMenuIcon(.ok)
+                        }
+                        return
+                    } else {
+                        self.sendCommand(.log, with: "\(APP_PREFIX)Error reading \(dylib).dylib")
+                    }
+                } catch {
+                    self.sendCommand(.log, with: "\(APP_PREFIX)Build error: \(error)")
+                }
+                appDelegate.setMenuIcon(.error)
+            }
         }
     }
 }

@@ -39,12 +39,11 @@ form of "VScode Previews". Consult [this project](https://github.com/markst/hotr
 ### Device Injection
 
 This version of the HotReloading project and it's dependencies now support
-injection on a real iOS or tvOS device. It's early days and this version
-should still be considered alpha software. 
+injection on a real iOS or tvOS device. 
 
 Device injection now connects to the [InjectionIII.app](https://github.com/johnno1962/InjectionIII)
 ([github release](https://github.com/johnno1962/InjectionIII/releases)
-4.2.8 or above) and requires you type the following commands into a Terminal 
+4.6.0 or above) and requires you type the following commands into a Terminal 
 then restart the app to opt into receiving remote connections from a device:
 
     $ rm ~/Library/Containers/com.johnholdsworth.InjectionIII/Data/Library/Preferences/com.johnholdsworth.InjectionIII.plist
@@ -66,15 +65,7 @@ your mac's WiFi IP address into the  `hostname` variable in Package.swift.
 Then, drag the clone onto your project to have it take the place of the
 configured Swift Package as outlined in [these instructions](https://developer.apple.com/documentation/xcode/editing-a-package-dependency-as-a-local-package).
 
-As Swift plays its cards pretty close to its chest it's not quite possible
-to initialise type meta data entirely correctly so your milage may vary
-more than using HotReloading in the simulator. In particular, if injected
-code crashes, the debugger will not display the line number but an address
-under the symbol  "injected_code" instead. If you get stuck, use an 
-`@_exported import HotReloading` in a source file and you should be 
-able to type `p HotReloading.stack` to get a stack trace.
-
-Also note that, as the HotReloading package needs to connect a network
+Note: as the HotReloading package needs to connect a network
 socket to your Mac to receive commands and new versions of code, expect
 a message the first time you run your app after adding the package
 asking you to "Trust" that your app should be allowed to do this.
@@ -120,4 +111,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2022/12/05 $
+$Date: 2023/02/09 $

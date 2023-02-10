@@ -5,7 +5,7 @@
 //  Created by User on 20/10/2020.
 //  Copyright © 2020 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#25 $
+//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#26 $
 //
 
 import Cocoa
@@ -347,7 +347,7 @@ extension AppDelegate {
                             guard objc_getClass("InjectionClient") == nil else {
                                 return
                             }
-                            #if os(macOS)
+                            #if os(macOS) || targetEnvironment(macCatalyst)
                             let bundleName = "macOSInjection.bundle"
                             #elseif os(tvOS)
                             let bundleName = "tvOSInjection.bundle"

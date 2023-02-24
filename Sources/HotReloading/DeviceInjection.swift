@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#39 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#40 $
 //
 //  Code specific to injecting on an actual device.
 //
@@ -17,22 +17,7 @@ import SwiftTraceGuts
 import HotReloadingGuts
 #endif
 
-extension SwiftInjection.MachImage {
-    func symbols(withPrefix: UnsafePointer<CChar>,
-                 apply: @escaping (UnsafeRawPointer, UnsafePointer<CChar>,
-                                   UnsafePointer<CChar>) -> Void) {
-        let prefixLen = strlen(withPrefix)
-        fast_dlscan(self, .any, {
-            return strncmp($0, withPrefix, prefixLen) == 0}) {
-            (address, symname, _, _) in
-            apply(address, symname, symname + prefixLen - 1)
-        }
-    }
-}
-
 extension SwiftInjection {
-
-    public typealias MachImage = UnsafePointer<mach_header>
 
     /// Emulate remaining functions of the dynamic linker.
     /// - Parameter pseudoImage: last image read into memory

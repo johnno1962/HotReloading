@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#185 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#186 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -297,6 +297,9 @@ public class SwiftInjection: NSObject {
 
         // (Reverse) interposing, reducers, operation on a device etc.
         let totalInterposed = newerProcessing(tmpfile: tmpfile, sweepClasses)
+        lastLoadedImage().symbols(withPrefix: "__OBJC_$_CATEGORY_") {_,_,_ in
+            totalSwizzled += 1
+        }
         if totalPatched + totalSwizzled + totalInterposed + testClasses.count == 0 {
             log("⚠️ Injection may have failed. Have you added -Xlinker -interposable to the \"Other Linker Flags\" of the executable/framework? ⚠️")
         }

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#186 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#189 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -45,7 +45,6 @@ import SwiftTrace
 #if SWIFT_PACKAGE
 import HotReloadingGuts
 import SwiftTraceGuts
-import DLKit
 #endif
 
 #if os(iOS) || os(tvOS)
@@ -86,6 +85,7 @@ extension NSObject {
 @objc(SwiftInjection)
 public class SwiftInjection: NSObject {
 
+    public typealias SymbolName = UnsafePointer<CChar>
     @objc static var traceInjection = false
 
     // The various environment variables

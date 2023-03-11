@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#191 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#192 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -288,7 +288,7 @@ public class SwiftInjection: NSObject {
             }
 
             if let XCTestCase = objc_getClass("XCTestCase") as? AnyClass,
-                oldClasses.first?.isSubclass(of: XCTestCase) == true {
+                isSubclass(newClass, of: XCTestCase) {
                 testClasses.append(newClass)
             }
 
@@ -333,13 +333,34 @@ public class SwiftInjection: NSObject {
         }
     }
 
-    open class func inheritedGeneric(anyType: Any.Type) -> Bool {
-        var inheritedGeneric: Any.Type? = anyType
+    struct BasicClassInfo {
+        let metaClass: AnyClass?
+        let superClass: AnyClass?
+    }
+
+    open class func superclass(of aClass: AnyClass) -> AnyClass? {
+        let metaData: UnsafePointer<BasicClassInfo> = autoBitCast(aClass)
+        return autoBitCast(metaData.pointee.superClass)
+    }
+
+    open class func isSubclass(_ subClass: AnyClass, of aClass: AnyClass) -> Bool {
+        var subClass: AnyClass? = subClass
+        repeat {
+            if subClass === aClass {
+                return true
+            }
+            subClass = superclass(of: subClass!)
+        } while subClass != nil
+        return false
+    }
+
+    open class func inheritedGeneric(anyType: AnyClass) -> Bool {
+        var inheritedGeneric: AnyClass? = anyType
         while let parent = inheritedGeneric {
             if _typeName(parent).hasSuffix(">") {
                 return true
             }
-            inheritedGeneric = (parent as? AnyClass)?.superclass()
+            inheritedGeneric = superclass(of: parent)
         }
         return false
     }
@@ -542,7 +563,7 @@ public class SwiftInjection: NSObject {
         // injecting getters returning generics best avoided for some reason.
         if let getted = name?[safe: .last(of: ".getter : ", end: true)...] {
             if getted.hasSuffix(">") { return }
-            if let type = SwiftMeta.lookupType(named: getted),
+            if let type = SwiftMeta.lookupType(named: getted) as? AnyClass,
                inheritedGeneric(anyType: type) {
                 return
             }

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#192 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#193 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -346,7 +346,7 @@ public class SwiftInjection: NSObject {
     open class func isSubclass(_ subClass: AnyClass, of aClass: AnyClass) -> Bool {
         var subClass: AnyClass? = subClass
         repeat {
-            if subClass === aClass {
+            if subClass == aClass {
                 return true
             }
             subClass = superclass(of: subClass!)

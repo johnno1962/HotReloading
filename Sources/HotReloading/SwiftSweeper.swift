@@ -7,7 +7,7 @@
 //  instance of classes that have been injected in order
 //  to be able to send them the @objc injected message.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#15 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#16 $
 //
 
 import Foundation
@@ -81,7 +81,7 @@ extension SwiftInjection {
             SwiftSweeper(instanceTask: {
                 (instance: AnyObject) in
                 if let instanceClass = object_getClass(instance),
-                   injectedClasses.contains(where: { $0 === instanceClass }) ||
+                   injectedClasses.contains(where: { $0 == instanceClass }) ||
                     !injectedGenerics.isEmpty &&
                     patchGenerics(oldClass: instanceClass, tmpfile: tmpfile,
                         injectedGenerics: injectedGenerics, patched: &patched) {

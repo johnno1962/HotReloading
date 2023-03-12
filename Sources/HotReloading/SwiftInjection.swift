@@ -340,7 +340,7 @@ public class SwiftInjection: NSObject {
 
     open class func superclass(of aClass: AnyClass) -> AnyClass? {
         let metaData: UnsafePointer<BasicClassInfo> = autoBitCast(aClass)
-        return autoBitCast(metaData.pointee.superClass)
+        return metaData.pointee.superClass
     }
 
     open class func isSubclass(_ subClass: AnyClass, of aClass: AnyClass) -> Bool {

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#168 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#171 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -398,10 +398,10 @@ public class SwiftEval: NSObject {
 
         guard var (compileCommand, sourceFile) = try
             compileByClass[classNameOrFile] ??
+            (SwiftEval.longTermCache[classNameOrFile] as? String)
+                .flatMap({ ($0, classNameOrFile) }) ??
             findCompileCommand(logsDir: logsDir,
-               classNameOrFile: classNameOrFile, tmpfile: tmpfile) ??
-            SwiftEval.longTermCache[classNameOrFile].flatMap({
-                ($0 as! String, classNameOrFile) }) else {
+               classNameOrFile: classNameOrFile, tmpfile: tmpfile) else {
             throw evalError("""
                 Could not locate compile command for \(classNameOrFile).
                 This could be due to one of the following:
@@ -492,6 +492,9 @@ public class SwiftEval: NSObject {
                 \(compileCommand) >\"\(logfile)\" 2>&1)
                 """) || isBazelCompile else {
             compileByClass.removeValue(forKey: classNameOrFile)
+            SwiftEval.longTermCache.removeObject(forKey: classNameOrFile)
+            SwiftEval.longTermCache.write(toFile: SwiftEval.buildCacheFile,
+                                          atomically: false)
             throw scriptError("Re-compilation")
         }
 

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#171 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#173 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -244,7 +244,15 @@ public class SwiftEval: NSObject {
 
     var compileByClass = [String: (String, String)]()
 
-    static var buildCacheFile = "/tmp/eval_builds.plist"
+    #if os(macOS) || targetEnvironment(macCatalyst)
+    static let buildCacheFile = "/tmp/macOS_builds.plist"
+    #elseif os(tvOS)
+    static let buildCacheFile = "/tmp/tvOS_builds.plist"
+    #elseif targetEnvironment(simulator)
+    static let buildCacheFile = "/tmp/iOS_builds.plist"
+    #else
+    static let buildCacheFile = "/tmp/maciOS_builds.plist"
+    #endif
     static var longTermCache =
         NSMutableDictionary(contentsOfFile: buildCacheFile) ?? NSMutableDictionary()
 

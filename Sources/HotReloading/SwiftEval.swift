@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#173 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#174 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -1115,10 +1115,10 @@ public class SwiftEval: NSObject {
                                 }
                             }
                             if ($realPath and (undef, $realPath) = $realPath =~ /cd (\"?)(.*?)\1\r/) {
-                    #           print "cd \"$realPath\" && ";
+                                print "cd \"$realPath\"; ";
                             }
                             # find last
-                            $command = $line
+                            $command = $line;
                             #exit 0;
                         }
                         elsif (my ($bazel, $dir) = $line =~ /^Running "([^"]+)".* (?:patching output for workspace root|with project path) at ("[^"]+")/) {

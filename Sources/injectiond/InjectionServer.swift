@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#48 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#51 $
 //
 
 import Cocoa
@@ -224,6 +224,11 @@ public class InjectionServer: SimpleSocket {
             appDelegate.toggleLookup(nil)
         }
 
+        if let appVersion = Bundle.main.infoDictionary?[
+            "CFBundleShortVersionString"] as? String {
+            sendCommand(.appVersion, with: appVersion)
+        }
+
         // read status responses from client app
         while true {
             let commandInt = readInt()
@@ -306,6 +311,10 @@ public class InjectionServer: SimpleSocket {
                         _ = appDelegate.application(NSApp,
                                                     openFile: projectRoot)
                     }
+                }
+            case .buildCache:
+                if let buildCache = readString() {
+                    builder.buildCacheFile = buildCache
                 }
             default:
                 break

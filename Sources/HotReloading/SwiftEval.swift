@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#174 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#179 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -245,15 +245,15 @@ public class SwiftEval: NSObject {
     var compileByClass = [String: (String, String)]()
 
     #if os(macOS) || targetEnvironment(macCatalyst)
-    static let buildCacheFile = "/tmp/macOS_builds.plist"
+    var buildCacheFile = "/tmp/macOS_builds.plist"
     #elseif os(tvOS)
-    static let buildCacheFile = "/tmp/tvOS_builds.plist"
+    var buildCacheFile = "/tmp/tvOS_builds.plist"
     #elseif targetEnvironment(simulator)
-    static let buildCacheFile = "/tmp/iOS_builds.plist"
+    var buildCacheFile = "/tmp/iOS_builds.plist"
     #else
-    static let buildCacheFile = "/tmp/maciOS_builds.plist"
+    var buildCacheFile = "/tmp/maciOS_builds.plist"
     #endif
-    static var longTermCache =
+    lazy var longTermCache =
         NSMutableDictionary(contentsOfFile: buildCacheFile) ?? NSMutableDictionary()
 
     public func determineEnvironment(classNameOrFile: String) throws -> (URL, URL) {
@@ -406,7 +406,7 @@ public class SwiftEval: NSObject {
 
         guard var (compileCommand, sourceFile) = try
             compileByClass[classNameOrFile] ??
-            (SwiftEval.longTermCache[classNameOrFile] as? String)
+            (longTermCache[classNameOrFile] as? String)
                 .flatMap({ ($0, classNameOrFile) }) ??
             findCompileCommand(logsDir: logsDir,
                classNameOrFile: classNameOrFile, tmpfile: tmpfile) else {
@@ -497,21 +497,21 @@ public class SwiftEval: NSObject {
         debug("Final command:", compileCommand, "-->", objectFile)
         guard shell(command: """
                 (cd "\(projectRoot.escaping("$"))" && \
-                \(compileCommand) >\"\(logfile)\" 2>&1)
+                \(compileCommand) -o "\(objectFile)" >\"\(logfile)\" 2>&1)
                 """) || isBazelCompile else {
             compileByClass.removeValue(forKey: classNameOrFile)
-            SwiftEval.longTermCache.removeObject(forKey: classNameOrFile)
-            SwiftEval.longTermCache.write(toFile: SwiftEval.buildCacheFile,
-                                          atomically: false)
+            longTermCache.removeObject(forKey: classNameOrFile)
+            longTermCache.write(toFile: buildCacheFile,
+                                atomically: false)
             throw scriptError("Re-compilation")
         }
 
         compileByClass[classNameOrFile] = (compileCommand, sourceFile)
-        if SwiftEval.longTermCache[classNameOrFile] as? String != compileCommand &&
+        if longTermCache[classNameOrFile] as? String != compileCommand &&
             classNameOrFile.hasPrefix("/") {
-            SwiftEval.longTermCache[classNameOrFile] = compileCommand
-            SwiftEval.longTermCache.write(toFile: SwiftEval.buildCacheFile,
-                                          atomically: false)
+            longTermCache[classNameOrFile] = compileCommand
+            longTermCache.write(toFile: buildCacheFile,
+                                atomically: false)
         }
 
         if isBazelCompile {
@@ -903,7 +903,6 @@ public class SwiftEval: NSObject {
             // return path to workspace instead of object file
             return compileCommand[#"^cd "([^"]+)""#] ?? "dir?"
         }
-        compileCommand += " -o \(tmpfile).o"
         return tmpfile+".o"
     }
 
@@ -1115,6 +1114,7 @@ public class SwiftEval: NSObject {
                                 }
                             }
                             if ($realPath and (undef, $realPath) = $realPath =~ /cd (\"?)(.*?)\1\r/) {
+                                $realPath =~ s/\\([^\$])/$1/g;
                                 print "cd \"$realPath\"; ";
                             }
                             # find last

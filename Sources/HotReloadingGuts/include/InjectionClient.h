@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#45 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#47 $
 //
 //  Shared definitions between server and client.
 //
@@ -104,6 +104,7 @@ typedef NS_ENUM(int, InjectionCommand) {
     InjectionObjcClassRefs,
     InjectionDescriptorRefs,
     InjectionSetXcodeDev,
+    InjectionAppVersion,
 
     InjectionInvalid = 1000,
 
@@ -124,6 +125,7 @@ typedef NS_ENUM(int, InjectionResponse) {
     InjectionForceUnhide,
     InjectionProjectRoot,
     InjectionGetXcodeDev,
+    InjectionBuildCache,
 
     InjectionExit = ~0
 };

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#179 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#187 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -1065,6 +1065,9 @@ public class SwiftEval: NSObject {
             #"(?:/(?:[^/\\]*\\.)*[^/\\ ]+)+"#) +
             sourceRegex.escaping("' {}()&*")
         var regexp = #" -(?:primary-file|c(?<!-frontend -c)) (?:\\?"(\#(swiftEscaped))\\?"|(\#(objcEscaped))) "#
+        let sourceName = URL(fileURLWithPath: classNameOrFile)
+            .deletingPathExtension().lastPathComponent
+            .replacingOccurrences(of: "'", with: "\\'")
 
 //        print(regexp)
         let swiftpm = projectFile?.hasSuffix(".swiftpm") == true ?
@@ -1100,7 +1103,7 @@ public class SwiftEval: NSObject {
                                             or die "Could not open filemap '$filemap'";
                                         my $json_text = join'', $file_handle->getlines();
                                         my $json_map = decode_json( $json_text, { utf8  => 1 } );
-                                        my $filelist = '\#(tmpDir)/filelist.txt';
+                                        my $filelist = '/tmp/\#(sourceName)_filelist.txt';
                                         my $swift_sources = join "\n", keys %$json_map;
                                         my $listfile = IO::File->new( "> $filelist" )
                                             or die "Could not open list file '$filelist'";
@@ -1108,7 +1111,7 @@ public class SwiftEval: NSObject {
                                         $listfile->print( $swift_sources );
                                         $listfile->close();
                                         $line =~ s/( -filelist )(\#(
-                                            Self.argumentRegex))( )/$1$filelist$3/;
+                                            Self.argumentRegex)) /$1'$filelist' /;
                                         last;
                                     }
                                 }

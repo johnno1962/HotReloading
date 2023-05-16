@@ -6,6 +6,7 @@
 //  Copyright © 2018 John Holdsworth. All rights reserved.
 //
 
+#if DEBUG || !SWIFT_PACKAGE
 #import <Foundation/Foundation.h>
 
 static NSString *const UserDefaultsTDDEnabled = @"Enabled TDD";
@@ -21,3 +22,4 @@ static NSString *const UserDefaultsLookup = @"typeLookup";
 static NSString *const UserDefaultsRemote = @"appRemote";
 static NSString *const UserDefaultsReplay = @"replayInjections";
 static NSString *const UserDefaultsUnlock = @"deviceUnlock";
+#endif

@@ -4,11 +4,12 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/ObjcInjection.swift#20 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/ObjcInjection.swift#21 $
 //
 //  Code specific to "classic" Objective-C method swizzling.
 //
 
+#if DEBUG || !SWIFT_PACKAGE
 import Foundation
 import SwiftTrace
 #if SWIFT_PACKAGE
@@ -122,3 +123,4 @@ extension SwiftInjection {
         return swizzled
     }
 }
+#endif

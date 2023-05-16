@@ -4,11 +4,12 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#40 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#41 $
 //
 //  Code specific to injecting on an actual device.
 //
 
+#if DEBUG || !SWIFT_PACKAGE
 #if !targetEnvironment(simulator) && SWIFT_PACKAGE
 import SwiftTrace
 #if SWIFT_PACKAGE
@@ -268,4 +269,5 @@ extension SwiftInjection {
         }
     }
 }
+#endif
 #endif

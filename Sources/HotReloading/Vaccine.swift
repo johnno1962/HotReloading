@@ -1,3 +1,4 @@
+#if DEBUG || !SWIFT_PACKAGE
 #if os(macOS)
 import Cocoa
 typealias View = NSView
@@ -236,4 +237,5 @@ fileprivate extension CGSize {
         return CGSize(width: width * 2, height: height * 2)
     }
 }
+#endif
 #endif

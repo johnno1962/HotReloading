@@ -7,9 +7,10 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#48 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#49 $
 //
 
+#if DEBUG || !SWIFT_PACKAGE
 #import <Foundation/Foundation.h>
 
 #import <mach-o/loader.h>
@@ -488,3 +489,4 @@ void reverse_symbolics(const void *image) {
                (int)typeref_size, strerror(errno));
     #endif
 }
+#endif

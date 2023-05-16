@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 09/06/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/ReducerInjection.swift#9 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/ReducerInjection.swift#10 $
 //
 //  Support for injecting "The Composble Architecture" Reducers using TCA fork:
 //  https://github.com/thebrowsercompany/swift-composable-architecture/tree/develop
@@ -12,6 +12,7 @@
 //  Reducers are now deprecated in favour of using the new "ReducerProtocol".
 //
 
+#if DEBUG || !SWIFT_PACKAGE
 import Foundation
 import SwiftTrace
 #if SWIFT_PACKAGE
@@ -63,3 +64,4 @@ extension SwiftInjection {
         }
     }
 }
+#endif

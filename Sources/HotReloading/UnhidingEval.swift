@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#18 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#19 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -31,6 +31,7 @@
 //  asks the user to run the app again and retry.
 //
 
+#if DEBUG || !SWIFT_PACKAGE
 import Foundation
 #if SWIFT_PACKAGE
 import HotReloadingGuts
@@ -174,3 +175,4 @@ public class UnhidingEval: SwiftEval {
         }
     }
 }
+#endif

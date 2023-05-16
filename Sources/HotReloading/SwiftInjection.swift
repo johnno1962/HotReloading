@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#195 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#196 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -39,6 +39,7 @@
 //  never be traced due to changes in the stack layout when using co-routines.
 //
 
+#if DEBUG || !SWIFT_PACKAGE
 #if arch(x86_64) || arch(i386) || arch(arm64) // simulator/macOS only
 import Foundation
 import SwiftTrace
@@ -664,4 +665,5 @@ public class SwiftInjectionEval: UnhidingEval {
         return classes
     }
 }
+#endif
 #endif

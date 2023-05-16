@@ -4,9 +4,10 @@
 //  Created by John Holdsworth on 26/10/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionStats.swift#1 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionStats.swift#2 $
 //
 
+#if DEBUG || !SWIFT_PACKAGE
 import Foundation
 import SwiftTrace
 #if SWIFT_PACKAGE
@@ -80,3 +81,4 @@ extension SwiftInjection {
         }
     }
 }
+#endif

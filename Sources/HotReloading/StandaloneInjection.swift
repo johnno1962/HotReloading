@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#54 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#55 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -17,6 +17,7 @@
 //  directory in DerivedData of the most recently built project.
 //
 
+#if DEBUG || !SWIFT_PACKAGE
 #if targetEnvironment(simulator) && !APP_SANDBOXED || os(macOS)
 #if SWIFT_PACKAGE
 import HotReloadingGuts
@@ -144,4 +145,5 @@ class StandaloneInjection: InjectionClient {
         }
     }
 }
+#endif
 #endif

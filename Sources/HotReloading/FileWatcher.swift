@@ -5,13 +5,14 @@
 //  Created by John Holdsworth on 08/03/2015.
 //  Copyright (c) 2015 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#39 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#40 $
 //
 //  Started out as an abstraction to watch files under a directory.
 //  "Enhanced" to extract the last modified build log directory by
 //  backdating the event stream to just before the app launched.
 //
 
+#if DEBUG || !SWIFT_PACKAGE
 #if targetEnvironment(simulator) && !APP_SANDBOXED || os(macOS)
 import Foundation
 #if SWIFT_PACKAGE
@@ -195,5 +196,6 @@ let kFSEventStreamCreateFlagFileEvents: FSEventStreamCreateFlags = 16
 let kFSEventStreamEventFlagItemRenamed = 0x00000800
 let kFSEventStreamEventFlagItemModified = 0x00001000
 fileprivate var watchers = [FSEventStreamRef: FileWatcher]()
+#endif
 #endif
 #endif

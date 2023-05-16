@@ -7,9 +7,10 @@
 //  instance of classes that have been injected in order
 //  to be able to send them the @objc injected message.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#16 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#17 $
 //
 
+#if DEBUG || !SWIFT_PACKAGE
 import Foundation
 #if SWIFT_PACKAGE
 import HotReloadingGuts
@@ -246,3 +247,4 @@ extension NSDictionary {
         self.allValues.forEach { SwiftSweeper.current?.sweepInstance($0 as AnyObject) }
     }
 }
+#endif

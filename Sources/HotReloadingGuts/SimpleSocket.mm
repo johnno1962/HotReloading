@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#32 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#33 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -13,6 +13,7 @@
 //  implemented by overriding the "runInBackground" method.
 //
 
+#if DEBUG || !SWIFT_PACKAGE
 #import "SimpleSocket.h"
 
 #include <sys/socket.h>
@@ -382,3 +383,4 @@ struct multicast_socket_packet {
 }
 
 @end
+#endif

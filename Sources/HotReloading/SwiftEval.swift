@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#191 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#196 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -237,6 +237,9 @@ public class SwiftEval: NSObject {
                     "Could not read log file '\(logfile)'"
         if log.contains(".h' file not found") {
             log += "\(APP_PREFIX)⚠️ Adjust the \"Header Search Paths\" in your project's Build Settings"
+        }
+        if log.contains("/filelists/") {
+            log += "\(APP_PREFIX)⚠️ File list file has been removed, retry the injection"
         }
         return evalError("""
             \(what) failed (see: \(cmdfile))
@@ -496,13 +499,13 @@ public class SwiftEval: NSObject {
                   with: "$1\(arch)", options: .regularExpression)
         }
 
-        debug("Final command:", compileCommand, "-->", objectFile)
-        var cmd = "(cd \(projectRoot.escaping("$")) && \(compileCommand) ";
-        if isBazelCompile {
-            cmd += "> \"\(logfile)\" 2>&1)";
-        } else {
-            cmd += "-o \"\(objectFile)\" > \"\(logfile)\" 2>&1)";
+        var cmd = "(cd \"\(projectRoot.escaping("$"))\" && \(compileCommand)"
+        if !isBazelCompile {
+            cmd += " -o \"\(objectFile)\""
         }
+        cmd += " > \"\(logfile)\" 2>&1)"
+
+        debug("Final command:", cmd)
         guard shell(command: cmd) || isBazelCompile else {
             compileByClass.removeValue(forKey: classNameOrFile)
             longTermCache.removeObject(forKey: classNameOrFile)

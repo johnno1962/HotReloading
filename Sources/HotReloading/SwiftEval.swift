@@ -497,10 +497,13 @@ public class SwiftEval: NSObject {
         }
 
         debug("Final command:", compileCommand, "-->", objectFile)
-        guard shell(command: """
-                (cd "\(projectRoot.escaping("$"))" && \
-                \(compileCommand) -o "\(objectFile)" >\"\(logfile)\" 2>&1)
-                """) || isBazelCompile else {
+        var cmd = "(cd \(projectRoot.escaping("$")) && \(compileCommand) ";
+        if isBazelCompile {
+            cmd += "> \"\(logfile)\" 2>&1)";
+        } else {
+            cmd += "-o \"\(objectFile)\" > \"\(logfile)\" 2>&1)";
+        }
+        guard shell(command: cmd) || isBazelCompile else {
             compileByClass.removeValue(forKey: classNameOrFile)
             longTermCache.removeObject(forKey: classNameOrFile)
             longTermCache.write(toFile: buildCacheFile,

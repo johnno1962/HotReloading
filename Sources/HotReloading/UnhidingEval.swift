@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#17 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#18 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -122,8 +122,7 @@ public class UnhidingEval: SwiftEval {
     override func xcode13Fix(sourceFile: String,
                              compileCommand: inout String) -> String {
         let sourceName = URL(fileURLWithPath:
-            sourceFile).deletingPathExtension().lastPathComponent
-            .replacingOccurrences(of: " ", with: "\\ ")
+            sourceFile).deletingPathExtension().lastPathComponent.escaping()
         let hasFileList = compileCommand.contains(" -filelist ")
         var nPrimaries = 0
         // ensure there is only ever one -primary-file argument and object file

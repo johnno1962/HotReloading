@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#187 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#190 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -136,11 +136,12 @@ extension NSObject {
 }
 #endif
 
-fileprivate extension StringProtocol {
+extension StringProtocol {
     subscript(range: NSRange) -> String? {
         return Range(range, in: String(self)).flatMap { String(self[$0]) }
     }
-    func escaping(_ chars: String, with template: String = "\\$0") -> String {
+    func escaping(_ chars: String = "' {}()&*",
+                  with template: String = "\\$0") -> String {
         return self.replacingOccurrences(of: "[\(chars)]",
             with: template.replacingOccurrences(of: #"\"#, with: "\\\\"),
             options: [.regularExpression])
@@ -1062,12 +1063,10 @@ public class SwiftEval: NSObject {
             #"\Q\#(classNameOrFile)\E"# : #"/\#(classNameOrFile)\.\w+"#
         let swiftEscaped = (isFile ? "" : #"[^"]*?"#) + sourceRegex.escaping("'$", with: #"\E\\*$0\Q"#)
         let objcEscaped = (isFile ? "" :
-            #"(?:/(?:[^/\\]*\\.)*[^/\\ ]+)+"#) +
-            sourceRegex.escaping("' {}()&*")
+            #"(?:/(?:[^/\\]*\\.)*[^/\\ ]+)+"#) + sourceRegex.escaping()
         var regexp = #" -(?:primary-file|c(?<!-frontend -c)) (?:\\?"(\#(swiftEscaped))\\?"|(\#(objcEscaped))) "#
-        let sourceName = URL(fileURLWithPath: classNameOrFile)
-            .deletingPathExtension().lastPathComponent
-            .replacingOccurrences(of: "'", with: "\\'")
+        let sourceName = URL(fileURLWithPath: classNameOrFile).lastPathComponent
+            .replacingOccurrences(of: "'", with: "_")
 
 //        print(regexp)
         let swiftpm = projectFile?.hasSuffix(".swiftpm") == true ?
@@ -1103,7 +1102,8 @@ public class SwiftEval: NSObject {
                                             or die "Could not open filemap '$filemap'";
                                         my $json_text = join'', $file_handle->getlines();
                                         my $json_map = decode_json( $json_text, { utf8  => 1 } );
-                                        my $filelist = '/tmp/\#(sourceName)_filelist.txt';
+                                        mkdir("/tmp/filelists");
+                                        my $filelist = '/tmp/filelists/\#(sourceName)';
                                         my $swift_sources = join "\n", keys %$json_map;
                                         my $listfile = IO::File->new( "> $filelist" )
                                             or die "Could not open list file '$filelist'";

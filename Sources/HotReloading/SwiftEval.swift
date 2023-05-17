@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#196 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#199 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -184,6 +184,7 @@ public class SwiftEval: NSObject {
     let skipBazelLinking = "--skip_linking"
     var bazelLight = getenv("INJECTION_BAZEL") != nil ||
             UserDefaults.standard.bool(forKey: "bazelLight")
+    var moduleLibraries = Set<String>()
     let bazelWorkspace = "WORKSPACE"
 
     /// Additional logging to /tmp/hot\_reloading.log for "HotReloading" version of injection.
@@ -237,9 +238,6 @@ public class SwiftEval: NSObject {
                     "Could not read log file '\(logfile)'"
         if log.contains(".h' file not found") {
             log += "\(APP_PREFIX)⚠️ Adjust the \"Header Search Paths\" in your project's Build Settings"
-        }
-        if log.contains("/filelists/") {
-            log += "\(APP_PREFIX)⚠️ File list file has been removed, retry the injection"
         }
         return evalError("""
             \(what) failed (see: \(cmdfile))
@@ -507,10 +505,14 @@ public class SwiftEval: NSObject {
 
         debug("Final command:", cmd)
         guard shell(command: cmd) || isBazelCompile else {
-            compileByClass.removeValue(forKey: classNameOrFile)
-            longTermCache.removeObject(forKey: classNameOrFile)
-            longTermCache.write(toFile: buildCacheFile,
-                                atomically: false)
+            if longTermCache[classNameOrFile] != nil {
+                compileByClass.removeValue(forKey: classNameOrFile)
+                longTermCache.removeObject(forKey: classNameOrFile)
+                longTermCache.write(toFile: buildCacheFile,
+                                    atomically: false)
+                return try rebuildClass(oldClass: oldClass,
+                    classNameOrFile: classNameOrFile, extra: extra)
+            }
             throw scriptError("Re-compilation")
         }
 
@@ -555,8 +557,6 @@ public class SwiftEval: NSObject {
                  contents: "\"\(objectFile)\" \(speclib)")
         return (speclib != "" ? speclib+Self.dylibDelim : "")+tmpfile
     }
-
-    var moduleLibraries = Set<String>()
 
     func bazelLink(in projectRoot: String, since sourceFile: String,
                    compileCommand: String) throws -> String {
@@ -1103,7 +1103,8 @@ public class SwiftEval: NSObject {
                             # may need to extract file list
                             if ($line =~ / -filelist /) {
                                 while (defined (my $line2 = <GUNZIP>)) {
-                                    if (my($filemap) = $line2 =~ / -output-file-map ([^ \\]+(?:\\.[^ \\]+)*) / ) {
+                                    if (my ($filemap) = $line2 =~ / -output-file-map (\#(
+                                            Self.argumentRegex)) / ) {
                                         $filemap =~ s/\\//g;
                                         my $file_handle = IO::File->new( "< $filemap" )
                                             or die "Could not open filemap '$filemap'";

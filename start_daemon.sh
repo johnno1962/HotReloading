@@ -2,10 +2,15 @@
 #
 # Start up daemon process to rebuild changed sources
 #
-# $Id: //depot/HotReloading/start_daemon.sh#41 $
+# $Id: //depot/HotReloading/start_daemon.sh#42 $
 #
 
 echo "*** You no longer need to run start_daemon.sh" 1>&2
+
+# You used to use this script in a "Run Script/Build Phase" like this:
+#if [ -d $SYMROOT/../../SourcePackages ]; then
+#    $SYMROOT/../../SourcePackages/checkouts/HotReloading/start_daemon.sh
+#fi
 
 export PROJECT_FILE_PATH="${PROJECT_FILE_PATH:-"$PWD/Package.swift"}" # Vapor
 

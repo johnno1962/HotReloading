@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#199 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#201 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -486,7 +486,6 @@ public class SwiftEval: NSObject {
         // Extract object path (overidden in UnhidingEval.swift for Xcode 13)
         let objectFile = xcode13Fix(sourceFile: sourceFile,
                                     compileCommand: &compileCommand)
-        unlink(objectFile)
 
         _ = evalError("Compiling \(sourceFile)")
 
@@ -497,19 +496,13 @@ public class SwiftEval: NSObject {
                   with: "$1\(arch)", options: .regularExpression)
         }
 
-        var cmd = "(cd \"\(projectRoot.escaping("$"))\" && \(compileCommand)"
-        if !isBazelCompile {
-            cmd += " -o \"\(objectFile)\""
-        }
-        cmd += " > \"\(logfile)\" 2>&1)"
-
-        debug("Final command:", cmd)
-        guard shell(command: cmd) || isBazelCompile else {
+        debug("Final command:", compileCommand, "-->", objectFile)
+        guard shell(command: """
+                (cd "\(projectRoot.escaping("$"))" && \
+                \(compileCommand) >\"\(logfile)\" 2>&1)
+                """) || isBazelCompile else {
             if longTermCache[classNameOrFile] != nil {
-                compileByClass.removeValue(forKey: classNameOrFile)
-                longTermCache.removeObject(forKey: classNameOrFile)
-                longTermCache.write(toFile: buildCacheFile,
-                                    atomically: false)
+                updateLongTermCache(remove: classNameOrFile)
                 return try rebuildClass(oldClass: oldClass,
                     classNameOrFile: classNameOrFile, extra: extra)
             }
@@ -520,8 +513,7 @@ public class SwiftEval: NSObject {
         if longTermCache[classNameOrFile] as? String != compileCommand &&
             classNameOrFile.hasPrefix("/") {
             longTermCache[classNameOrFile] = compileCommand
-            longTermCache.write(toFile: buildCacheFile,
-                                atomically: false)
+            updateLongTermCache()
         }
 
         if isBazelCompile {
@@ -556,6 +548,15 @@ public class SwiftEval: NSObject {
         try link(dylib: "\(tmpfile).dylib", compileCommand: compileCommand,
                  contents: "\"\(objectFile)\" \(speclib)")
         return (speclib != "" ? speclib+Self.dylibDelim : "")+tmpfile
+    }
+
+    func updateLongTermCache(remove: String? = nil) {
+        if let source = remove {
+            compileByClass.removeValue(forKey: source)
+            longTermCache.removeObject(forKey: source)
+        }
+        longTermCache.write(toFile: buildCacheFile,
+                            atomically: false)
     }
 
     func bazelLink(in projectRoot: String, since sourceFile: String,
@@ -911,7 +912,10 @@ public class SwiftEval: NSObject {
             // return path to workspace instead of object file
             return compileCommand[#"^cd "([^"]+)""#] ?? "dir?"
         }
-        return tmpfile+".o"
+        let objectFile = "/tmp/injection.o"
+        compileCommand += " -o "+objectFile
+        unlink(objectFile)
+        return objectFile
     }
 
     func createUnhider(executable: String, _ objcClassRefs: NSMutableArray,

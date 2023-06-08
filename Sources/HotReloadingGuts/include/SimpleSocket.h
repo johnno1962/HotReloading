@@ -5,10 +5,9 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/SimpleSocket.h#10 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/SimpleSocket.h#11 $
 //
 
-#if DEBUG || !SWIFT_PACKAGE
 #import <Foundation/Foundation.h>
 
 #include <arpa/inet.h>
@@ -48,4 +47,3 @@
 - (BOOL)writeCommand:(int)command withString:(NSString *_Nullable)string;
 
 @end
-#endif

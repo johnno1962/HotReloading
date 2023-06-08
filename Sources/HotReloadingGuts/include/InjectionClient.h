@@ -5,12 +5,12 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#48 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#49 $
 //
 //  Shared definitions between server and client.
 //
 
-#if DEBUG || !SWIFT_PACKAGE
+#import <Foundation/Foundation.h>
 #import "UserDefaults.h"
 #import <mach-o/dyld.h>
 #ifndef __IPHONE_OS_VERSION_MIN_REQUIRED
@@ -146,4 +146,3 @@ struct objc_image_info;
 OBJC_EXPORT Class objc_readClassPair(Class cls,
                                      const struct objc_image_info *info)
     OBJC_AVAILABLE(10.10, 8.0, 9.0, 1.0, 2.0);
-#endif

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#196 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#198 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -30,7 +30,7 @@
 //  https://github.com/thebrowsercompany/swift-composable-architecture/tree/develop
 //
 //  InjectionIII.app now supports injection of class methods, getters and setters
-//  and will maintain the values of top level and static variables when they are
+//  and can maintain the values of top level and static variables when they are
 //  injected instead of their being reinitialised as the object file is reloaded.
 //
 //  Which Swift symbols can be patched or interposed is now centralised and
@@ -119,7 +119,7 @@ public class SwiftInjection: NSObject {
     static var objcClassRefs = NSMutableArray()
     static var descriptorRefs = NSMutableArray()
     static var injectedPrefix: String {
-        return "Injection#\(SwiftEval.instance.injectionNumber)/"
+        return "#\(SwiftEval.instance.injectionNumber-100)/"
     }
 
     open class func log(_ what: Any...) {
@@ -199,6 +199,10 @@ public class SwiftInjection: NSObject {
 
         injectionDetail = getenv(INJECTION_DETAIL) != nil
         SwiftTrace.preserveStatics = getenv(INJECTION_PRESERVE_STATICS) != nil
+        if getenv(INJECTION_TRACE) != nil {
+            traceInjection = true
+            SwiftTrace.typeLookup = true
+        }
 
         // Determine any generic classes being injected.
         findSwiftSymbols(searchLastLoaded(), "CMa") {

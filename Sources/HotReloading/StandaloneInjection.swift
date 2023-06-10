@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#55 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#56 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -52,7 +52,6 @@ class StandaloneInjection: InjectionClient {
         }
         builder.forceUnhide = { builder.startUnhide() }
         builder.bazelLight = true
-        maybeTrace()
 
         let home = NSHomeDirectory()
             .replacingOccurrences(of: #"(/Users/[^/]+).*"#, with: "$1",
@@ -87,7 +86,7 @@ class StandaloneInjection: InjectionClient {
                     return
                 }
             }
-            self.maybeTrace()
+
             for changed in filesChanged {
                 guard let changed = changed as? String,
                       !changed.hasPrefix(library) && !changed.contains("/."),

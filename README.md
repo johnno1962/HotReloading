@@ -62,8 +62,10 @@ device doesn't connect check the app is listening on port `8899`:
 tcp4       0      0  127.0.0.1.8898         *.*                    LISTEN
 tcp4       0      0  *.8899                 *.*                    LISTEN
 ```
-If your device still doesn't connect, clone this project and configure 
-your mac's WiFi IP address into the  `hostname` variable in Package.swift.
+If your device still doesn't connect either add an `INJECTION_HOST`
+environment variable to your scheme containg the WiFi IP address of
+the host you're running the InjectionIII.app on or clone this project and 
+code your mac's IP address into the  `hostname` variable in Package.swift.
 Then, drag the clone onto your project to have it take the place of the
 configured Swift Package as outlined in [these instructions](https://developer.apple.com/documentation/xcode/editing-a-package-dependency-as-a-local-package).
 
@@ -113,4 +115,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2023/06/09 $
+$Date: 2023/06/10 $

@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#56 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#58 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -70,9 +70,16 @@ class StandaloneInjection: InjectionClient {
             }
         }
 
-        let minInterval = 0.33
+        let holdOff = 2.0, minInterval = 0.33
         var lastInjected = [String: TimeInterval]()
 
+        if getenv(SwiftInjection.INJECTION_REPLAY) != nil {
+            DispatchQueue.main.sync {
+                _ = SwiftInjection.replayInjections()
+            }
+        }
+
+        let firstInjected = Date.timeIntervalSinceReferenceDate + holdOff
         watchers.append(FileWatcher(roots: dirs,
                                     callback: { filesChanged, idePath in
             builder.lastIdeProcPath = idePath
@@ -91,7 +98,7 @@ class StandaloneInjection: InjectionClient {
                 guard let changed = changed as? String,
                       !changed.hasPrefix(library) && !changed.contains("/."),
                       Date.timeIntervalSinceReferenceDate -
-                        lastInjected[changed, default: 0.0] >
+                        lastInjected[changed, default: firstInjected] >
                         minInterval else {
                     continue
                 }

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#198 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#199 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -103,6 +103,7 @@ public class SwiftInjection: NSObject {
     static let INJECTION_STANDALONE = "INJECTION_STANDALONE"
     static let INJECTION_DAEMON = "INJECTION_DAEMON"
     static let INJECTION_LOOKUP = "INJECTION_LOOKUP"
+    static let INJECTION_REPLAY = "INJECTION_REPLAY"
     static let INJECTION_TRACE = "INJECTION_TRACE"
     static let INJECTION_BAZEL = "INJECTION_BAZEL"
     static let INJECTION_DEBUG = "INJECTION_DEBUG"
@@ -144,7 +145,6 @@ public class SwiftInjection: NSObject {
 
     @objc
     open class func replayInjections() -> Int {
-        var injectionNumber = 0
         do {
             func mtime(_ path: String) -> time_t {
                 return SwiftEval.instance.mtime(URL(fileURLWithPath: path))
@@ -152,17 +152,18 @@ public class SwiftInjection: NSObject {
             let execBuild = mtime(Bundle.main.executablePath!)
 
             while true {
-                let tmpfile = "/tmp/eval\(injectionNumber+1)"
+                SwiftEval.instance.injectionNumber += 1
+                let tmpfile = SwiftEval.instance.tmpfile
                 if mtime("\(tmpfile).dylib") < execBuild {
+                    SwiftEval.instance.injectionNumber -= 1
                     break
                 }
                 try inject(tmpfile: tmpfile)
-                injectionNumber += 1
             }
         }
         catch {
         }
-        return injectionNumber
+        return SwiftEval.instance.injectionNumber
     }
 
     open class func versions(of aClass: AnyClass) -> [AnyClass] {

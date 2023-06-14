@@ -5,7 +5,7 @@
 //  Created by User on 20/10/2020.
 //  Copyright © 2020 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#26 $
+//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#30 $
 //
 
 import Cocoa
@@ -324,9 +324,9 @@ extension AppDelegate {
                 var patched = original
                 patched[#"""
                     ^((\s+)(public )?(var body:|func body\([^)]*\) -\>) some View \{\n\#
-                    (\2(?!    (if|switch|ForEach) )\s+(?!\.eraseToAnyView)\S.*\n|\s*\n)+)(?<!#endif\n)\2\}\n
+                    (\2(?!    (if|switch|ForEach) )\s+(?!\.enableInjection)\S.*\n|\s*\n)+)(?<!#endif\n)\2\}\n
                     """#.anchorsMatchLines] = """
-                    $1$2    .eraseToAnyView()
+                    $1$2    .enableInjection()
                     $2}
 
                     $2#if DEBUG
@@ -343,7 +343,7 @@ extension AppDelegate {
                             // HotReloading loads itself.
                         """
                     #else
-                    let loadInjection = """
+                    let loadInjection = #"""
                             guard objc_getClass("InjectionClient") == nil else {
                                 return
                             }
@@ -356,8 +356,16 @@ extension AppDelegate {
                             #else
                             let bundleName = "maciOSInjection.bundle"
                             #endif
-                            Bundle(path: "/Applications/InjectionIII.app/Contents/Resources/"+bundleName)!.load()
-                        """
+                            let bundlePath = "/Applications/InjectionIII.app/Contents/Resources/"+bundleName
+                            guard let bundle = Bundle(path: bundlePath), bundle.load() else {
+                                return print("""
+                                    ⚠️ Could not load injection bundle from \(bundlePath). \
+                                    Have you downloaded the InjectionIII.app from either \
+                                    https://github.com/johnno1962/InjectionIII/releases \
+                                    or the Mac App Store?
+                                    """)
+                            }
+                    """#
                     #endif
 
                     if !patched.contains("import SwiftUI") {
@@ -366,6 +374,11 @@ extension AppDelegate {
 
                     patched += """
 
+                        #if canImport(HotSwiftUI)
+                        @_exported import HotSwiftUI
+                        #elseif canImport(Inject)
+                        @_exported import Inject
+                        #else
                         // This code can be found in the Swift package:
                         // https://github.com/johnno1962/HotSwiftUI
 
@@ -397,6 +410,9 @@ extension AppDelegate {
                                 _ = loadInjectionOnce
                                 return AnyView(self)
                             }
+                            public func enableInjection() -> some SwiftUI.View {
+                                return eraseToAnyView()
+                            }
                             public func loadInjection() -> some SwiftUI.View {
                                 return eraseToAnyView()
                             }
@@ -406,10 +422,22 @@ extension AppDelegate {
                                     .eraseToAnyView()
                             }
                         }
+
+                        @available(iOS 13.0, *)
+                        @propertyWrapper
+                        public struct ObserveInjection: DynamicProperty {
+                            @ObservedObject private var iO = injectionObserver
+                            public init() {}
+                            public private(set) var wrappedValue: Int {
+                                get {0} set {}
+                            }
+                        }
                         #else
                         extension SwiftUI.View {
                             @inline(__always)
                             public func eraseToAnyView() -> some SwiftUI.View { return self }
+                            @inline(__always)
+                            public func enableInjection() -> some SwiftUI.View { return self }
                             @inline(__always)
                             public func loadInjection() -> some SwiftUI.View { return self }
                             @inline(__always)
@@ -417,6 +445,16 @@ extension AppDelegate {
                                 return self
                             }
                         }
+
+                        @available(iOS 13.0, *)
+                        @propertyWrapper
+                        public struct ObserveInjection {
+                            public init() {}
+                            public private(set) var wrappedValue: Int {
+                                get {0} set {}
+                            }
+                        }
+                        #endif
                         #endif
 
                         """

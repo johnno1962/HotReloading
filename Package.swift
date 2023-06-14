@@ -44,13 +44,17 @@ let package = Package(
 //                 .upToNextMinor(from: "1.2.12")),
     ],
     targets: [
-        .target(name: "HotReloading", dependencies: ["HotReloadingGuts",
-             "SwiftTrace", .product(name: "Xprobe", package: "XprobePlugin"),
-                 .product(name: "SwiftRegex", package: "SwiftRegex")/*, "DLKit",
-                 "InjectionScratch"*/]/*, linkerSettings: [.unsafeFlags([
+        .target(name: "HotReloading",
+                dependencies: ["HotReloadingGuts",
+                               "SwiftTrace",
+                               .product(name: "Xprobe", package: "XprobePlugin"),
+                               .product(name: "SwiftRegex", package: "SwiftRegex")
+                               /*, "DLKit", InjectionScratch"*/],
+                swiftSettings: [.define("DEBUG")]
+                /*, linkerSettings: [.unsafeFlags([
                     "-Xlinker", "-interposable", "-undefined", "dynamic_lookup"])]*/),
         .target(name: "HotReloadingGuts",
-                cSettings: [.define("DEVELOPER_HOST", to: "\"\(hostname)\"")]),
+                cSettings: [.define("DEVELOPER_HOST", to: "\"\(hostname)\""), .define("DEBUG")]),
         .target(name: "injectiondGuts"),
         .target(name: "injectiond", dependencies: ["HotReloadingGuts", "injectiondGuts",
                                    .product(name: "SwiftRegex", package: "SwiftRegex"),

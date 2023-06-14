@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#20 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#21 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -142,8 +142,10 @@ public class UnhidingEval: SwiftEval {
 //        }
         // The number of these options must match the number of -primary-file arguments
         // which has just been changed to only ever be one so, strip them out
+        let toRemove = #" -(serialize-diagnostics|emit-(module(-doc|-source-info)?|(reference-)?dependencies|const-values)|index-unit-output)-path "#
         compileCommand = compileCommand
-            .replacingOccurrences(of: #" -(serialize-diagnostics|emit-(module(-doc|-source-info)?|(reference-)?dependencies)|index-unit-output|emit-const-values)-path \#(Self.argumentRegex)"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: toRemove + Self.argumentRegex,
+                                  with: "", options: .regularExpression)
         debug("Uniqued command:", compileCommand)
         // Replace path(s) of all object files to a single one
         return super.xcode13Fix(sourceFile: sourceFile,

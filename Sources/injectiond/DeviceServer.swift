@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 13/01/2022.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#15 $
+//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#19 $
 //
 
 import Foundation
@@ -16,6 +16,8 @@ import HotReloadingGuts
 class DeviceServer: InjectionServer {
 
     var scratchPointer: UnsafeMutableRawPointer?
+    var lastSource: String?
+    var loadFailed = false
 
     #if !SWIFT_PACKAGE
     override func validateConnection() -> Bool {
@@ -42,6 +44,15 @@ class DeviceServer: InjectionServer {
                 }
             }
         #endif
+        case .error:
+            compileQueue.sync {
+                if !loadFailed, let source = lastSource {
+                    loadFailed = true
+                    builder.updateLongTermCache(remove: source)
+                    recompileAndInject(source: source)
+                }
+            }
+            fallthrough
         default:
             super.process(response: response, executable: executable)
         }
@@ -49,6 +60,7 @@ class DeviceServer: InjectionServer {
 
     override func recompileAndInject(source: String) {
         appDelegate.setMenuIcon(.busy)
+        lastSource = source
         if let slide = self.scratchPointer {
             if let unlock = UserDefaults.standard
                 .string(forKey: UserDefaultsUnlock) {

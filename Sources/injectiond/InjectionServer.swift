@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#52 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#53 $
 //
 
 import Cocoa
@@ -300,7 +300,6 @@ public class InjectionServer: SimpleSocket {
             case .error:
                 appDelegate.setMenuIcon(.error)
                 log("Injection error: \(readString() ?? "Uknown")")
-                break;
             case .legacyUnhide:
                 builder.legacyUnhide = readString() == "1"
             case .forceUnhide:

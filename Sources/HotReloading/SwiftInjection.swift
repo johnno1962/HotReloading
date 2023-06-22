@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#199 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#200 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -403,6 +403,9 @@ public class SwiftInjection: NSObject {
                 let name = _typeName(existing)
                 if name.hasSuffix("_Previews") {
                     npreviews += 1
+                }
+                if name.hasSuffix("PreviewRegistryfMu_") {
+                    return
                 }
                 ntypes += 1
                 log("Injected type #\(ntypes) '\(name)'")

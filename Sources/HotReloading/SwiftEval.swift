@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#201 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#203 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -828,6 +828,8 @@ public class SwiftEval: NSObject {
                 .replacingOccurrences(of: #"^.*( -target \S+).*$"#,
                                       with: "$1", options: .regularExpression)
             osSpecific = "-mmacosx-version-min=10.11"+target
+        case "XRSimulator": fallthrough case "XROS":
+            osSpecific = ""
         default:
             _ = evalError("Invalid platform \(platform)")
             // -Xlinker -bundle_loader -Xlinker \"\(Bundle.main.executablePath!)\""

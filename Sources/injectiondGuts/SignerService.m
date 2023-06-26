@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiondGuts/SignerService.m#11 $
+//  $Id: //depot/HotReloading/Sources/injectiondGuts/SignerService.m#12 $
 //
 
 #import "SignerService.h"
@@ -25,7 +25,7 @@
     NSString *command = [NSString stringWithFormat:@""
                          "(export CODESIGN_ALLOCATE=\"%s/usr/bin/codesign_allocate\"; "
                          "if /usr/bin/file \"%@\" | grep ' shared library ' >/dev/null;"
-                         "then /usr/bin/codesign --force -s \"%@\" \"%@\";"
+                         "then /usr/bin/codesign --force -s %@ \"%@\";"
                          "else exit 1; fi)",
                          toolchainDir, dylib, identity ?: adhocSign, dylib];
     if (system(command.UTF8String) >> 8 == EXIT_SUCCESS)

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiondGuts/SignerService.m#12 $
+//  $Id: //depot/HotReloading/Sources/injectiondGuts/SignerService.m#14 $
 //
 
 #import "SignerService.h"
@@ -15,11 +15,11 @@
 + (BOOL)codesignDylib:(NSString *)dylib identity:(NSString *)identity {
     static NSString *adhocSign = @"-";
     const char *envIdentity = getenv("EXPANDED_CODE_SIGN_IDENTITY")
-        ?: getenv("CODE_SIGN_IDENTITY");
+                            ?: getenv("CODE_SIGN_IDENTITY");
     const char *toolchainDir = getenv("TOOLCHAIN_DIR") ?:
         "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain";
     if (envIdentity && strlen(envIdentity)) {
-        identity = [NSString stringWithUTF8String:envIdentity];
+        identity = [NSString stringWithFormat:@"\"%s\"", envIdentity];
         NSLog(@"Signing identity from environment: %@", identity);
     }
     NSString *command = [NSString stringWithFormat:@""

@@ -2,7 +2,7 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
 //  Repo: https://github.com/johnno1962/HotReloading
-//  $Id: //depot/HotReloading/Package.swift#176 $
+//  $Id: //depot/HotReloading/Package.swift#177 $
 //
 
 import PackageDescription

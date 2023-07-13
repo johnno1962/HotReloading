@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#59 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#63 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -46,7 +46,21 @@ class StandaloneInjection: InjectionClient {
         }
         #endif
         signal(SIGPIPE, { _ in print(APP_PREFIX+"⚠️ SIGPIPE") })
+        #if os(tvOS)
+        builder.signer = { _ in
+            let dylib = builder.tmpfile+".dylib"
+            let codesign = """
+                (export CODESIGN_ALLOCATE=\"\(builder.xcodeDev
+                 )/Toolchains/XcodeDefault.xctoolchain/usr/bin/codesign_allocate\"; \
+                if /usr/bin/file \"\(dylib)\" | grep ' shared library ' >/dev/null; \
+                then /usr/bin/codesign --force -s - \"\(dylib)\";\
+                else exit 1; fi) >>/tmp/hot_reloading.log 2>&1
+                """
+            return builder.shell(command: codesign)
+        }
+        #else
         builder.signer = { _ in return true }
+        #endif
         builder.debug = { (what: Any...) in
             //print("\(APP_PREFIX)***** %@", what.map {"\($0)"}.joined(separator: " "))
         }

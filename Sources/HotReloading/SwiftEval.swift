@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#206 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#210 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -836,6 +836,9 @@ public class SwiftEval: NSObject {
         }
 
         let toolchain = xcodeDev+"/Toolchains/XcodeDefault.xctoolchain"
+        if getenv("TOOLCHAIN_DIR") == nil {
+            setenv("TOOLCHAIN_DIR", toolchain, 1)
+        }
         let cd = cd == "" ? "" : "cd \"\(cd)\" && "
         if cd != "" && !contents.contains(arch) {
             _ = evalError("Modified object files \(contents) not built for architecture \(arch)")
@@ -1015,6 +1018,11 @@ public class SwiftEval: NSObject {
                         \(APP_PREFIX)Add the following as a Run Script/Build Phase:
                         defaults write com.johnholdsworth.InjectionIII "$PROJECT_FILE_PATH" "$EXPANDED_CODE_SIGN_IDENTITY"
                         """
+                } else if error.contains("rying to load an unsigned library") {
+                    error += """
+                        \n\(APP_PREFIX)⚠️ Loading .dylib in Xcode 15+ requires code signing.
+                        \(APP_PREFIX)You will need to run the InjectionIII.app
+                        """
                 }
                 throw evalError("dlopen() error: \(error)")
             }
@@ -1142,8 +1150,9 @@ public class SwiftEval: NSObject {
                             $command = "cd $dir && $bazel";
                             last;
                         }
-                        elsif (my ($identity) = $line =~ m@/usr/bin/codesign --force --sign (\w+) --entitlements @) {
-                            system "defaults write com.johnholdsworth.InjectionIII \"\#(projectFile ?? "current project")\" \"$identity\"";
+                        elsif (my ($identity) = $line =~ m@/usr/bin/codesign --force --sign (\w+) --entitlements \#(Self.argumentRegex) @) {
+                            system (qw(/usr/bin/env defaults write com.johnholdsworth.InjectionIII),
+                                    '\#(projectFile?.escaping("'") ?? "current project")', $identity);
                         }
                     }
 

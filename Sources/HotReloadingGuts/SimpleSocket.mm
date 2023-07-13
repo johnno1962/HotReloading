@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#36 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#40 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -151,12 +151,15 @@
     [[self class] error:@"-[SimpleSocket runInBackground] not implemented in subclass"];
 }
 
-- (BOOL)readBytes:(void *)buffer length:(size_t)length cmd:(SEL)cmd {
+typedef ssize_t (*io_func)(int, void *, size_t);
+
+- (BOOL)perform:(io_func)io ofBytes:(const void *)buffer
+         length:(size_t)length cmd:(SEL)cmd {
     size_t rd, ptr = 0;
-    SLog(@"#%d <- %lu [%p] %s",
-         clientSocket, length, buffer, sel_getName(cmd));
+    SLog(@"#%d %s %lu [%p] %s", clientSocket, io == read ?
+         "<-" : "->", length, buffer, sel_getName(cmd));
     while (ptr < length &&
-       (rd = read(clientSocket, (char *)buffer+ptr, length-ptr)) > 0)
+       (rd = io(clientSocket, (char *)buffer+ptr, length-ptr)) > 0)
         ptr += rd;
     if (ptr < length) {
         NSLog(@"[%@ %s:%p length:%lu] error: %lu %s",
@@ -164,6 +167,10 @@
         return FALSE;
     }
     return TRUE;
+}
+
+- (BOOL)readBytes:(void *)buffer length:(size_t)length cmd:(SEL)cmd {
+    return [self perform:read ofBytes:buffer length:length cmd:cmd];
 }
 
 - (int)readInt {
@@ -198,18 +205,7 @@
 }
 
 - (BOOL)writeBytes:(const void *)buffer length:(size_t)length cmd:(SEL)cmd {
-    size_t wr, ptr = 0;
-    SLog(@"#%d <- %lu [%p] %s",
-         clientSocket, length, buffer, sel_getName(cmd));
-    while (ptr < length &&
-       (wr = write(clientSocket, (char *)buffer+ptr, length-ptr)) > 0)
-        ptr += wr;
-    if (ptr < length) {
-        NSLog(@"[%@ %s:%p length:%lu] error: %lu %s",
-              self, sel_getName(cmd), buffer, length, ptr, strerror(errno));
-        return FALSE;
-    }
-    return TRUE;
+    return [self perform:(io_func)write ofBytes:buffer length:length cmd:cmd];
 }
 
 - (BOOL)writeInt:(int)length {

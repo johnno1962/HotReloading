@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#200 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#203 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -253,6 +253,13 @@ public class SwiftInjection: NSObject {
                         UnsafeMutablePointer<SwiftMeta.TargetClassMetadata>.self)
 
                     // Old mechanism for Swift equivalent of "Swizzling".
+                    if classMetadata.pointee.ClassAddressPoint != existingClass.pointee.ClassAddressPoint {
+                        log("""
+                            ⚠️ Mixing Xcode versions across injection. This may work \
+                            but "Clean Builder Folder" when switching Xcode versions. \
+                            To clear the cache: rm \(SwiftEval.instance.buildCacheFile)
+                            """)
+                    } else
                     if classMetadata.pointee.ClassSize != existingClass.pointee.ClassSize {
                         log("""
                             ⚠️ Adding or [re]moving methods of non-final classes is not supported. \

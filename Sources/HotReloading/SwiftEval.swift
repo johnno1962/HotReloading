@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#210 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#212 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -189,12 +189,7 @@ public class SwiftEval: NSObject {
 
     /// Additional logging to /tmp/hot\_reloading.log for "HotReloading" version of injection.
     var debug = { (what: Any...) in
-        #if SWIFT_PACKAGE
-        let log = true
-        #else
-        let log = getenv("INJECTION_DEBUG") != nil
-        #endif
-        if log {
+        if getenv("INJECTION_DEBUG") != nil || getenv("DERIVED_LOGS") != nil {
             NSLog("\(APP_PREFIX)***** %@", what.map {"\($0)"}.joined(separator: " "))
         }
     }

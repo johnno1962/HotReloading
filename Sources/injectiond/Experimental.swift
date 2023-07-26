@@ -5,7 +5,7 @@
 //  Created by User on 20/10/2020.
 //  Copyright © 2020 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#30 $
+//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#32 $
 //
 
 import Cocoa
@@ -330,7 +330,7 @@ extension AppDelegate {
                     $2}
 
                     $2#if DEBUG
-                    $2@ObservedObject var iO = injectionObserver
+                    $2@ObserveInjection var forceRedraw
                     $2#endif
 
                     """

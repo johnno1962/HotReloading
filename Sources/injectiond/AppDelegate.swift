@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#65 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#66 $
 //
 
 import Cocoa
@@ -224,7 +224,8 @@ class AppDelegate : NSObject, NSApplicationDelegate {
 
         let projectFiles =
             filesWithExtension("xcworkspace", inFiles: fileList) ??
-            filesWithExtension("xcodeproj", inFiles: fileList)
+            filesWithExtension("xcodeproj", inFiles: fileList) ??
+            filesWithExtension("Package.swift", inFiles: fileList)
 
         selectedProject = nil
         if url.path.hasSuffix(".swiftpm") {
@@ -320,7 +321,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
     }
 
     func filesWithExtension(_ ext: String, inFiles files: [String]) -> [String]? {
-        let matches = files.filter { ($0 as NSString).pathExtension == ext }
+        let matches = files.filter { $0.hasSuffix(ext) }
         return matches.count != 0 ? matches : nil
     }
 

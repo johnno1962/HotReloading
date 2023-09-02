@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#212 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#214 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -1308,7 +1308,8 @@ public class SwiftEval: NSObject {
         if let files =
                 try? FileManager.default.contentsOfDirectory(atPath: dir.path),
             let project = file(withExt: ".xcworkspace", in: files) ??
-                            file(withExt: ".xcodeproj", in: files),
+                            file(withExt: ".xcodeproj", in: files) ??
+                            file(withExt: "Package.swift", in: files),
             let logsDir = logsDir(project: dir.appendingPathComponent(project), derivedData: derivedData),
             mtime(logsDir) > candidate.flatMap({ mtime($0.logsDir) }) ?? 0 {
                 candidate = (dir.appendingPathComponent(project), logsDir)
@@ -1328,8 +1329,11 @@ public class SwiftEval: NSObject {
 
     func logsDir(project: URL, derivedData: URL) -> URL? {
         let filemgr = FileManager.default
-        let projectPrefix = project.deletingPathExtension()
-            .lastPathComponent.replacingOccurrences(of: #"\s+"#, with: "_",
+        var projectPrefix = project.deletingPathExtension().lastPathComponent
+        if project.lastPathComponent == "Package.swift" {
+            projectPrefix = project.deletingLastPathComponent().lastPathComponent
+        }
+        projectPrefix = projectPrefix.replacingOccurrences(of: #"\s+"#, with: "_",
                                     options: .regularExpression, range: nil)
         var possibleDerivedData = (try? filemgr
             .contentsOfDirectory(atPath: derivedData.path))?

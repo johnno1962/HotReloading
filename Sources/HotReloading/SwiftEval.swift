@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#214 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#215 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -1003,7 +1003,8 @@ public class SwiftEval: NSObject {
                         \n\(APP_PREFIX)⚠️ Loading .dylib has failed, This is likely \
                         because Swift code being injected refers to a function \
                         with a default argument or perhaps an XCTest that depends on \
-                        code not normally linked into your application. Rebuilding and \
+                        code not normally linked into your application or a member \
+                        with access control that is too restrictive. Rebuilding and \
                         re-running your project (without a build clean) can resolve this.
                         """
                     forceUnhide()
@@ -1307,9 +1308,7 @@ public class SwiftEval: NSObject {
         var candidate = findProject(for: dir, derivedData: derivedData)
         if let files =
                 try? FileManager.default.contentsOfDirectory(atPath: dir.path),
-            let project = file(withExt: ".xcworkspace", in: files) ??
-                            file(withExt: ".xcodeproj", in: files) ??
-                            file(withExt: "Package.swift", in: files),
+            let project = Self.projects(in: files)?.first,
             let logsDir = logsDir(project: dir.appendingPathComponent(project), derivedData: derivedData),
             mtime(logsDir) > candidate.flatMap({ mtime($0.logsDir) }) ?? 0 {
                 candidate = (dir.appendingPathComponent(project), logsDir)
@@ -1318,8 +1317,15 @@ public class SwiftEval: NSObject {
         return candidate
     }
 
-    func file(withExt ext: String, in files: [String]) -> String? {
-        return files.first { $0.hasSuffix(ext) }
+    class func projects(in files: [String]) -> [String]? {
+        return names(withSuffix: ".xcworkspace", in: files) ??
+                names(withSuffix: ".xcodeproj", in: files) ??
+                names(withSuffix: "Package.swift", in: files)
+    }
+
+    class func names(withSuffix ext: String, in files: [String]) -> [String]? {
+        let matches = files.filter { $0.hasSuffix(ext) }
+        return matches.count != 0 ? matches : nil
     }
 
     func mtime(_ url: URL) -> time_t {

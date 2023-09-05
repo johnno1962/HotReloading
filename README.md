@@ -84,23 +84,24 @@ for a fully functional app on an actual device!
 
 ### Vapor injection
 
-To use injection with Vapor web server, add this Swift package as a
-dependency to its Package.swift and as dependency of the "App" target
-then run vapour from inside Xcode. It will also be necessary to add the
-following argument to your targets:
+To use injection with Vapor web server,  it is now possible to just
+download the [InjectionIII.app](https://github.com/johnno1962/InjectionIII)
+and add the following line to be called as the server configures
+(when running Vapor from inside Xcode): 
 
 ```
-    linkerSettings: [.unsafeFlags(["-Xlinker", "-interposable"],
-                                  .when(configuration: .debug))]
+    #if DEBUG && os(macOS)
+    Bundle(path: "/Applications/InjectionIII.app/Contents/Resources/macOSInjection.bundle")?.load()
+    #endif
 ```
+It will also be necessary to add the following argument to your targets:
 
-It will ask you to run a script to start the associated daemon processes 
-which watches for source file changes from inside the project directory or,
-you can use the [InjectionIII.app](https://github.com/johnno1962/InjectionIII)
-selecting your project's root directory using the "Open Project" menu item.
-It's not possible to inject closures that have already been registered 
-with routes however but if you delegate their implementation to a 
-method or function it can be injected.
+ ```
+     linkerSettings: [.unsafeFlags(["-Xlinker", "-interposable"],
+             .when(platforms: [.macOS], configuration: .debug))]
+ ```
+As an alternative, you can add this Swift package as a dependency to Vapor's 
+Package.swift of the "App" target.
 
 ### Thanks to...
 
@@ -125,4 +126,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2023/09/04 $
+$Date: 2023/09/06 $

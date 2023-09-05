@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#215 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#216 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -1109,9 +1109,11 @@ public class SwiftEval: NSObject {
                         elsif ($line =~ m@\#(regexp.escaping("\"$")
                                     .escaping("@", with: #"\E\$0\Q"#)
                             )@oi and $line =~ " \#(arch)"\#(swiftpm)) {
-                            # found compile command
-                            # may need to extract file list
-                            if ($line =~ / -filelist /) {
+                            # found compile command..
+                            # may need to recover file list
+                            my ($flarg) = $line =~ / -filelist (\#(
+                                            Self.argumentRegex))/;
+                            if ($flarg && ! -s $flarg) {
                                 while (defined (my $line2 = <GUNZIP>)) {
                                     if (my ($filemap) = $line2 =~ / -output-file-map (\#(
                                             Self.argumentRegex)) / ) {

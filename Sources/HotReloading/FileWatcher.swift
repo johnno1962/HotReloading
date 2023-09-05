@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 08/03/2015.
 //  Copyright (c) 2015 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#40 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#41 $
 //
 //  Started out as an abstraction to watch files under a directory.
 //  "Enhanced" to extract the last modified build log directory by
@@ -45,7 +45,8 @@ public class FileWatcher: NSObject {
     var callback: InjectionCallback
     var context = FSEventStreamContext()
 
-    @objc public init(roots: [String], callback: @escaping InjectionCallback) {
+    @objc public init(roots: [String], callback: @escaping InjectionCallback,
+                      runLoop: CFRunLoop? = nil) {
         self.callback = callback
         super.init()
         #if os(macOS)
@@ -75,6 +76,9 @@ public class FileWatcher: NSObject {
                      let flag = Int(eventFlags[i])
                      if (flag & (kFSEventStreamEventFlagItemRenamed | kFSEventStreamEventFlagItemModified)) != 0 {
                         let changes = unsafeBitCast(eventPaths, to: NSArray.self)
+                         if CFRunLoopGetCurrent() != CFRunLoopGetMain() {
+                             return watcher.filesChanged(changes: changes)
+                         }
                          DispatchQueue.main.async {
                              watcher.filesChanged(changes: changes)
                          }
@@ -88,7 +92,7 @@ public class FileWatcher: NSObject {
         #if !os(macOS)
         watchers[fileEvents] = self
         #endif
-        FSEventStreamScheduleWithRunLoop(fileEvents, CFRunLoopGetMain(),
+        FSEventStreamScheduleWithRunLoop(fileEvents, runLoop ?? CFRunLoopGetMain(),
                                          "kCFRunLoopDefaultMode" as CFString)
         _ = FSEventStreamStart(fileEvents)
         self.fileEvents = fileEvents

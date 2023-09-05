@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#63 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#65 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -84,15 +84,16 @@ class StandaloneInjection: InjectionClient {
             }
         }
 
-        let holdOff = 2.0, minInterval = 0.33 // seconds
         var lastInjected = [String: TimeInterval]()
 
         if getenv(SwiftInjection.INJECTION_REPLAY) != nil {
-            DispatchQueue.main.sync {
+            injectionQueue.sync {
                 _ = SwiftInjection.replayInjections()
             }
         }
 
+        let isVapor = injectionQueue != .main
+        let holdOff = 1.0, minInterval = 0.33 // seconds
         let firstInjected = Date.timeIntervalSinceReferenceDate + holdOff
         watchers.append(FileWatcher(roots: dirs,
                                     callback: { filesChanged, idePath in
@@ -133,7 +134,7 @@ class StandaloneInjection: InjectionClient {
                 }
                 lastInjected[changed] = Date.timeIntervalSinceReferenceDate
             }
-        }))
+        }, runLoop: isVapor ? CFRunLoopGetCurrent() : nil))
 
         log("HotReloading available for sources under \(dirs)")
         if #available(iOS 14.0, tvOS 14.0, *) {
@@ -147,6 +148,9 @@ class StandaloneInjection: InjectionClient {
         }
 
         Self.singleton = self
+        if isVapor {
+            CFRunLoopRun()
+        }
     }
 
     var swiftTracing: String?

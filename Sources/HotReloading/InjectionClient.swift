@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#66 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#67 $
 //
 //  Client app side of HotReloading started by +load
 //  method in HotReloadingGuts/ClientBoot.mm
@@ -41,6 +41,14 @@ public class InjectionClient: SimpleSocket, InjectionReader {
     }
 
     public override func runInBackground() {
+        for retry in 0..<5 {
+            serviceCommands()
+            log("Reconnecting...")
+            Thread.sleep(forTimeInterval: 3.0)
+        }
+    }
+
+    public func serviceCommands() {
         let builder = SwiftInjectionEval.sharedInstance()
         builder.tmpDir = NSTemporaryDirectory()
 

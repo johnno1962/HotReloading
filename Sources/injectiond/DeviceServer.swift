@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 13/01/2022.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#19 $
+//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#23 $
 //
 
 import Foundation
@@ -110,9 +110,10 @@ class DeviceServer: InjectionServer {
             }
             compileQueue.async {
                 do {
-                    let dylib = try self.builder.rebuildClass(oldClass: nil,
+                    guard let builder = self.builder else { return }
+                    let dylib = try builder.rebuildClass(oldClass: nil,
                                         classNameOrFile: source, extra: nil)
-                    self.sendCommand(.setXcodeDev, with: self.builder.xcodeDev)
+                    self.sendCommand(.setXcodeDev, with: builder.xcodeDev)
                     if let data = NSData(contentsOfFile: "\(dylib).dylib") {
                         commandQueue.sync {
                             self.write(InjectionCommand.copy.rawValue)

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#40 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#41 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -57,6 +57,9 @@
 
             int clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddr, &addrLen);
             if (clientSocket > 0) {
+                int optval = 1;
+                if (setsockopt(clientSocket, SOL_SOCKET, SO_NOSIGPIPE, (void *)&optval, sizeof(optval)) < 0)
+                    [self error:@"Could not set SO_NOSIGPIPE: %s"];
                 @autoreleasepool {
                     struct sockaddr_in *v4Addr = (struct sockaddr_in *)&clientAddr;
                     NSLog(@"Connection from %s:%d\n",

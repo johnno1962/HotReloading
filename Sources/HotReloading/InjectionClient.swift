@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#67 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#68 $
 //
 //  Client app side of HotReloading started by +load
 //  method in HotReloadingGuts/ClientBoot.mm
@@ -41,7 +41,7 @@ public class InjectionClient: SimpleSocket, InjectionReader {
     }
 
     public override func runInBackground() {
-        for retry in 0..<5 {
+        for _ in 0..<5 {
             serviceCommands()
             log("Reconnecting...")
             Thread.sleep(forTimeInterval: 3.0)

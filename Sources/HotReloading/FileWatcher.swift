@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 08/03/2015.
 //  Copyright (c) 2015 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#41 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#44 $
 //
 //  Started out as an abstraction to watch files under a directory.
 //  "Enhanced" to extract the last modified build log directory by
@@ -148,6 +148,9 @@ public class FileWatcher: NSObject {
         FSEventStreamStop(fileEvents)
         FSEventStreamInvalidate(fileEvents)
         FSEventStreamRelease(fileEvents)
+        #if DEBUG
+        NSLog("\(self).deinit()")
+        #endif
     }
 
     func getProcPath(pid: pid_t) -> String {

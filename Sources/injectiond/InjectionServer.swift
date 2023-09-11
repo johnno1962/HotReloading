@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#57 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#58 $
 //
 
 import Cocoa
@@ -104,6 +104,9 @@ public class InjectionServer: SimpleSocket {
             builder.tmpDir = builder.frameworks
         }
         write(builder.tmpDir)
+        if !FileManager.default.fileExists(atPath: builder.tmpDir) {
+            builder.tmpDir = NSTemporaryDirectory()
+        }
         log("Using tmp dir: \(builder.tmpDir)")
 
         // log errors to client
@@ -333,29 +336,25 @@ public class InjectionServer: SimpleSocket {
         } else {
             compileQueue.async {
                 guard let builder = self.builder else { return }
-                if let dylib = try? builder.rebuildClass(oldClass: nil,
-                                       classNameOrFile: source, extra: nil) {
+                do {
+                    let dylib = try builder.rebuildClass(oldClass: nil,
+                                        classNameOrFile: source, extra: nil)
                     self.sendCommand(.setXcodeDev, with: builder.xcodeDev)
-                    #if SWIFT_PACKAGE && false // for virtualised simulator
-                    if let data = NSData(contentsOfFile: "\(dylib).dylib") {
-                        commandQueue.sync {
-                            self.write(InjectionCommand.copy.rawValue)
-                            self.write(data as Data)
-                        }
-                    } else {
-                        self.sendCommand(.log, with: "\(APP_PREFIX)Error reding \(dylib).dylib")
-                    }
-                    #else
-                    self.sendCommand(.load, with: dylib)
-                    #endif
-                } else {
-                    appDelegate.setMenuIcon(.error)
-                    if !appDelegate.isSandboxed {
-                        builder.updateLongTermCache(remove: source)
-                    }
+                    self.inject(dylib: dylib)
+                    return
+                } catch {
+                    NSLog("\(APP_PREFIX)Build error: \(error)")
+                }
+                appDelegate.setMenuIcon(.error)
+                if !appDelegate.isSandboxed {
+                    builder.updateLongTermCache(remove: source)
                 }
             }
         }
+    }
+
+    public func inject(dylib: String) {
+        sendCommand(.load, with: dylib)
     }
 
     public func watchDirectory(_ directory: String) {

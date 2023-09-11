@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#56 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#57 $
 //
 
 import Cocoa
@@ -332,8 +332,8 @@ public class InjectionServer: SimpleSocket {
             sendCommand(.inject, with: source)
         } else {
             compileQueue.async {
-                if let builder = self.builder,
-                    let dylib = try? builder.rebuildClass(oldClass: nil,
+                guard let builder = self.builder else { return }
+                if let dylib = try? builder.rebuildClass(oldClass: nil,
                                        classNameOrFile: source, extra: nil) {
                     self.sendCommand(.setXcodeDev, with: builder.xcodeDev)
                     #if SWIFT_PACKAGE && false // for virtualised simulator
@@ -351,7 +351,7 @@ public class InjectionServer: SimpleSocket {
                 } else {
                     appDelegate.setMenuIcon(.error)
                     if !appDelegate.isSandboxed {
-                        self.builder.updateLongTermCache(remove: source)
+                        builder.updateLongTermCache(remove: source)
                     }
                 }
             }

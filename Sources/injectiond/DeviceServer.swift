@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 13/01/2022.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#23 $
+//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#26 $
 //
 
 import Foundation
@@ -105,29 +105,29 @@ class DeviceServer: InjectionServer {
                 }
             }
         } else { // You can load a dylib on device after all...
+            guard let builder = self.builder else { return }
             if !FileManager.default.fileExists(atPath: builder.tmpDir) {
                 builder.tmpDir = NSTemporaryDirectory()
             }
             compileQueue.async {
                 do {
-                    guard let builder = self.builder else { return }
                     let dylib = try builder.rebuildClass(oldClass: nil,
                                         classNameOrFile: source, extra: nil)
                     self.sendCommand(.setXcodeDev, with: builder.xcodeDev)
                     if let data = NSData(contentsOfFile: "\(dylib).dylib") {
-                        commandQueue.sync {
+                        return commandQueue.sync {
                             self.write(InjectionCommand.copy.rawValue)
                             self.write(data as Data)
                             appDelegate.setMenuIcon(.ok)
                         }
-                        return
                     } else {
                         self.sendCommand(.log, with: "\(APP_PREFIX)Error reading \(dylib).dylib")
                     }
                 } catch {
-                    self.sendCommand(.log, with: "\(APP_PREFIX)Build error: \(error)")
+                    NSLog("\(APP_PREFIX)Build error: \(error)")
                 }
                 appDelegate.setMenuIcon(.error)
+                builder.updateLongTermCache(remove: source)
             }
         }
     }

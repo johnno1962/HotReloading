@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#217 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#221 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -980,13 +980,17 @@ public class SwiftEval: NSObject {
 
     @objc func loadAndInject(tmpfile: String, oldClass: AnyClass? = nil)
         throws -> [AnyClass] {
-        _ = loadXCTest
-        _ = loadTestsBundle
 
         print("\(APP_PREFIX)Loading .dylib ...")
         // load patched .dylib into process with new version of class
         var dl: UnsafeMutableRawPointer?
         for dylib in "\(tmpfile).dylib".components(separatedBy: Self.dylibDelim) {
+            if let object = NSData(contentsOfFile: dylib),
+                memmem(object.bytes, object.count, "XCTest", 6) != nil,
+                object.count != 0 {
+                _ = loadXCTest
+                _ = loadTestsBundle
+            }
             #if canImport(SwiftTrace)
             dl = fast_dlopen(dylib, RTLD_NOW)
             #else

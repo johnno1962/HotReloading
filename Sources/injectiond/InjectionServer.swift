@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#58 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#59 $
 //
 
 import Cocoa
@@ -377,8 +377,8 @@ public class InjectionServer: SimpleSocket {
         #if !SWIFT_PACKAGE
         let projectName = URL(fileURLWithPath: projectFile)
             .deletingPathExtension().lastPathComponent
-        let derivedLogs = String(format:
-            "%@/Library/Developer/Xcode/DerivedData/%@-%@/Logs/Build",
+        let derivedLogs = String(format: // legacy fallback of last resort removed
+            "%@/NotLibrary/Developer/Xcode/DerivedData/%@-%@/Logs/Build",
                                  NSHomeDirectory(), projectName
                                     .replacingOccurrences(of: #"[\s]+"#, with:"_",
                                                    options: .regularExpression),

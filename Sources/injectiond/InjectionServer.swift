@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#59 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#60 $
 //
 
 import Cocoa
@@ -26,7 +26,7 @@ public class InjectionServer: SimpleSocket {
     var fileWatchers = [FileWatcher]()
     var pause: TimeInterval = 0.0
     var pending = [String]()
-    var builder: SwiftEval!
+    var builder = UnhidingEval()
     var lastIdeProcPath = ""
     let objcClassRefs = NSMutableArray()
     let descriptorRefs = NSMutableArray()
@@ -83,10 +83,10 @@ public class InjectionServer: SimpleSocket {
             return
         }
 
-        builder = UnhidingEval()
+        let ee = builder.evalError
         defer {
+            builder.evalError = ee
             builder.signer = nil
-            builder = nil
         }
 
         // client specific data for building
@@ -288,12 +288,12 @@ public class InjectionServer: SimpleSocket {
                     builder.xcodeDev = xcodeDev
                 }
             case .sign:
-                if !appDelegate.isSandboxed && xprobePlugin == nil {
+                guard let signer = builder.signer,
+                    appDelegate.isSandboxed || xprobePlugin != nil else {
                     sendCommand(.signed, with: "0")
                     break
                 }
-                sendCommand(.signed, with: builder
-                                .signer!(readString() ?? "") ? "1": "0")
+                sendCommand(.signed, with: signer(readString() ?? "") ? "1": "0")
             case .callOrderList:
                 if let calls = readString()?
                     .components(separatedBy: CALLORDER_DELIMITER) {
@@ -335,11 +335,10 @@ public class InjectionServer: SimpleSocket {
             sendCommand(.inject, with: source)
         } else {
             compileQueue.async {
-                guard let builder = self.builder else { return }
                 do {
-                    let dylib = try builder.rebuildClass(oldClass: nil,
+                    let dylib = try self.builder.rebuildClass(oldClass: nil,
                                         classNameOrFile: source, extra: nil)
-                    self.sendCommand(.setXcodeDev, with: builder.xcodeDev)
+                    self.sendCommand(.setXcodeDev, with: self.builder.xcodeDev)
                     self.inject(dylib: dylib)
                     return
                 } catch {
@@ -347,7 +346,7 @@ public class InjectionServer: SimpleSocket {
                 }
                 appDelegate.setMenuIcon(.error)
                 if !appDelegate.isSandboxed {
-                    builder.updateLongTermCache(remove: source)
+                    self.builder.updateLongTermCache(remove: source)
                 }
             }
         }
@@ -373,7 +372,7 @@ public class InjectionServer: SimpleSocket {
     @objc public func setProject(_ projectFile: String) {
         guard fileChangeHandler != nil else { return }
 
-        builder?.projectFile = projectFile
+        builder.projectFile = projectFile
         #if !SWIFT_PACKAGE
         let projectName = URL(fileURLWithPath: projectFile)
             .deletingPathExtension().lastPathComponent
@@ -387,7 +386,7 @@ public class InjectionServer: SimpleSocket {
         let derivedLogs = appDelegate.derivedLogs ?? "No derived logs"
         #endif
         if FileManager.default.fileExists(atPath: derivedLogs) {
-            builder?.derivedLogs = derivedLogs
+            builder.derivedLogs = derivedLogs
         }
 
         sendCommand(.vaccineSettingChanged,

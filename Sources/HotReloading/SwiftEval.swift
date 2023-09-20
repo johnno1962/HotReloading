@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#227 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#228 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -831,9 +831,6 @@ public class SwiftEval: NSObject {
         }
 
         let toolchain = xcodeDev+"/Toolchains/XcodeDefault.xctoolchain"
-        if getenv("TOOLCHAIN_DIR") == nil {
-            setenv("TOOLCHAIN_DIR", toolchain, 1)
-        }
         let cd = cd == "" ? "" : "cd \"\(cd)\" && "
         if cd != "" && !contents.contains(arch) {
             _ = evalError("Modified object files \(contents) not built for architecture \(arch)")
@@ -1006,10 +1003,10 @@ public class SwiftEval: NSObject {
                 } else if error.contains("ymbol not found") {
                     error += """
                         \n\(APP_PREFIX)⚠️ Loading .dylib has failed, This is likely \
-                        because Swift code being injected refers to a function \
-                        with a default argument or perhaps an XCTest that depends on \
-                        code not normally linked into your application or a member \
-                        with access control that is too restrictive. Rebuilding and \
+                        because Swift code being injected references a function \
+                        using a default argument or a member with access control \
+                        that is too restrictive or perhaps an XCTest that depends on \
+                        code not normally linked into your application. Rebuilding and \
                         re-running your project (without a build clean) can resolve this.
                         """
                     forceUnhide()
@@ -1023,6 +1020,10 @@ public class SwiftEval: NSObject {
                     error += """
                         \n\(APP_PREFIX)⚠️ Loading .dylib in Xcode 15+ requires code signing.
                         \(APP_PREFIX)You will need to run the InjectionIII.app
+                        """
+                } else if error.contains("incompatible platform") {
+                    error += """
+                        \n\(APP_PREFIX)⚠️ Clean build folder when switching platform
                         """
                 }
                 throw evalError("dlopen() error: \(error)")
@@ -1465,7 +1466,7 @@ public class SwiftEval: NSObject {
     }
     #endif
 
-    #if DEBUG && !SWIFT_PACKAGE
+    #if DEBUG
     deinit {
         NSLog("\(self).deinit()")
     }

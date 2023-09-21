@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#203 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#205 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -169,10 +169,10 @@ public class SwiftInjection: NSObject {
     open class func versions(of aClass: AnyClass) -> [AnyClass] {
         var out = [AnyClass](), nc: UInt32 = 0, info = Dl_info()
         if let classes = UnsafePointer(objc_copyClassList(&nc)) {
-            let named = class_getName(aClass)
+            let named = _typeName(aClass)
             for i in 0 ..< Int(nc) {
                 if class_getSuperclass(classes[i]) != nil && classes[i] != aClass,
-                   strcmp(class_getName(classes[i]), named) == 0,
+                   _typeName(classes[i]) == named,
                    !(registerClasses &&
                      dladdr(autoBitCast(classes[i]), &info) != 0 &&
                      strcmp(info.dli_sname, "injected_code") == 0) {
@@ -223,8 +223,10 @@ public class SwiftInjection: NSObject {
 
         // First, the old way for non-generics
         for var newClass: AnyClass in newClasses {
+            let className = _typeName(newClass)
+            detail("Processing class \(className)")
             var oldClasses = versions(of: newClass)
-            injectedGenerics.remove(_typeName(newClass))
+            injectedGenerics.remove(className)
             if oldClasses.isEmpty {
                 var info = Dl_info()
                 if dladdr(autoBitCast(newClass), &info) != 0,

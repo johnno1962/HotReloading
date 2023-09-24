@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#229 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#233 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -409,8 +409,8 @@ public class SwiftEval: NSObject {
             findCompileCommand(logsDir: logsDir,
                classNameOrFile: classNameOrFile, tmpfile: tmpfile) else {
             throw evalError("""
-                Could not locate compile command for \(classNameOrFile).
-                This could be due to one of the following:
+                Could not locate compile command for "\(classNameOrFile)" in \
+                \(logsDir.path)/.\nThis could be due to one of the following:
                 1. Injection does not work with Whole Module Optimization.
                 2. There are restrictions on characters allowed in paths.
                 3. File paths in the simulator are case sensitive.
@@ -1353,10 +1353,12 @@ public class SwiftEval: NSObject {
         }
         projectPrefix = projectPrefix.replacingOccurrences(of: #"\s+"#, with: "_",
                                     options: .regularExpression, range: nil)
-        var possibleDerivedData = (try? filemgr
-            .contentsOfDirectory(atPath: derivedData.path))?
+        let derivedDirs = (try? filemgr
+            .contentsOfDirectory(atPath: derivedData.path)) ?? []
+        let namedDirs = derivedDirs
             .filter { $0.starts(with: projectPrefix + "-") }
-            .map { derivedData.appendingPathComponent($0 + "/Logs/Build") } ?? []
+        var possibleDerivedData = (namedDirs.isEmpty ? derivedDirs : namedDirs)
+            .map { derivedData.appendingPathComponent($0 + "/Logs/Build") }
         possibleDerivedData.append(project.deletingLastPathComponent()
             .appendingPathComponent("DerivedData/\(projectPrefix)/Logs/Build"))
         debug("Possible DerivedDatas: \(possibleDerivedData)")

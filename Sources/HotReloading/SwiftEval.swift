@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#233 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#234 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -288,9 +288,9 @@ public class SwiftEval: NSObject {
         if false == (try? String(contentsOf: projectFile
             .appendingPathComponent("project.pbxproj")))?.contains("-interposable") {
             print(APP_PREFIX+"""
-                ⚠️ Project file does not contain the -interposable linker flag. \
-                If you want to be able to inject methods of structs and final classes, \
-                please add \"Other Linker Flags\" -Xlinker -interposable.
+                ⚠️ Project file \(projectFile.path) does not contain the -interposable \
+                linker flag. In order to be able to inject methods of structs and final \
+                classes, please add \"Other Linker Flags\" -Xlinker -interposable.
                 """)
         }
 

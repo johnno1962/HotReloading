@@ -7,7 +7,7 @@
 //  instance of classes that have been injected in order
 //  to be able to send them the @objc injected message.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#17 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#18 $
 //
 
 #if DEBUG || !SWIFT_PACKAGE
@@ -16,10 +16,12 @@ import Foundation
 import HotReloadingGuts
 #endif
 
-#if os(iOS) || os(tvOS)
-import UIKit
-#else
+#if os(macOS)
 import Cocoa
+typealias OSApplication = NSApplication
+#else
+import UIKit
+typealias OSApplication = UIApplication
 #endif
 
 @objc public protocol SwiftInjected {
@@ -72,11 +74,7 @@ extension SwiftInjection {
         // implement -injected() method using sweep of objects in application
         if !injectedClasses.isEmpty || !injectedGenerics.isEmpty {
             log("Starting sweep \(injectedClasses), \(injectedGenerics)...")
-            #if os(iOS) || os(tvOS)
-            let app = UIApplication.shared
-            #else
-            let app = NSApplication.shared
-            #endif
+            let app = OSApplication.shared
             let seeds: [Any] =  [app.delegate as Any] + app.windows
             var patched = Set<UnsafeRawPointer>()
             SwiftSweeper(instanceTask: {

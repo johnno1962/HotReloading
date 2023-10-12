@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 13/01/2022.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#28 $
+//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#29 $
 //
 
 import Foundation
@@ -110,6 +110,9 @@ class DeviceServer: InjectionServer {
     }
 
     override func inject(dylib: String) {
+        if isLocalClient {
+            return super.inject(dylib: dylib)
+        }
         if let data = NSData(contentsOfFile: "\(dylib).dylib") {
             commandQueue.sync {
                 write(InjectionCommand.copy.rawValue)

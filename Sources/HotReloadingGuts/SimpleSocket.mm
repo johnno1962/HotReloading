@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#41 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#43 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -64,7 +64,10 @@
                     struct sockaddr_in *v4Addr = (struct sockaddr_in *)&clientAddr;
                     NSLog(@"Connection from %s:%d\n",
                           inet_ntoa(v4Addr->sin_addr), ntohs(v4Addr->sin_port));
-                    [[[self alloc] initSocket:clientSocket] run];
+                    SimpleSocket *client = [[self alloc] initSocket:clientSocket];
+                    client.isLocalClient =
+                        v4Addr->sin_addr.s_addr == htonl(INADDR_LOOPBACK);
+                    [client run];
                 }
             }
             else

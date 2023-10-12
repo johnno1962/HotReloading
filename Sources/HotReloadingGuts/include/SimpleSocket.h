@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/SimpleSocket.h#11 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/SimpleSocket.h#12 $
 //
 
 #import <Foundation/Foundation.h>
@@ -16,6 +16,8 @@
 @protected
     int clientSocket;
 }
+
+@property BOOL isLocalClient;
 
 + (void)startServer:(NSString *_Nonnull)address;
 + (void)runServer:(NSString *_Nonnull)address;

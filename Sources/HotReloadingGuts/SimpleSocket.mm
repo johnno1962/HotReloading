@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#43 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#45 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -67,6 +67,15 @@
                     SimpleSocket *client = [[self alloc] initSocket:clientSocket];
                     client.isLocalClient =
                         v4Addr->sin_addr.s_addr == htonl(INADDR_LOOPBACK);
+                    static char hostname[255];
+                    gethostname(hostname, sizeof hostname);
+                    if (struct hostent *hp =
+                        gethostbyname2(hostname, v4Addr->sin_family)) {
+                        for (int i=0; hp->h_addr_list[i]; i++)
+                            if (v4Addr->sin_addr.s_addr ==
+                                ((struct in_addr *)hp->h_addr_list[i])->s_addr)
+                                client.isLocalClient = TRUE;
+                    }
                     [client run];
                 }
             }

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#91 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#99 $
 //
 //  Initiate connection to server side of InjectionIII/HotReloading.
 //
@@ -22,6 +22,25 @@ NSString *INJECTION_KEY = @__FILE__;
 #endif
 
 #if defined(DEBUG) || defined(INJECTION_III_APP)
+static SimpleSocket *injectionClient;
+NSString *injectionHost = @"127.0.0.1";
+static dispatch_once_t onlyOneClient;
+
+@implementation SimpleSocket(Connect)
+
++ (void)backgroundConnect:(const char *)host {
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
+        if (SimpleSocket *client = [[self class] connectTo:[NSString
+                stringWithFormat:@"%s%@", host, @INJECTION_ADDRESS]])
+            dispatch_once(&onlyOneClient, ^{
+                injectionHost = [NSString stringWithUTF8String:host];
+                [injectionClient = client run];
+            });
+    });
+}
+
+@end
+
 @interface BundleInjection: NSObject
 @end
 @implementation BundleInjection
@@ -32,14 +51,13 @@ NSString *INJECTION_KEY = @__FILE__;
                                withObject:clientClass];
 }
 
-static SimpleSocket *injectionClient;
-NSString *injectionHost = @"127.0.0.1";
-
 + (void)tryConnect:(Class)clientClass {
     NSString *socketAddr = @INJECTION_ADDRESS;
-    __unused const char *buildPhase = APP_PREFIX"You'll need to be running a recent copy of the InjectionIII.app downloaded from https://github.com/johnno1962/InjectionIII/releases?\n"
+    __unused const char *buildPhase = APP_PREFIX"You'll need to be running "
+        "a recent copy of the InjectionIII.app downloaded from "
+        "https://github.com/johnno1962/InjectionIII/releases\n"
     APP_PREFIX"And have typed: defaults write com.johnholdsworth.InjectionIII deviceUnlock any\n";
-    BOOL isVapor = dlsym(RTLD_DEFAULT, VAPOUR_SYMBOL) != nullptr;
+    BOOL isVapor = dlsym(RTLD_DEFAULT, VAPOR_SYMBOL) != nullptr;
 #if !defined(INJECTION_III_APP)
 #if TARGET_IPHONE_SIMULATOR || TARGET_OS_OSX
     BOOL isiOSAppOnMac = false;
@@ -53,23 +71,30 @@ NSString *injectionHost = @"127.0.0.1";
         }
 #elif TARGET_OS_IPHONE
     const char *envHost = getenv("INJECTION_HOST");
+    if (envHost)
+        [clientClass backgroundConnect:envHost];
     #ifdef DEVELOPER_HOST
+    [clientClass backgroundConnect:DEVELOPER_HOST];
     if (!isdigit(DEVELOPER_HOST[0]) && !envHost)
-        printf(APP_PREFIX"Sending multicast packet to connect to your development host %s.\n"
+        printf(APP_PREFIX"Sending broadcast packet to connect to your development host %s.\n"
                APP_PREFIX"If this fails,hardcode your Mac's IP address in HotReloading/Package.swift\n"
                "   or add an environment variable INJECTION_HOST with this value.\n%s", DEVELOPER_HOST, buildPhase);
     #endif
-    injectionHost = [NSString stringWithUTF8String: envHost ?: [clientClass
+    injectionHost = [clientClass
         getMulticastService:HOTRELOADING_MULTICAST port:HOTRELOADING_PORT
-                    message:APP_PREFIX"Connecting to %s (%s)...\n"]];
+                    message:APP_PREFIX"Connecting to %s (%s)...\n"];
     socketAddr = [injectionHost stringByAppendingString:socketAddr];
+    if (injectionClient)
+        return;
 #endif
 #endif
     for (int retry=0, retrys=1; retry<retrys; retry++) {
         if (retry)
             [NSThread sleepForTimeInterval:1.0];
-        if ((injectionClient = [clientClass connectTo:socketAddr])) {
-            [injectionClient run];
+        if (SimpleSocket *client = [clientClass connectTo:socketAddr]) {
+            dispatch_once(&onlyOneClient, ^{
+                [injectionClient = client run];
+            });
             return;
         }
     }
@@ -120,7 +145,7 @@ NSString *injectionHost = @"127.0.0.1";
     if (!injectionClient)
         NSLog(@"swiftTraceInjectionTest: Too early.");
     [injectionClient writeCommand:InjectionTestInjection
-                           withString:sourceFile];
+                       withString:sourceFile];
     [injectionClient writeString:source];
 }
 @end

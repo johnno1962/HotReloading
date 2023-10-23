@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#206 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#207 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -352,10 +352,12 @@ public class SwiftInjection: NSObject {
                     }
                 }
             }
-            performSweep(oldClasses: sweepClasses, tmpfile,
-                getenv(INJECTION_OF_GENERICS) != nil ? injectedGenerics : [])
+            DispatchQueue.main.async {
+                performSweep(oldClasses: sweepClasses, tmpfile,
+                    getenv(INJECTION_OF_GENERICS) != nil ? injectedGenerics : [])
 
-            NotificationCenter.default.post(name: notification, object: sweepClasses)
+                NotificationCenter.default.post(name: notification, object: sweepClasses)
+            }
         }
     }
 

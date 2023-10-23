@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#70 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#71 $
 //
 //  Client app side of HotReloading started by +load
 //  method in HotReloadingGuts/ClientBoot.mm
@@ -29,11 +29,16 @@ public struct HotReloading {
 }
 #endif
 
+#if os(macOS)
+let isVapor = true
+#else
+let isVapor = dlsym(SwiftMeta.RTLD_DEFAULT, VAPOR_SYMBOL) != nil
+#endif
+
 @objc(InjectionClient)
 public class InjectionClient: SimpleSocket, InjectionReader {
 
-    let injectionQueue = dlsym(SwiftMeta.RTLD_DEFAULT, VAPOUR_SYMBOL) != nil ?
-        DispatchQueue(label: "InjectionQueue") : DispatchQueue.main
+    let injectionQueue = isVapor ? DispatchQueue(label: "InjectionQueue") : .main
     var appVersion: String?
 
     open func log(_ msg: String) {

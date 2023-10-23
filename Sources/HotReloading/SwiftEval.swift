@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#234 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#235 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -1119,7 +1119,7 @@ public class SwiftEval: NSObject {
                             # may need to recover file list
                             my ($flarg) = $line =~ / -filelist (\#(
                                             Self.argumentRegex))/;
-                            if ($flarg && ! -s $flarg) {
+                            if ($flarg && ! -s $flarg || 1) {
                                 while (defined (my $line2 = <GUNZIP>)) {
                                     if (my ($filemap) = $line2 =~ / -output-file-map (\#(
                                             Self.argumentRegex)) / ) {
@@ -1142,14 +1142,11 @@ public class SwiftEval: NSObject {
                                     }
                                 }
                             }
-                    \#(sourceName.hasSuffix(".swift") ? "" : #"""
                             if ($realPath and (undef, $realPath) =
                                 $realPath =~ /cd (\"?)(.*?)\1\r/) {
                                 $realPath =~ s/\\([^\$])/$1/g;
                                 $line = "cd \"$realPath\"; $line";
                             }
-
-                    """#)\#
                             # find last
                             $command = $line;
                             #exit 0;

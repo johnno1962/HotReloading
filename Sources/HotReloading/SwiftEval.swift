@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#235 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#236 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -1119,7 +1119,7 @@ public class SwiftEval: NSObject {
                             # may need to recover file list
                             my ($flarg) = $line =~ / -filelist (\#(
                                             Self.argumentRegex))/;
-                            if ($flarg && ! -s $flarg || 1) {
+                            if ($flarg && (1 || ! -s $flarg)) {
                                 while (defined (my $line2 = <GUNZIP>)) {
                                     if (my ($filemap) = $line2 =~ / -output-file-map (\#(
                                             Self.argumentRegex)) / ) {

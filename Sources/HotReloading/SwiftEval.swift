@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#236 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#239 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -1172,6 +1172,7 @@ public class SwiftEval: NSObject {
 
         guard shell(command: """
             # search through build logs, most recent first
+            cp \(cmdfile) \(cmdfile).save 2>/dev/null ; \
             cd "\(logsDir.path.escaping("$"))" &&
             for log in `ls -t *.xcactivitylog`; do
                 #echo "Scanning $log"

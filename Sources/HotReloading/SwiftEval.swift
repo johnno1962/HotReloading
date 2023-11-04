@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#244 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#245 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -1132,11 +1132,6 @@ public class SwiftEval: NSObject {
                         if ($line =~ /^\s*cd /) {
                             $realPath = $line;
                         }
-                        elsif (index($line, " -output-file-map ") > 0 and
-                               my ($fl) = recoverFilelist($line)) {
-                            $filelist = $fl;
-                            next;
-                        }
                         elsif ($line =~ m@\#(regexp.escaping("\"$")
                                     .escaping("@", with: #"\E\$0\Q"#)
                             )@oi and $line =~ " \#(arch)"\#(swiftpm)) {
@@ -1168,6 +1163,10 @@ public class SwiftEval: NSObject {
                         elsif (my ($identity) = $line =~ m@/usr/bin/codesign --force --sign (\w+) --entitlements \#(Self.argumentRegex) @) {
                             system (qw(/usr/bin/env defaults write com.johnholdsworth.InjectionIII),
                                     '\#(projectFile?.escaping("'") ?? "current project")', $identity);
+                        }
+                        elsif (index($line, " -output-file-map ") > 0 and
+                               my ($fl) = recoverFilelist($line)) {
+                            $filelist = $fl;
                         }
                     }
 

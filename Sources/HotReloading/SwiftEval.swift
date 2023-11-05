@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#234 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#245 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -1106,8 +1106,28 @@ public class SwiftEval: NSObject {
                     # format is gzip
                     open GUNZIP, "/usr/bin/gunzip <\"$ARGV[0]\" 2>/dev/null |" or die "gnozip";
 
+                    sub recoverFilelist {
+                        my ($filemap) = $_[0] =~ / -output-file-map (\#(
+                                                Self.argumentRegex)) /;
+                        return if !$filemap;
+                        $filemap =~ s/\\//g;
+                        my $file_handle = IO::File->new( "< $filemap" )
+                            or die "Could not open filemap '$filemap'";
+                        my $json_text = join'', $file_handle->getlines();
+                        my $json_map = decode_json( $json_text, { utf8  => 1 } );
+                        mkdir("/tmp/filelists");
+                        my $filelist = '/tmp/filelists/\#(sourceName)';
+                        my $swift_sources = join "\n", keys %$json_map;
+                        my $listfile = IO::File->new( "> $filelist" )
+                            or die "Could not open list file '$filelist'";
+                        binmode $listfile, ':utf8';
+                        $listfile->print( $swift_sources );
+                        $listfile->close();
+                        return $filelist;
+                    }
+
                     # grep the log until there is a match
-                    my ($realPath, $command);
+                    my ($realPath, $command, $filelist);
                     while (defined (my $line = <GUNZIP>)) {
                         if ($line =~ /^\s*cd /) {
                             $realPath = $line;
@@ -1121,35 +1141,17 @@ public class SwiftEval: NSObject {
                                             Self.argumentRegex))/;
                             if ($flarg && ! -s $flarg) {
                                 while (defined (my $line2 = <GUNZIP>)) {
-                                    if (my ($filemap) = $line2 =~ / -output-file-map (\#(
-                                            Self.argumentRegex)) / ) {
-                                        $filemap =~ s/\\//g;
-                                        my $file_handle = IO::File->new( "< $filemap" )
-                                            or die "Could not open filemap '$filemap'";
-                                        my $json_text = join'', $file_handle->getlines();
-                                        my $json_map = decode_json( $json_text, { utf8  => 1 } );
-                                        mkdir("/tmp/filelists");
-                                        my $filelist = '/tmp/filelists/\#(sourceName)';
-                                        my $swift_sources = join "\n", keys %$json_map;
-                                        my $listfile = IO::File->new( "> $filelist" )
-                                            or die "Could not open list file '$filelist'";
-                                        binmode $listfile, ':utf8';
-                                        $listfile->print( $swift_sources );
-                                        $listfile->close();
-                                        $line =~ s/( -filelist )(\#(
-                                            Self.argumentRegex)) /$1'$filelist' /;
+                                    if (my ($fl) = recoverFilelist($line2)) {
+                                        $filelist = $fl;
                                         last;
                                     }
                                 }
                             }
-                    \#(sourceName.hasSuffix(".swift") ? "" : #"""
                             if ($realPath and (undef, $realPath) =
                                 $realPath =~ /cd (\"?)(.*?)\1\r/) {
                                 $realPath =~ s/\\([^\$])/$1/g;
                                 $line = "cd \"$realPath\"; $line";
                             }
-
-                    """#)\#
                             # find last
                             $command = $line;
                             #exit 0;
@@ -1162,9 +1164,19 @@ public class SwiftEval: NSObject {
                             system (qw(/usr/bin/env defaults write com.johnholdsworth.InjectionIII),
                                     '\#(projectFile?.escaping("'") ?? "current project")', $identity);
                         }
+                        elsif (index($line, " -output-file-map ") > 0 and
+                               my ($fl) = recoverFilelist($line)) {
+                            $filelist = $fl;
+                        }
                     }
 
                     if ($command) {
+                        my ($flarg) = $command =~ / -filelist (\#(
+                                            Self.argumentRegex))/;
+                        if ($flarg && $filelist && ! -s $flarg) {
+                            $command =~ s/( -filelist )(\#(
+                                Self.argumentRegex)) /$1'$filelist' /;
+                        }
                         print $command;
                         exit 0;
                     }
@@ -1175,6 +1187,7 @@ public class SwiftEval: NSObject {
 
         guard shell(command: """
             # search through build logs, most recent first
+            cp \(cmdfile) \(cmdfile).save 2>/dev/null ; \
             cd "\(logsDir.path.escaping("$"))" &&
             for log in `ls -t *.xcactivitylog`; do
                 #echo "Scanning $log"

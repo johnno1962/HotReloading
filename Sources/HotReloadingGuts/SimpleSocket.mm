@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#45 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#47 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -18,6 +18,7 @@
 
 #include <sys/socket.h>
 #include <netinet/tcp.h>
+#include <ifaddrs.h>
 #include <netdb.h>
 
 #if 0
@@ -36,6 +37,25 @@
 
 + (void)startServer:(NSString *)address {
     [self performSelectorInBackground:@selector(runServer:) withObject:address];
+}
+
++ (void)forEachInterface:(void (^)(in_addr_t addr, in_addr_t mask))handler {
+    ifaddrs *addrs;
+    if (getifaddrs(&addrs) == 0)
+        while (addrs) {
+            if (addrs->ifa_addr->sa_family == AF_INET)
+                handler(((struct sockaddr_in *)addrs->ifa_addr)->sin_addr.s_addr,
+                        ((struct sockaddr_in *)addrs->ifa_netmask)->sin_addr.s_addr);
+            addrs = addrs->ifa_next;
+        }
+    else {
+        static char hostname[255];
+        gethostname(hostname, sizeof hostname);
+        if (struct hostent *hp =
+            gethostbyname2(hostname, AF_INET))
+            for (int i=0; hp->h_addr_list[i]; i++)
+                handler(((struct in_addr *)hp->h_addr_list[i])->s_addr, ~0);
+    }
 }
 
 + (void)runServer:(NSString *)address {
@@ -67,15 +87,10 @@
                     SimpleSocket *client = [[self alloc] initSocket:clientSocket];
                     client.isLocalClient =
                         v4Addr->sin_addr.s_addr == htonl(INADDR_LOOPBACK);
-                    static char hostname[255];
-                    gethostname(hostname, sizeof hostname);
-                    if (struct hostent *hp =
-                        gethostbyname2(hostname, v4Addr->sin_family)) {
-                        for (int i=0; hp->h_addr_list[i]; i++)
-                            if (v4Addr->sin_addr.s_addr ==
-                                ((struct in_addr *)hp->h_addr_list[i])->s_addr)
-                                client.isLocalClient = TRUE;
-                    }
+                    [self forEachInterface:^(in_addr_t addr, in_addr_t mask) {
+                        if (v4Addr->sin_addr.s_addr == addr)
+                            client.isLocalClient = TRUE;
+                    }];
                     [client run];
                 }
             }
@@ -295,16 +310,8 @@ struct multicast_socket_packet {
         port = colon+1;
     addr.sin_port = htons(atoi(port));
 
-    u_int yes = 1;
-//    u_char ttl = 3;
-
-    /* use setsockopt() to request that the kernel join a multicast group */
-    struct ip_mreq mreq;
-    mreq.imr_multiaddr.s_addr = inet_addr(multicast);
-    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
-
     /* create what looks like an ordinary UDP socket */
-    int multicastSocket;
+    int multicastSocket, yes = 1;
     if ((multicastSocket = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
         [self error:@"Could not get mutlicast socket: %s"];
     else if (fcntl(multicastSocket, F_SETFD, FD_CLOEXEC) < 0)
@@ -316,10 +323,6 @@ struct multicast_socket_packet {
          "Once this starts occuring, a reboot may be necessary. "
          "Or, you can hardcode the IP address of your Mac as the "
          "the value for 'hostname' in HotReloading/Package.swift."];
-//    else if (setsockopt(multicastSocket, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl)) < 0)
-//        [self error:@"%s: Could set multicast socket ttl: %s", INJECTION_APPNAME, strerror(errno)];
-    else if (setsockopt(multicastSocket, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0)
-        [self error:@"Could not add membersip of multicast socket: %s"];
     else
         [self performSelectorInBackground:@selector(multicastListen:)
                                withObject:[NSNumber numberWithInt:multicastSocket]];
@@ -370,16 +373,21 @@ struct multicast_socket_packet {
 
     static struct sockaddr_in addr;
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = inet_addr(multicast);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
     if (const char *colon = index(port, ':'))
         port = colon+1;
-    addr.sin_port = htons(atoi(port));
+    addr.sin_port = 0;
 
     // For a real device, we have to use multicast
     // to locate the developer's Mac to connect to.
-    int multicastSocket;
+    int multicastSocket, yes = 1;
     if ((multicastSocket = socket(addr.sin_family, SOCK_DGRAM, 0)) < 0) {
         [self error:@"Could not get multicast socket: %s"];
+        return DEVELOPER_HOST;
+    }
+    if (setsockopt(multicastSocket, SOL_SOCKET, SO_BROADCAST, &yes, sizeof(yes)) < 0) {
+        [self error:@"Could not setsockopt: %s"];
+        close(multicastSocket);
         return DEVELOPER_HOST;
     }
 
@@ -388,12 +396,17 @@ struct multicast_socket_packet {
     msgbuf.hash = [self multicastHash];
     gethostname(msgbuf.host, sizeof msgbuf.host);
 
-    for (int sent=0; sent<2; sent++)
+    addr.sin_port = htons(atoi(port));
+    [self forEachInterface:^(in_addr_t laddr, in_addr_t nmask) {
+        uint32_t Anet = ntohl(laddr) >> 24;
+        if (Anet == 127 || Anet == 10) return;
+        addr.sin_addr.s_addr = laddr | ~nmask;
+        printf("Broadcasting %s\n", inet_ntoa(addr.sin_addr));
         if (sendto(multicastSocket, &msgbuf, sizeof msgbuf, 0,
                    (struct sockaddr *)&addr, sizeof(addr)) < 0) {
             [self error:@"Could not send multicast ping: %s"];
-            return DEVELOPER_HOST;
         }
+    }];
 
     unsigned addrlen = sizeof(addr);
     while (recvfrom(multicastSocket, &msgbuf, sizeof msgbuf, 0,

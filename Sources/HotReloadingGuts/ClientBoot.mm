@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#92 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#94 $
 //
 //  Initiate connection to server side of InjectionIII/HotReloading.
 //
@@ -22,6 +22,23 @@ NSString *INJECTION_KEY = @__FILE__;
 #endif
 
 #if defined(DEBUG) || defined(INJECTION_III_APP)
+static SimpleSocket *injectionClient;
+NSString *injectionHost = @"127.0.0.1";
+
+@implementation SimpleSocket(Connect)
+
++ (void)backgroundConnect:(const char *)host {
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
+        NSString *socketAddr = @INJECTION_ADDRESS;
+        if (SimpleSocket *client = [[self class] connectTo:[NSString
+                stringWithFormat:@"%s%@", host, socketAddr]])
+            if (!injectionClient)
+                [injectionClient = client run];
+    });
+}
+
+@end
+
 @interface BundleInjection: NSObject
 @end
 @implementation BundleInjection
@@ -31,9 +48,6 @@ NSString *INJECTION_KEY = @__FILE__;
         [self performSelectorInBackground:@selector(tryConnect:)
                                withObject:clientClass];
 }
-
-static SimpleSocket *injectionClient;
-NSString *injectionHost = @"127.0.0.1";
 
 + (void)tryConnect:(Class)clientClass {
     NSString *socketAddr = @INJECTION_ADDRESS;
@@ -52,17 +66,21 @@ NSString *injectionHost = @"127.0.0.1";
             return;
         }
 #elif TARGET_OS_IPHONE
-    const char *envHost = getenv("INJECTION_HOST");
+    if (const char *envHost = getenv("INJECTION_HOST"))
+        [clientClass backgroundConnect:envHost];
     #ifdef DEVELOPER_HOST
-    if (!isdigit(DEVELOPER_HOST[0]) && !envHost)
+    [clientClass backgroundConnect:DEVELOPER_HOST];
+    if (!isdigit(DEVELOPER_HOST[0]))
         printf(APP_PREFIX"Sending multicast packet to connect to your development host %s.\n"
                APP_PREFIX"If this fails,hardcode your Mac's IP address in HotReloading/Package.swift\n"
                "   or add an environment variable INJECTION_HOST with this value.\n%s", DEVELOPER_HOST, buildPhase);
     #endif
-    injectionHost = [NSString stringWithUTF8String: envHost ?: [clientClass
+    injectionHost = [NSString stringWithUTF8String: [clientClass
         getMulticastService:HOTRELOADING_MULTICAST port:HOTRELOADING_PORT
                     message:APP_PREFIX"Connecting to %s (%s)...\n"]];
     socketAddr = [injectionHost stringByAppendingString:socketAddr];
+    if (injectionClient)
+        return;
 #endif
 #endif
     for (int retry=0, retrys=1; retry<retrys; retry++) {

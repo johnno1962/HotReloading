@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#47 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#48 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -398,13 +398,17 @@ struct multicast_socket_packet {
 
     addr.sin_port = htons(atoi(port));
     [self forEachInterface:^(in_addr_t laddr, in_addr_t nmask) {
-        uint32_t Anet = ntohl(laddr) >> 24;
-        if (Anet == 127 || Anet == 10) return;
-        addr.sin_addr.s_addr = laddr | ~nmask;
-        printf("Broadcasting %s\n", inet_ntoa(addr.sin_addr));
-        if (sendto(multicastSocket, &msgbuf, sizeof msgbuf, 0,
-                   (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-            [self error:@"Could not send multicast ping: %s"];
+        switch (ntohl(laddr) >> 24) {
+            case 10: // mobile network
+            case 127: // loopback
+                return;
+            default:
+                addr.sin_addr.s_addr = laddr | ~nmask;
+                printf("Broadcasting %s\n", inet_ntoa(addr.sin_addr));
+                if (sendto(multicastSocket, &msgbuf, sizeof msgbuf, 0,
+                           (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+                    [self error:@"Could not send multicast ping: %s"];
+                }
         }
     }];
 

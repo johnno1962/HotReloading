@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#51 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#55 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -48,8 +48,7 @@
     }
     for (ifaddrs *ifa = addrs; ifa; ifa = ifa->ifa_next)
         if (ifa->ifa_addr->sa_family == AF_INET)
-            handler(ifa,
-                    ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr.s_addr,
+            handler(ifa, ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr.s_addr,
                     ((struct sockaddr_in *)ifa->ifa_netmask)->sin_addr.s_addr);
     freeifaddrs(addrs);
 }
@@ -280,7 +279,7 @@ typedef ssize_t (*io_func)(int, void *, size_t);
     #endif
     int hash = 0;
     for (size_t i=0, len = strlen(key); i<len; i++)
-        hash += (i+3)%15*key[i];
+        hash = hash*5 ^ (i+3)%15*key[i];
     return hash;
 }
 
@@ -340,7 +339,7 @@ struct multicast_socket_packet {
             continue;
         }
 
-        NSLog(@"%@: Multicast recvfrom %s (%s) %d c.f. %d\n",
+        NSLog(@"%@: Multicast recvfrom %s (%s) %u c.f. %u\n",
               self, msgbuf.host, inet_ntoa(addr.sin_addr),
               [self multicastHash], msgbuf.hash);
 

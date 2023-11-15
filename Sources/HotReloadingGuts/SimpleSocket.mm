@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#49 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#51 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -18,6 +18,7 @@
 
 #include <sys/socket.h>
 #include <netinet/tcp.h>
+#include <net/if.h>
 #include <ifaddrs.h>
 #include <netdb.h>
 
@@ -39,23 +40,18 @@
     [self performSelectorInBackground:@selector(runServer:) withObject:address];
 }
 
-+ (void)forEachInterface:(void (^)(in_addr_t addr, in_addr_t mask))handler {
++ (void)forEachInterface:(void (^)(ifaddrs *ifa, in_addr_t addr, in_addr_t mask))handler {
     ifaddrs *addrs;
-    if (getifaddrs(&addrs) == 0)
-        while (addrs) {
-            if (addrs->ifa_addr->sa_family == AF_INET)
-                handler(((struct sockaddr_in *)addrs->ifa_addr)->sin_addr.s_addr,
-                        ((struct sockaddr_in *)addrs->ifa_netmask)->sin_addr.s_addr);
-            addrs = addrs->ifa_next;
-        }
-    else {
-        static char hostname[255];
-        gethostname(hostname, sizeof hostname);
-        if (struct hostent *hp =
-            gethostbyname2(hostname, AF_INET))
-            for (int i=0; hp->h_addr_list[i]; i++)
-                handler(((struct in_addr *)hp->h_addr_list[i])->s_addr, ~0);
+    if (getifaddrs(&addrs) < 0) {
+        [self error:@"Could not getifaddrs: %s"];
+        return;
     }
+    for (ifaddrs *ifa = addrs; ifa; ifa = ifa->ifa_next)
+        if (ifa->ifa_addr->sa_family == AF_INET)
+            handler(ifa,
+                    ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr.s_addr,
+                    ((struct sockaddr_in *)ifa->ifa_netmask)->sin_addr.s_addr);
+    freeifaddrs(addrs);
 }
 
 + (void)runServer:(NSString *)address {
@@ -87,7 +83,7 @@
                     SimpleSocket *client = [[self alloc] initSocket:clientSocket];
                     client.isLocalClient =
                         v4Addr->sin_addr.s_addr == htonl(INADDR_LOOPBACK);
-                    [self forEachInterface:^(in_addr_t addr, in_addr_t mask) {
+                    [self forEachInterface:^(ifaddrs *ifa, in_addr_t addr, in_addr_t mask) {
                         if (v4Addr->sin_addr.s_addr == addr)
                             client.isLocalClient = TRUE;
                     }];
@@ -397,12 +393,14 @@ struct multicast_socket_packet {
     gethostname(msgbuf.host, sizeof msgbuf.host);
 
     addr.sin_port = htons(atoi(port));
-    [self forEachInterface:^(in_addr_t laddr, in_addr_t nmask) {
+    [self forEachInterface:^(ifaddrs *ifa, in_addr_t laddr, in_addr_t nmask) {
         switch (ntohl(laddr) >> 24) {
             case 10: // mobile network
             case 127: // loopback
                 return;
             default:
+                int idx = if_nametoindex(ifa->ifa_name);
+                setsockopt(multicastSocket, IPPROTO_IP, IP_BOUND_IF, &idx, sizeof(idx));
                 addr.sin_addr.s_addr = laddr | ~nmask;
                 printf("Broadcasting %s\n", inet_ntoa(addr.sin_addr));
                 if (sendto(multicastSocket, &msgbuf, sizeof msgbuf, 0,

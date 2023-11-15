@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#48 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#49 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -77,8 +77,8 @@
 
             int clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddr, &addrLen);
             if (clientSocket > 0) {
-                int optval = 1;
-                if (setsockopt(clientSocket, SOL_SOCKET, SO_NOSIGPIPE, (void *)&optval, sizeof(optval)) < 0)
+                int yes = 1;
+                if (setsockopt(clientSocket, SOL_SOCKET, SO_NOSIGPIPE, (void *)&yes, sizeof(yes)) < 0)
                     [self error:@"Could not set SO_NOSIGPIPE: %s"];
                 @autoreleasepool {
                     struct sockaddr_in *v4Addr = (struct sockaddr_in *)&clientAddr;
@@ -116,14 +116,14 @@
 }
 
 + (int)newSocket:(sa_family_t)addressFamily {
-    int optval = 1, newSocket;
+    int newSocket, yes = 1;
     if ((newSocket = socket(addressFamily, SOCK_STREAM, 0)) < 0)
         [self error:@"Could not open service socket: %s"];
-    else if (setsockopt(newSocket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval) < 0)
+    else if (setsockopt(newSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) < 0)
         [self error:@"Could not set SO_REUSEADDR: %s"];
-    else if (setsockopt(newSocket, SOL_SOCKET, SO_NOSIGPIPE, (void *)&optval, sizeof(optval)) < 0)
+    else if (setsockopt(newSocket, SOL_SOCKET, SO_NOSIGPIPE, (void *)&yes, sizeof(yes)) < 0)
         [self error:@"Could not set SO_NOSIGPIPE: %s"];
-    else if (setsockopt(newSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&optval, sizeof(optval)) < 0)
+    else if (setsockopt(newSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&yes, sizeof(yes)) < 0)
         [self error:@"Could not set TCP_NODELAY: %s"];
     else if (fcntl(newSocket, F_SETFD, FD_CLOEXEC) < 0)
         [self error:@"Could not set FD_CLOEXEC: %s"];
@@ -362,11 +362,11 @@ struct multicast_socket_packet {
 /// @param multicast Multicast IP address to use.
 /// @param port Port number as string.
 /// @param format Format for connecting message.
-+ (const char *)getMulticastService:(const char *)multicast
++ (NSString *)getMulticastService:(const char *)multicast
     port:(const char *)port message:(const char *)format {
     #ifdef DEVELOPER_HOST
     if (isdigit(DEVELOPER_HOST[0]))
-        return DEVELOPER_HOST;
+        return @DEVELOPER_HOST;
     #else
     #define DEVELOPER_HOST "127.0.0.1"
     #endif
@@ -382,13 +382,13 @@ struct multicast_socket_packet {
     // to locate the developer's Mac to connect to.
     int multicastSocket, yes = 1;
     if ((multicastSocket = socket(addr.sin_family, SOCK_DGRAM, 0)) < 0) {
-        [self error:@"Could not get multicast socket: %s"];
-        return DEVELOPER_HOST;
+        [self error:@"Could not get broadcast socket: %s"];
+        return @DEVELOPER_HOST;
     }
     if (setsockopt(multicastSocket, SOL_SOCKET, SO_BROADCAST, &yes, sizeof(yes)) < 0) {
         [self error:@"Could not setsockopt: %s"];
         close(multicastSocket);
-        return DEVELOPER_HOST;
+        return @DEVELOPER_HOST;
     }
 
     struct multicast_socket_packet msgbuf;
@@ -407,7 +407,7 @@ struct multicast_socket_packet {
                 printf("Broadcasting %s\n", inet_ntoa(addr.sin_addr));
                 if (sendto(multicastSocket, &msgbuf, sizeof msgbuf, 0,
                            (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-                    [self error:@"Could not send multicast ping: %s"];
+                    [self error:@"Could not send broadcast ping: %s"];
                 }
         }
     }];
@@ -415,14 +415,14 @@ struct multicast_socket_packet {
     unsigned addrlen = sizeof(addr);
     while (recvfrom(multicastSocket, &msgbuf, sizeof msgbuf, 0,
                     (struct sockaddr *)&addr, &addrlen) < sizeof msgbuf) {
-        [self error:@"%s: Error receiving from multicast: %s"];
+        [self error:@"%s: Error receiving from broadcast: %s"];
         sleep(1);
     }
 
     const char *ipaddr = inet_ntoa(addr.sin_addr);
     printf(format, msgbuf.host, ipaddr);
     close(multicastSocket);
-    return ipaddr;
+    return [NSString stringWithUTF8String:ipaddr];
 }
 
 @end

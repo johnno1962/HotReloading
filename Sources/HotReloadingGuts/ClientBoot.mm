@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#97 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#98 $
 //
 //  Initiate connection to server side of InjectionIII/HotReloading.
 //
@@ -79,9 +79,9 @@ static dispatch_once_t onlyOneClient;
                APP_PREFIX"If this fails,hardcode your Mac's IP address in HotReloading/Package.swift\n"
                "   or add an environment variable INJECTION_HOST with this value.\n%s", DEVELOPER_HOST, buildPhase);
     #endif
-    injectionHost = [NSString stringWithUTF8String: [clientClass
+    injectionHost = [clientClass
         getMulticastService:HOTRELOADING_MULTICAST port:HOTRELOADING_PORT
-                    message:APP_PREFIX"Connecting to %s (%s)...\n"]];
+                    message:APP_PREFIX"Connecting to %s (%s)...\n"];
     socketAddr = [injectionHost stringByAppendingString:socketAddr];
     if (injectionClient)
         return;
@@ -144,7 +144,7 @@ static dispatch_once_t onlyOneClient;
     if (!injectionClient)
         NSLog(@"swiftTraceInjectionTest: Too early.");
     [injectionClient writeCommand:InjectionTestInjection
-                           withString:sourceFile];
+                       withString:sourceFile];
     [injectionClient writeString:source];
 }
 @end

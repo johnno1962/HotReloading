@@ -5,12 +5,11 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/SimpleSocket.h#12 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/SimpleSocket.h#14 $
 //
 
 #import <Foundation/Foundation.h>
-
-#include <arpa/inet.h>
+#import <arpa/inet.h>
 
 @interface SimpleSocket : NSObject {
 @protected
@@ -27,9 +26,9 @@
 + (BOOL)parseV4Address:(NSString *_Nonnull)address into:(struct sockaddr_storage *_Nonnull)serverAddr;
 
 + (void)multicastServe:(const char *_Nonnull)multicast port:(const char *_Nonnull)port;
-+ (const char *_Nonnull)getMulticastService:(const char *_Nonnull)multicast
-                                       port:(const char *_Nonnull)port
-                                    message:(const char *_Nonnull)format;
++ (NSString *_Nonnull)getMulticastService:(const char *_Nonnull)multicast
+                                     port:(const char *_Nonnull)port
+                                  message:(const char *_Nonnull)format;
 
 - (instancetype _Nonnull)initSocket:(int)socket;
 

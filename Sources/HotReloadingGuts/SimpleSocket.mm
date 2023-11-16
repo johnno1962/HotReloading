@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#55 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#58 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -27,6 +27,18 @@
 #else
 #define SLog while(0) NSLog
 #endif
+
+#define MAX_PACKET 16384
+
+typedef union {
+    struct {
+        __uint8_t       sa_len;         /* total length */
+        sa_family_t     sa_family;      /* [XSI] address family */
+    };
+    struct sockaddr_storage any;
+    struct sockaddr_in ip4;
+    struct sockaddr addr;
+} sockaddr_union;
 
 @implementation SimpleSocket
 
@@ -54,29 +66,29 @@
 }
 
 + (void)runServer:(NSString *)address {
-    struct sockaddr_storage serverAddr;
-    [self parseV4Address:address into:&serverAddr];
+    sockaddr_union serverAddr;
+    [self parseV4Address:address into:&serverAddr.any];
 
-    int serverSocket = [self newSocket:serverAddr.ss_family];
+    int serverSocket = [self newSocket:serverAddr.sa_family];
     if (serverSocket < 0)
         return;
 
-    if (bind(serverSocket, (struct sockaddr *)&serverAddr, serverAddr.ss_len) < 0)
+    if (bind(serverSocket, &serverAddr.addr, serverAddr.sa_len) < 0)
         [self error:@"Could not bind service socket: %s"];
     else if (listen(serverSocket, 5) < 0)
         [self error:@"Service socket would not listen: %s"];
     else
         while (TRUE) {
-            struct sockaddr_storage clientAddr;
+            sockaddr_union clientAddr;
             socklen_t addrLen = sizeof clientAddr;
 
-            int clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddr, &addrLen);
+            int clientSocket = accept(serverSocket, &clientAddr.addr, &addrLen);
             if (clientSocket > 0) {
                 int yes = 1;
-                if (setsockopt(clientSocket, SOL_SOCKET, SO_NOSIGPIPE, (void *)&yes, sizeof(yes)) < 0)
+                if (setsockopt(clientSocket, SOL_SOCKET, SO_NOSIGPIPE, &yes, sizeof yes) < 0)
                     [self error:@"Could not set SO_NOSIGPIPE: %s"];
                 @autoreleasepool {
-                    struct sockaddr_in *v4Addr = (struct sockaddr_in *)&clientAddr;
+                    struct sockaddr_in *v4Addr = &clientAddr.ip4;
                     NSLog(@"Connection from %s:%d\n",
                           inet_ntoa(v4Addr->sin_addr), ntohs(v4Addr->sin_port));
                     SimpleSocket *client = [[self alloc] initSocket:clientSocket];
@@ -95,14 +107,14 @@
 }
 
 + (instancetype)connectTo:(NSString *)address {
-    struct sockaddr_storage serverAddr;
-    [self parseV4Address:address into:&serverAddr];
+    sockaddr_union serverAddr;
+    [self parseV4Address:address into:&serverAddr.any];
 
-    int clientSocket = [self newSocket:serverAddr.ss_family];
+    int clientSocket = [self newSocket:serverAddr.sa_family];
     if (clientSocket < 0)
         return nil;
 
-    if (connect(clientSocket, (struct sockaddr *)&serverAddr, serverAddr.ss_len) < 0) {
+    if (connect(clientSocket, &serverAddr.addr, serverAddr.sa_len) < 0) {
         [self error:@"Could not connect: %s"];
         return nil;
     }
@@ -116,9 +128,9 @@
         [self error:@"Could not open service socket: %s"];
     else if (setsockopt(newSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) < 0)
         [self error:@"Could not set SO_REUSEADDR: %s"];
-    else if (setsockopt(newSocket, SOL_SOCKET, SO_NOSIGPIPE, (void *)&yes, sizeof(yes)) < 0)
+    else if (setsockopt(newSocket, SOL_SOCKET, SO_NOSIGPIPE, &yes, sizeof yes) < 0)
         [self error:@"Could not set SO_NOSIGPIPE: %s"];
-    else if (setsockopt(newSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&yes, sizeof(yes)) < 0)
+    else if (setsockopt(newSocket, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof yes) < 0)
         [self error:@"Could not set TCP_NODELAY: %s"];
     else if (fcntl(newSocket, F_SETFD, FD_CLOEXEC) < 0)
         [self error:@"Could not set FD_CLOEXEC: %s"];
@@ -152,7 +164,7 @@
     else if (isdigit(host[0]))
         v4Addr->sin_addr.s_addr = inet_addr(host);
     else if (struct hostent *hp = gethostbyname2(host, v4Addr->sin_family))
-        memcpy((void *)&v4Addr->sin_addr, hp->h_addr, hp->h_length);
+        memcpy(&v4Addr->sin_addr, hp->h_addr, hp->h_length);
     else {
         [self error:[NSString stringWithFormat:@"Unable to look up host for %@", address]];
         return FALSE;
@@ -180,12 +192,12 @@ typedef ssize_t (*io_func)(int, void *, size_t);
 
 - (BOOL)perform:(io_func)io ofBytes:(const void *)buffer
          length:(size_t)length cmd:(SEL)cmd {
-    size_t rd, ptr = 0;
+    size_t bytes, ptr = 0;
     SLog(@"#%d %s %lu [%p] %s", clientSocket, io == read ?
          "<-" : "->", length, buffer, sel_getName(cmd));
-    while (ptr < length &&
-       (rd = io(clientSocket, (char *)buffer+ptr, length-ptr)) > 0)
-        ptr += rd;
+    while (ptr < length && (bytes = io(clientSocket,
+        (char *)buffer+ptr, MIN(length-ptr, MAX_PACKET))) > 0)
+        ptr += bytes;
     if (ptr < length) {
         NSLog(@"[%@ %s:%p length:%lu] error: %lu %s",
               self, sel_getName(cmd), buffer, length, ptr, strerror(errno));
@@ -298,7 +310,7 @@ struct multicast_socket_packet {
     #endif
 
     struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
+    memset(&addr, 0, sizeof addr);
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY); /* N.B.: differs from sender */
     if (const char *colon = index(port, ':'))
@@ -311,9 +323,9 @@ struct multicast_socket_packet {
         [self error:@"Could not get mutlicast socket: %s"];
     else if (fcntl(multicastSocket, F_SETFD, FD_CLOEXEC) < 0)
         [self error:@"Could not set close exec: %s"];
-    else if (setsockopt(multicastSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0)
+    else if (setsockopt(multicastSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) < 0)
         [self error:@"Could not reuse mutlicast socket addr: %s"];
-    else if (bind(multicastSocket, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+    else if (bind(multicastSocket, (struct sockaddr *)&addr, sizeof addr) < 0)
         [self error:@"Could not bind mutlicast socket addr: %s. "
          "Once this starts occuring, a reboot may be necessary. "
          "Or, you can hardcode the IP address of your Mac as the "
@@ -329,7 +341,7 @@ struct multicast_socket_packet {
     int multicastSocket = [socket intValue];
     while (multicastSocket) {
         struct sockaddr_in addr;
-        unsigned addrlen = sizeof(addr);
+        unsigned addrlen = sizeof addr;
         struct multicast_socket_packet msgbuf;
 
         if (recvfrom(multicastSocket, &msgbuf, sizeof msgbuf, 0,
@@ -380,7 +392,7 @@ struct multicast_socket_packet {
         [self error:@"Could not get broadcast socket: %s"];
         return @DEVELOPER_HOST;
     }
-    if (setsockopt(multicastSocket, SOL_SOCKET, SO_BROADCAST, &yes, sizeof(yes)) < 0) {
+    if (setsockopt(multicastSocket, SOL_SOCKET, SO_BROADCAST, &yes, sizeof yes) < 0) {
         [self error:@"Could not setsockopt: %s"];
         close(multicastSocket);
         return @DEVELOPER_HOST;
@@ -399,17 +411,17 @@ struct multicast_socket_packet {
                 return;
             default:
                 int idx = if_nametoindex(ifa->ifa_name);
-                setsockopt(multicastSocket, IPPROTO_IP, IP_BOUND_IF, &idx, sizeof(idx));
+                setsockopt(multicastSocket, IPPROTO_IP, IP_BOUND_IF, &idx, sizeof idx);
                 addr.sin_addr.s_addr = laddr | ~nmask;
                 printf("Broadcasting %s\n", inet_ntoa(addr.sin_addr));
                 if (sendto(multicastSocket, &msgbuf, sizeof msgbuf, 0,
-                           (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+                           (struct sockaddr *)&addr, sizeof addr) < 0) {
                     [self error:@"Could not send broadcast ping: %s"];
                 }
         }
     }];
 
-    unsigned addrlen = sizeof(addr);
+    unsigned addrlen = sizeof addr;
     while (recvfrom(multicastSocket, &msgbuf, sizeof msgbuf, 0,
                     (struct sockaddr *)&addr, &addrlen) < sizeof msgbuf) {
         [self error:@"%s: Error receiving from broadcast: %s"];

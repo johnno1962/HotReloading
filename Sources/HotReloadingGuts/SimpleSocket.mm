@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#58 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#59 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -281,7 +281,9 @@ typedef ssize_t (*io_func)(int, void *, size_t);
 /// Derived from path to source file in project's DerivedData.
 + (int)multicastHash {
     #ifdef INJECTION_III_APP
-    const char *key = NSHomeDirectory().UTF8String;
+    const char *key = [[NSBundle bundleForClass:self]
+        .infoDictionary[@"UserHome"] UTF8String] ?:
+        NSHomeDirectory().UTF8String;
     #else
     NSString *file = [NSString stringWithUTF8String:__FILE__];
     const char *key = [file
@@ -341,7 +343,7 @@ struct multicast_socket_packet {
     int multicastSocket = [socket intValue];
     while (multicastSocket) {
         struct sockaddr_in addr;
-        unsigned addrlen = sizeof addr;
+        socklen_t addrlen = sizeof addr;
         struct multicast_socket_packet msgbuf;
 
         if (recvfrom(multicastSocket, &msgbuf, sizeof msgbuf, 0,
@@ -409,19 +411,17 @@ struct multicast_socket_packet {
             case 10: // mobile network
             case 127: // loopback
                 return;
-            default:
-                int idx = if_nametoindex(ifa->ifa_name);
-                setsockopt(multicastSocket, IPPROTO_IP, IP_BOUND_IF, &idx, sizeof idx);
-                addr.sin_addr.s_addr = laddr | ~nmask;
-                printf("Broadcasting %s\n", inet_ntoa(addr.sin_addr));
-                if (sendto(multicastSocket, &msgbuf, sizeof msgbuf, 0,
-                           (struct sockaddr *)&addr, sizeof addr) < 0) {
-                    [self error:@"Could not send broadcast ping: %s"];
-                }
         }
+        int idx = if_nametoindex(ifa->ifa_name);
+        setsockopt(multicastSocket, IPPROTO_IP, IP_BOUND_IF, &idx, sizeof idx);
+        addr.sin_addr.s_addr = laddr | ~nmask;
+        printf("Broadcasting %s\n", inet_ntoa(addr.sin_addr));
+        if (sendto(multicastSocket, &msgbuf, sizeof msgbuf, 0,
+                   (struct sockaddr *)&addr, sizeof addr) < 0)
+            [self error:@"Could not send broadcast ping: %s"];
     }];
 
-    unsigned addrlen = sizeof addr;
+    socklen_t addrlen = sizeof addr;
     while (recvfrom(multicastSocket, &msgbuf, sizeof msgbuf, 0,
                     (struct sockaddr *)&addr, &addrlen) < sizeof msgbuf) {
         [self error:@"%s: Error receiving from broadcast: %s"];

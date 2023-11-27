@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#99 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#100 $
 //
 //  Initiate connection to server side of InjectionIII/HotReloading.
 //
@@ -58,8 +58,8 @@ static dispatch_once_t onlyOneClient;
         "https://github.com/johnno1962/InjectionIII/releases\n"
     APP_PREFIX"And have typed: defaults write com.johnholdsworth.InjectionIII deviceUnlock any\n";
     BOOL isVapor = dlsym(RTLD_DEFAULT, VAPOR_SYMBOL) != nullptr;
-#if !defined(INJECTION_III_APP)
 #if TARGET_IPHONE_SIMULATOR || TARGET_OS_OSX
+#if !defined(INJECTION_III_APP)
     BOOL isiOSAppOnMac = false;
     if (@available(iOS 14.0, *)) {
         isiOSAppOnMac = [NSProcessInfo processInfo].isiOSAppOnMac;
@@ -69,6 +69,7 @@ static dispatch_once_t onlyOneClient;
             [[standalone new] run];
             return;
         }
+#endif
 #elif TARGET_OS_IPHONE
     const char *envHost = getenv("INJECTION_HOST");
     if (envHost)
@@ -83,10 +84,9 @@ static dispatch_once_t onlyOneClient;
     injectionHost = [clientClass
         getMulticastService:HOTRELOADING_MULTICAST port:HOTRELOADING_PORT
                     message:APP_PREFIX"Connecting to %s (%s)...\n"];
-    socketAddr = [injectionHost stringByAppendingString:socketAddr];
+    socketAddr = [injectionHost stringByAppendingString:@HOTRELOADING_PORT];
     if (injectionClient)
         return;
-#endif
 #endif
     for (int retry=0, retrys=1; retry<retrys; retry++) {
         if (retry)

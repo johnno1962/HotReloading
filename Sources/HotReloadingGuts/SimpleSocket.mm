@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#59 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#60 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -409,6 +409,7 @@ struct multicast_socket_packet {
     [self forEachInterface:^(ifaddrs *ifa, in_addr_t laddr, in_addr_t nmask) {
         switch (ntohl(laddr) >> 24) {
             case 10: // mobile network
+            case 172: // ""
             case 127: // loopback
                 return;
         }

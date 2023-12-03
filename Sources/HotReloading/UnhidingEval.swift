@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#21 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#22 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -122,8 +122,8 @@ public class UnhidingEval: SwiftEval {
     // more than one primary file in a single compiler invocation.
     override func xcode13Fix(sourceFile: String,
                              compileCommand: inout String) -> String {
-        let sourceName = URL(fileURLWithPath:
-            sourceFile).deletingPathExtension().lastPathComponent.escaping()
+        let sourceName = URL(fileURLWithPath: sourceFile)
+            .deletingPathExtension().lastPathComponent.escaping().lowercased()
         let hasFileList = compileCommand.contains(" -filelist ")
         var nPrimaries = 0
         // ensure there is only ever one -primary-file argument and object file
@@ -132,7 +132,8 @@ public class UnhidingEval: SwiftEval {
             (groups: [String], stop) -> String in
 //            debug("PF: \(sourceName) \(groups)")
             nPrimaries += 1
-            return groups[2] == sourceName || groups[3] == sourceName ?
+            return groups[2].lowercased() == sourceName ||
+                   groups[3].lowercased() == sourceName ?
                 groups[0] : hasFileList ? "" : " "+groups[1]
         }
 //        // Xcode 13 can have multiple primary files but implements default

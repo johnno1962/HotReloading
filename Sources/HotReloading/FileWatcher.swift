@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 08/03/2015.
 //  Copyright (c) 2015 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#46 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#47 $
 //
 //  Started out as an abstraction to watch files under a directory.
 //  "Enhanced" to extract the last modified build log directory by
@@ -126,8 +126,7 @@ public class FileWatcher: NSObject {
             if Self.INJECTABLE_PATTERN.firstMatch(in: path,
                 range: NSMakeRange(0, path.utf16.count)) != nil &&
                 path.range(of: "DerivedData/|InjectionProject/|.DocumentRevisions-|@__swiftmacro_|main.mm?$",
-                            options: .regularExpression) == nil &&
-                FileManager.default.fileExists(atPath: path as String) {
+                            options: .regularExpression) == nil {
                 changed.insert(path)
             }
         }

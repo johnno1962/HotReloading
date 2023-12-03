@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#246 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#248 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -1094,6 +1094,32 @@ public class SwiftEval: NSObject {
 //        print(regexp)
         let swiftpm = projectFile?.hasSuffix(".swiftpm") == true ?
             " and $line !~ / -module-name App /" : ""
+        #if targetEnvironment(simulator)
+        let actualPath = #"""
+                my $out = "/";
+
+                for my $name (split "/", $_[0]) {
+                    my $next = "$out/$name";
+                    if (! -f $next) {
+                        opendir my $dh, $out;
+                        while (my $entry = readdir $dh) {
+                            if (uc $name eq uc $entry) {
+                                $next = "$out/$entry";
+                                last;
+                            }
+                        }
+                    }
+                    $out = $next;
+                }
+
+                return substr $out, 2;
+            """#
+        #else
+        let actualPath = #"""
+                return $_[0];
+            """#
+        #endif
+
         // messy but fast
         try #"""
                     use JSON::PP;
@@ -1106,6 +1132,10 @@ public class SwiftEval: NSObject {
                     # format is gzip
                     open GUNZIP, "/usr/bin/gunzip <\"$ARGV[0]\" 2>/dev/null |" or die "gnozip";
 
+                    sub actualPath {
+                    \#(actualPath)
+                    }
+
                     sub recoverFilelist {
                         my ($filemap) = $_[0] =~ / -output-file-map (\#(
                                                 Self.argumentRegex)) /;
@@ -1117,7 +1147,7 @@ public class SwiftEval: NSObject {
                         my $json_map = decode_json( $json_text, { utf8  => 1 } );
                         mkdir("/tmp/filelists");
                         my $filelist = '/tmp/filelists/\#(sourceName)';
-                        my $swift_sources = join "\n", keys %$json_map;
+                        my $swift_sources = join "\n", map { actualPath($_) } keys %$json_map;
                         my $listfile = IO::File->new( "> $filelist" )
                             or die "Could not open list file '$filelist'";
                         binmode $listfile, ':utf8';

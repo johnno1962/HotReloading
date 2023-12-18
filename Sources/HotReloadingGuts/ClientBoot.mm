@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#101 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#104 $
 //
 //  Initiate connection to server side of InjectionIII/HotReloading.
 //
@@ -78,10 +78,11 @@ static dispatch_once_t onlyOneClient;
     [clientClass backgroundConnect:DEVELOPER_HOST];
     if (!isdigit(DEVELOPER_HOST[0]) && !envHost)
         printf(APP_PREFIX"Sending broadcast packet to connect to your development host %s.\n"
-               APP_PREFIX"If this fails,hardcode your Mac's IP address in HotReloading/Package.swift\n"
+               APP_PREFIX"If this fails, hardcode your Mac's IP address in HotReloading/Package.swift\n"
                "   or add an environment variable INJECTION_HOST with this value.\n%s", DEVELOPER_HOST, buildPhase);
     #endif
-    injectionHost = [clientClass
+    if (!(@available(iOS 14.0, *) && [NSProcessInfo processInfo].isiOSAppOnMac))
+        injectionHost = [clientClass
         getMulticastService:HOTRELOADING_MULTICAST port:HOTRELOADING_PORT
                     message:APP_PREFIX"Connecting to %s (%s)...\n"];
     socketAddr = [injectionHost stringByAppendingString:@HOTRELOADING_PORT];

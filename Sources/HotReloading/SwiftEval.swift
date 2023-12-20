@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#248 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#249 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -391,6 +391,7 @@ public class SwiftEval: NSObject {
         let (projectFile, logsDir) = try
             determineEnvironment(classNameOrFile: classNameOrFile)
         let projectRoot = projectFile.deletingLastPathComponent().path
+//        if self.projectFile == nil { self.projectFile = projectFile.path }
 
         // locate compile command for class
 
@@ -854,7 +855,7 @@ public class SwiftEval: NSObject {
                 buildCacheFile == "/tmp/iOS_builds.plist" ||
                 signer!("\(injectionNumber).dylib") else {
                 #if SWIFT_PACKAGE
-                throw evalError("Codesign failed. Consult /tmp/hot_reloading.log")
+                throw evalError("Codesign failed. Consult /tmp/hot_reloading.log or Console.app")
                 #else
                 throw evalError("Codesign failed. If you are using macOS 11+, Please download a new release from https://github.com/johnno1962/InjectionIII/releases")
                 #endif
@@ -1191,7 +1192,7 @@ public class SwiftEval: NSObject {
                             $command = "cd $dir && $bazel";
                             last;
                         }
-                        elsif (my ($identity) = $line =~ m@/usr/bin/codesign --force --sign (\w+) --entitlements \#(Self.argumentRegex) @) {
+                        elsif (my ($identity) = $line =~ m@/usr/bin/codesign --force --sign (\S+) --entitlements \#(Self.argumentRegex) @) {
                             system (qw(/usr/bin/env defaults write com.johnholdsworth.InjectionIII),
                                     '\#(projectFile?.escaping("'") ?? "current project")', $identity);
                         }

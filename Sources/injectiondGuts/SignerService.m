@@ -5,14 +5,14 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiondGuts/SignerService.m#15 $
+//  $Id: //depot/HotReloading/Sources/injectiondGuts/SignerService.m#17 $
 //
 
 #import "SignerService.h"
 
 @implementation SignerService
 
-+ (BOOL)codesignDylib:(NSString *)dylib identity:(NSString *)identity {
++ (NSString *)codesignDylib:(NSString *)dylib identity:(NSString *)identity {
     static NSString *adhocSign = @"-";
     const char *envIdentity = getenv("EXPANDED_CODE_SIGN_IDENTITY")
                             ?: getenv("CODE_SIGN_IDENTITY");
@@ -26,12 +26,19 @@
                          "(export CODESIGN_ALLOCATE=\"%s/usr/bin/codesign_allocate\"; "
                          "if /usr/bin/file \"%@\" | /usr/bin/grep ' shared library ' >/dev/null;"
                          "then /usr/bin/codesign --force -s %@ \"%@\";"
-                         "else exit 1; fi)",
+                         "else exit 1; fi) 2>&1",
                          toolchainDir, dylib, identity ?: adhocSign, dylib];
-    if (system(command.UTF8String) >> 8 == EXIT_SUCCESS)
-        return TRUE;
-    NSLog(@"Codesigning failed with command: %@", command);
-    return FALSE;
+    FILE *fp = popen(command.UTF8String, "r");
+    if (!fp)
+        return @"Could not popen() for codesign";
+    NSMutableString *err = [NSMutableString new];
+    char buffer[1000];
+    while (fgets(buffer, sizeof buffer, fp))
+        [err appendFormat:@"%s", buffer];
+    if (pclose(fp) >> 8 == EXIT_SUCCESS)
+        return nil;
+    NSLog(@"*** Codesign failed with command: %@ Error: %@", command, err);
+    return err;
 }
 
 #if 0 // no longer used

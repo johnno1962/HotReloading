@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#60 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#61 $
 //
 
 import Cocoa
@@ -126,8 +126,12 @@ public class InjectionServer: SimpleSocket {
             }
             setenv("TOOLCHAIN_DIR", self.builder.xcodeDev +
                    "/Toolchains/XcodeDefault.xctoolchain", 1)
-            return SignerService.codesignDylib(
-                self.builder.tmpDir+"/eval"+$0, identity: identity)
+            let dylib = self.builder.tmpDir+"/eval"+$0
+            var error = SignerService.codesignDylib(dylib, identity: identity)
+            if error != nil && self.isLocalClient {
+                error = SignerService.codesignDylib(dylib, identity: "-")
+            }
+            return error == nil
         }
 
         // Xcode specific config

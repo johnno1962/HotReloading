@@ -10,6 +10,6 @@
 
 @interface SignerService: NSObject
 
-+ (BOOL)codesignDylib:(NSString * _Nonnull)dylib identity:(NSString * _Nullable)identity;
++ (NSString * _Nullable)codesignDylib:(NSString * _Nonnull)dylib identity:(NSString * _Nullable)identity;
 
 @end

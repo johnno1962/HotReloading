@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#249 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#250 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -857,7 +857,7 @@ public class SwiftEval: NSObject {
                 #if SWIFT_PACKAGE
                 throw evalError("Codesign failed. Consult /tmp/hot_reloading.log or Console.app")
                 #else
-                throw evalError("Codesign failed. If you are using macOS 11+, Please download a new release from https://github.com/johnno1962/InjectionIII/releases")
+                throw evalError("Codesign failed, consult Console. If you are using macOS 11+, Please download a new release from https://github.com/johnno1962/InjectionIII/releases")
                 #endif
             }
         }

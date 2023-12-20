@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#68 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#69 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -142,7 +142,7 @@ class StandaloneInjection: InjectionClient {
             }
         }, runLoop: isVapor ? CFRunLoopGetCurrent() : nil))
 
-        log("HotReloading available for sources under \(dirs)")
+        log("Standalone \(APP_NAME) available for sources under \(dirs)")
         if #available(iOS 14.0, tvOS 14.0, *) {
         } else {
             log("ℹ️ HotReloading not available on Apple Silicon before iOS 14.0")

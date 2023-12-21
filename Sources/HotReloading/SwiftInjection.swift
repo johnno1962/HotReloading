@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#207 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#208 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -79,7 +79,7 @@ extension NSObject {
 
     @objc
     public class func inject(file: String) {
-        SwiftInjection.inject(oldClass: nil, classNameOrFile: file)
+        SwiftInjection.inject(classNameOrFile: file)
     }
 }
 
@@ -133,13 +133,14 @@ public class SwiftInjection: NSObject {
     }
 
     @objc
-    open class func inject(oldClass: AnyClass?, classNameOrFile: String) {
+    open class func inject(oldClass: AnyClass? = nil, classNameOrFile: String) {
         do {
             let tmpfile = try SwiftEval.instance.rebuildClass(oldClass: oldClass,
                                     classNameOrFile: classNameOrFile, extra: nil)
             try inject(tmpfile: tmpfile)
         }
         catch {
+            SwiftEval.instance.updateLongTermCache(remove: classNameOrFile)
         }
     }
 

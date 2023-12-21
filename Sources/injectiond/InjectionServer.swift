@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#63 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#64 $
 //
 
 import Cocoa
@@ -354,9 +354,7 @@ public class InjectionServer: SimpleSocket {
                     NSLog("\(APP_PREFIX)Build error: \(error)")
                 }
                 appDelegate.setMenuIcon(.error)
-                if !appDelegate.isSandboxed {
-                    self.builder.updateLongTermCache(remove: source)
-                }
+                self.builder.updateLongTermCache(remove: source)
             }
         }
     }

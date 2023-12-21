@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#71 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#72 $
 //
 //  Client app side of HotReloading started by +load
 //  method in HotReloadingGuts/ClientBoot.mm
@@ -376,7 +376,7 @@ public class InjectionClient: SimpleSocket, InjectionReader {
                     #endif
                 } else {
                     builder.forceUnhide = { builder.startUnhide() }
-                    SwiftInjection.inject(oldClass:nil, classNameOrFile: changed)
+                    SwiftInjection.inject(classNameOrFile: changed)
                 }
             case .xprobe:
                 Xprobe.connect(to: nil, retainObjects:true)

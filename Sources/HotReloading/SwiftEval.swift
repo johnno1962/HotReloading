@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#250 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#254 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -157,6 +157,7 @@ extension StringProtocol {
 public class SwiftEval: NSObject {
 
     static var instance = SwiftEval()
+    static let bundleLink = "/tmp/injection.link"
 
     @objc public class func sharedInstance() -> SwiftEval {
         return instance
@@ -1192,7 +1193,10 @@ public class SwiftEval: NSObject {
                             $command = "cd $dir && $bazel";
                             last;
                         }
-                        elsif (my ($identity) = $line =~ m@/usr/bin/codesign --force --sign (\S+) --entitlements \#(Self.argumentRegex) @) {
+                        elsif (my ($identity, $bundle) = $line =~ m@/usr/bin/codesign --force --sign (\S+) --entitlements \#(Self.argumentRegex) .+ (\#(Self.argumentRegex))@) {
+                            $bundle =~ s/\\(.)/$1/g;
+                            unlink "\#(Self.bundleLink)";
+                            symlink $bundle, "\#(Self.bundleLink)";
                             system (qw(/usr/bin/env defaults write com.johnholdsworth.InjectionIII),
                                     '\#(projectFile?.escaping("'") ?? "current project")', $identity);
                         }

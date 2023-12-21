@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#62 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#63 $
 //
 
 import Cocoa
@@ -132,7 +132,8 @@ public class InjectionServer: SimpleSocket {
                 error = SignerService.codesignDylib(dylib, identity: "-")
             }
             if let error = error {
-                self.sendCommand(.log, with:"Codesigning failed: "+error)
+                self.sendCommand(.log, with:"Codesigning failed with output: " +
+                    error.trimmingCharacters(in: .whitespacesAndNewlines))
                 return false
             }
             return true

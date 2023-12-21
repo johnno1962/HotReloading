@@ -24,7 +24,7 @@
     }
     NSString *command = [NSString stringWithFormat:@""
                          "(export CODESIGN_ALLOCATE=\"%s/usr/bin/codesign_allocate\"; "
-                         "if /usr/bin/file \"%@\" | /usr/bin/grep ' shared library ' >/dev/null;"
+                         "if /usr/bin/file \"%@\" | /usr/bin/grep ' bundle ' >/dev/null;"
                          "then /usr/bin/codesign --force -s %@ \"%@\";"
                          "else exit 1; fi) 2>&1",
                          toolchainDir, dylib, identity ?: adhocSign, dylib];

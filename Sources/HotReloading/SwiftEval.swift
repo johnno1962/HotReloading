@@ -186,6 +186,7 @@ public class SwiftEval: NSObject {
             UserDefaults.standard.bool(forKey: "bazelLight")
     var moduleLibraries = Set<String>()
     let bazelWorkspace = "WORKSPACE"
+    let bundleLink = "/tmp/injection_bundle"
 
     /// Additional logging to /tmp/hot\_reloading.log for "HotReloading" version of injection.
     var debug = { (what: Any...) in
@@ -836,12 +837,19 @@ public class SwiftEval: NSObject {
         if cd != "" && !contents.contains(arch) {
             _ = evalError("Modified object files \(contents) not built for architecture \(arch)")
         }
+        var linked = [CChar](repeating: 0, count: Int(PATH_MAX))
+        guard readlink(bundleLink, &linked, linked.count) > 0,
+              let bundle = Bundle(path: String(cString: &linked)),
+              let binary = bundle.executablePath else {
+            throw evalError("Could not locate bundle executable from "+bundleLink)
+        }
         guard shell(command: """
             \(cd)"\(toolchain)/usr/bin/clang" -arch "\(arch)" \
-                -Xlinker -dylib -isysroot "__PLATFORM__" \
+                -Xlinker -bundle -isysroot "__PLATFORM__" \
                 -L"\(toolchain)/usr/lib/swift/\(platform.lowercased())" \(osSpecific) \
-                -undefined dynamic_lookup -dead_strip -Xlinker -objc_abi_version \
-                -Xlinker 2 -Xlinker -interposable\(linkerOptions) -fobjc-arc \
+                -Xlinker -bundle_loader -Xlinker "\(binary)" \
+                -dead_strip -Xlinker -objc_abi_version -Xlinker 2 \
+                -Xlinker -interposable\(linkerOptions) -fobjc-arc \
                 -fprofile-instr-generate \(contents) -L "\(frameworks)" -F "\(frameworks)" \
                 -rpath "\(frameworks)" -o \"\(dylib)\" >>\"\(logfile)\" 2>&1
             """.replacingOccurrences(of: "__PLATFORM__", with: sdk)) else {
@@ -1192,7 +1200,9 @@ public class SwiftEval: NSObject {
                             $command = "cd $dir && $bazel";
                             last;
                         }
-                        elsif (my ($identity) = $line =~ m@/usr/bin/codesign --force --sign (\S+) --entitlements \#(Self.argumentRegex) @) {
+                        elsif (my ($identity, $bundle) = $line =~ m@/usr/bin/codesign --force --sign (\S+) --entitlements \#(Self.argumentRegex) .+ (\#(Self.argumentRegex))@) {
+                            unlink "\#(bundleLink)";
+                            system ("/bin/ln", "-s", $bundle, "\#(bundleLink)");
                             system (qw(/usr/bin/env defaults write com.johnholdsworth.InjectionIII),
                                     '\#(projectFile?.escaping("'") ?? "current project")', $identity);
                         }

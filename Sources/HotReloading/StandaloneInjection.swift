@@ -55,7 +55,7 @@ class StandaloneInjection: InjectionClient {
             let codesign = """
                 (export CODESIGN_ALLOCATE=\"\(builder.xcodeDev
                  )/Toolchains/XcodeDefault.xctoolchain/usr/bin/codesign_allocate\"; \
-                if /usr/bin/file \"\(dylib)\" | /usr/bin/grep ' shared library ' >/dev/null; \
+                if /usr/bin/file \"\(dylib)\" | /usr/bin/grep ' bundle ' >/dev/null; \
                 then /usr/bin/codesign --force -s - \"\(dylib)\";\
                 else exit 1; fi) >>/tmp/hot_reloading.log 2>&1
                 """

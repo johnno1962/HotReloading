@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#254 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#255 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -524,27 +524,12 @@ public class SwiftEval: NSObject {
 
         var speclib = ""
         if sourceFile.contains("Spec.") {
-            let dylib = tmpfile+Self.quickDylib
-            do {
-                let platform = "\"__PLATFORM__\"/../../"
-                let platformLib = platform+"usr/lib"
-                let platformFrameworks = platform+"Library/Frameworks"
-                try link(dylib: dylib, compileCommand: compileCommand, contents: """
-                    \(logsDir.path)/../../Build/Products/\(Self.quickFiles) \
-                    \(platformLib)/libXCTestSwiftSupport.dylib \
-                    -Xlinker -rpath \(platformLib) \
-                    -framework XCTest -F \(platformFrameworks) \
-                    -Xlinker -rpath \(platformFrameworks)
-                    """)
-                speclib = dylib
-            } catch {
-                debug(APP_PREFIX+"⚠️ Error building support dylib for Quick")
-            }
+            speclib = logsDir.path+"/../../Build/Products/"+Self.quickFiles
         }
 
         try link(dylib: "\(tmpfile).dylib", compileCommand: compileCommand,
                  contents: "\"\(objectFile)\" \(speclib)")
-        return (speclib != "" ? speclib+Self.dylibDelim : "")+tmpfile
+        return tmpfile
     }
 
     func updateLongTermCache(remove: String? = nil) {
@@ -924,6 +909,7 @@ public class SwiftEval: NSObject {
 
     #if !INJECTION_III_APP
     lazy var loadXCTest: () = {
+        #if targetEnvironment(simulator)
         #if os(macOS)
         let sdk = "MacOSX"
         #elseif os(tvOS)
@@ -943,6 +929,17 @@ public class SwiftEval: NSObject {
         if dlopen(platform+"usr/lib/libXCTestSwiftSupport.dylib", RTLD_LAZY) == nil {
             debug(String(cString: dlerror()))
         }
+        #else
+        let copiedFrameworks = Bundle.main.bundlePath+"/iOSInjection.bundle/Frameworks/"
+        for fw in ["XCTestCore", "XCUnit", "XCUIAutomation", "XCTest"] {
+            if dlopen(copiedFrameworks+fw+".framework/\(fw)", RTLD_LAZY) == nil {
+                debug(String(cString: dlerror()))
+            }
+        }
+        if dlopen(copiedFrameworks+"libXCTestSwiftSupport.dylib", RTLD_LAZY) == nil {
+            debug(String(cString: dlerror()))
+        }
+        #endif
     }()
 
     lazy var loadTestsBundle: () = {
@@ -985,7 +982,8 @@ public class SwiftEval: NSObject {
         var dl: UnsafeMutableRawPointer?
         for dylib in "\(tmpfile).dylib".components(separatedBy: Self.dylibDelim) {
             if let object = NSData(contentsOfFile: dylib),
-                memmem(object.bytes, object.count, "XCTest", 6) != nil,
+                memmem(object.bytes, object.count, "XCTest", 6) != nil ||
+                memmem(object.bytes, object.count, "Quick", 5) != nil,
                 object.count != 0 {
                 _ = loadXCTest
                 _ = loadTestsBundle

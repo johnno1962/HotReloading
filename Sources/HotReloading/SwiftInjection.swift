@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#208 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#209 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -328,9 +328,10 @@ public class SwiftInjection: NSObject {
             totalSwizzled += 1
         }
         if totalPatched + totalSwizzled + totalInterposed + testClasses.count == 0 {
-            log("⚠️ Injection may have failed. Have you added -Xlinker -interposable to the \"Other Linker Flags\" of the executable/framework? ⚠️")
+            log("⚠️ Injection may have failed. Have you added -Xlinker -interposable (without double quotes and on separate lines) to the \"Other Linker Flags\" of the executable and frameworks? ⚠️")
         }
 
+        DispatchQueue.main.async {
         // Thanks https://github.com/johnno1962/injectionforxcode/pull/234
         if !testClasses.isEmpty {
             testQueue.async {
@@ -353,12 +354,11 @@ public class SwiftInjection: NSObject {
                     }
                 }
             }
-            DispatchQueue.main.async {
-                performSweep(oldClasses: sweepClasses, tmpfile,
-                    getenv(INJECTION_OF_GENERICS) != nil ? injectedGenerics : [])
+            performSweep(oldClasses: sweepClasses, tmpfile,
+                getenv(INJECTION_OF_GENERICS) != nil ? injectedGenerics : [])
 
-                NotificationCenter.default.post(name: notification, object: sweepClasses)
-            }
+            NotificationCenter.default.post(name: notification, object: sweepClasses)
+        }
         }
     }
 

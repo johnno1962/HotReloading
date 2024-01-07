@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#255 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#256 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -213,6 +213,7 @@ public class SwiftEval: NSObject {
     }
     @objc public var injectionNumber = 100
     @objc public var lastIdeProcPath = ""
+    @objc public var slowLogScan = 0.2
 
     var tmpfile: String { URL(fileURLWithPath: tmpDir)
         .appendingPathComponent("eval\(injectionNumber)").path }
@@ -404,6 +405,7 @@ public class SwiftEval: NSObject {
             return dylib
         }
 
+        let scanStart = Date.timeIntervalSinceReferenceDate
         guard var (compileCommand, sourceFile) = try
             compileByClass[classNameOrFile] ??
             (longTermCache[classNameOrFile] as? String)
@@ -423,6 +425,7 @@ public class SwiftEval: NSObject {
                 consult: "\(cmdfile)".
                 """)
         }
+        let scanTime = Date.timeIntervalSinceReferenceDate - scanStart
         sourceFile += "" // remove warning
 
         #if targetEnvironment(simulator)
@@ -508,7 +511,7 @@ public class SwiftEval: NSObject {
 
         compileByClass[classNameOrFile] = (compileCommand, sourceFile)
         if longTermCache[classNameOrFile] as? String != compileCommand &&
-            classNameOrFile.hasPrefix("/") {
+            classNameOrFile.hasPrefix("/") && scanTime > slowLogScan {
             longTermCache[classNameOrFile] = compileCommand
             updateLongTermCache()
         }
@@ -523,7 +526,8 @@ public class SwiftEval: NSObject {
         _ = objectUnhider?(objectFile)
 
         var speclib = ""
-        if sourceFile.contains("Spec.") {
+        if sourceFile.contains("Spec.") && (try? String(
+            contentsOfFile: classNameOrFile))?.contains("Quick") == true {
             speclib = logsDir.path+"/../../Build/Products/"+Self.quickFiles
         }
 

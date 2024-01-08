@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#258 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#259 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -503,20 +503,26 @@ public class SwiftEval: NSObject {
                 """) || isBazelCompile else {
             if longTermCache[classNameOrFile] != nil {
                 updateLongTermCache(remove: classNameOrFile)
-                #if os(macOS) && !SWIFT_PACKAGE
-                // For adding, deleting, renaming files...
-                if let xcode = SBApplication(
-                    bundleIdentifier:"com.apple.dt.Xcode"),
-                   let workspace = xcode.activeWorkspaceDocument,
-                   let action = workspace.build() {
+                do {
+                    return try rebuildClass(oldClass: oldClass,
+                                     classNameOrFile: classNameOrFile, extra: extra)
+                } catch {
+                    #if !os(macOS)
+                    throw error
+                    #else
+                    // Retry again with new build log in case of added/renamed files...
                     _ = evalError("Compilation failed, rebuilding \(projectFile.path)")
-                    for _ in 0..<10 where !action.completed {
-                        Thread.sleep(forTimeInterval: 1.0)
-                    }
+                    _ = shell(command: """
+                        /usr/bin/osascript -e 'tell application "Xcode"
+                            set targetProject to active workspace document
+                            if (build targetProject) is equal to "Build succeeded" then
+                            end if
+                        end tell'
+                        """)
+                    return try rebuildClass(oldClass: oldClass,
+                                     classNameOrFile: classNameOrFile, extra: extra)
+                    #endif
                 }
-                #endif
-                return try rebuildClass(oldClass: oldClass,
-                    classNameOrFile: classNameOrFile, extra: extra)
             }
             throw scriptError("Re-compilation")
         }

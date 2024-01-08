@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#256 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#258 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -503,6 +503,18 @@ public class SwiftEval: NSObject {
                 """) || isBazelCompile else {
             if longTermCache[classNameOrFile] != nil {
                 updateLongTermCache(remove: classNameOrFile)
+                #if os(macOS) && !SWIFT_PACKAGE
+                // For adding, deleting, renaming files...
+                if let xcode = SBApplication(
+                    bundleIdentifier:"com.apple.dt.Xcode"),
+                   let workspace = xcode.activeWorkspaceDocument,
+                   let action = workspace.build() {
+                    _ = evalError("Compilation failed, rebuilding \(projectFile.path)")
+                    for _ in 0..<10 where !action.completed {
+                        Thread.sleep(forTimeInterval: 1.0)
+                    }
+                }
+                #endif
                 return try rebuildClass(oldClass: oldClass,
                     classNameOrFile: classNameOrFile, extra: extra)
             }

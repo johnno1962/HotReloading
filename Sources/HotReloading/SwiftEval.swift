@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#259 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#260 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -529,7 +529,7 @@ public class SwiftEval: NSObject {
 
         compileByClass[classNameOrFile] = (compileCommand, sourceFile)
         if longTermCache[classNameOrFile] as? String != compileCommand &&
-            classNameOrFile.hasPrefix("/") && scanTime > slowLogScan {
+            classNameOrFile.hasPrefix("/") {//&& scanTime > slowLogScan {
             longTermCache[classNameOrFile] = compileCommand
             updateLongTermCache()
         }

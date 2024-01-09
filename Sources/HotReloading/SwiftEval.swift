@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#260 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#261 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -507,7 +507,10 @@ public class SwiftEval: NSObject {
                     return try rebuildClass(oldClass: oldClass,
                                      classNameOrFile: classNameOrFile, extra: extra)
                 } catch {
-                    #if !os(macOS)
+                    #if true || !os(macOS)
+                    _ = evalError("Recompilation failing, are you renaming/adding " +
+                        "files? Rebuild your project to generate a new log then " +
+                        "try to inject again or relauch your app.")
                     throw error
                     #else
                     // Retry again with new build log in case of added/renamed files...

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#53 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#54 $
 //
 //  Shared definitions between server and client.
 //
@@ -132,6 +132,9 @@ typedef NS_ENUM(int, InjectionResponse) {
     InjectionExit = ~0
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 // defined in Unhide.mm
 extern int unhide_symbols(const char *framework, const char *linkFileList, FILE *log, time_t since);
 extern int unhide_object(const char *object_file, const char *framework, FILE *log,
@@ -147,3 +150,6 @@ struct objc_image_info;
 OBJC_EXPORT Class objc_readClassPair(Class cls,
                                      const struct objc_image_info *info)
     OBJC_AVAILABLE(10.10, 8.0, 9.0, 1.0, 2.0);
+#ifdef __cplusplus
+}
+#endif

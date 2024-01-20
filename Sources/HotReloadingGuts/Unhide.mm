@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#49 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#50 $
 //
 
 #if DEBUG || !SWIFT_PACKAGE
@@ -22,9 +22,7 @@
 #import <vector>
 #import <map>
 
-extern "C" {
-    #import "InjectionClient.h"
-}
+#import "InjectionClient.h"
 
 static std::map<std::string,int> seen;
 

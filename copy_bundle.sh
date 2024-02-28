@@ -6,7 +6,7 @@
 #  Copies injection bundle for on-device injection.
 #  Thanks @oryonatan
 #
-#  $Id: //depot/HotReloading/copy_bundle.sh#9 $
+#  $Id: //depot/HotReloading/copy_bundle.sh#12 $
 #
 
 if [ "$CONFIGURATION" == "Debug" ]; then
@@ -27,6 +27,8 @@ if [ "$CONFIGURATION" == "Debug" ]; then
      BUNDLE=${1:-maciOSInjection}
      rsync -a "$PLATFORM_DEVELOPER_LIBRARY_DIR"/{Frameworks,PrivateFrameworks}/XC* "$PLATFORM_DEVELOPER_USR_DIR/lib"/*.dylib "$COPY/Frameworks/" &&
      codesign -f --sign "$EXPANDED_CODE_SIGN_IDENTITY" --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der "$COPY/Frameworks"/{XC*,*.dylib};
+    elif [ "$PLATFORM_NAME" == "xros" ]; then
+     BUNDLE=${1:-xrdevOSInjection}
     else
      BUNDLE=${1:-iOSInjection}
     fi

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#268 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#270 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -585,7 +585,7 @@ public class SwiftEval: NSObject {
 
         if signer != nil {
             guard dylib.hasSuffix(Self.quickDylib) ||
-                buildCacheFile == "/tmp/iOS_builds.plist" ||
+                buildCacheFile == "/tmp/iOS_Simulator_builds.plist" ||
                 signer!("\(injectionNumber).dylib") else {
                 #if SWIFT_PACKAGE
                 throw evalError("Codesign failed. Consult /tmp/hot_reloading.log or Console.app")

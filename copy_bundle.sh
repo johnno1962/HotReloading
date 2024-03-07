@@ -6,7 +6,7 @@
 #  Copies injection bundle for on-device injection.
 #  Thanks @oryonatan
 #
-#  $Id: //depot/HotReloading/copy_bundle.sh#12 $
+#  $Id: //depot/HotReloading/copy_bundle.sh#13 $
 #
 
 if [ "$CONFIGURATION" == "Debug" ]; then
@@ -21,14 +21,16 @@ if [ "$CONFIGURATION" == "Debug" ]; then
      PLIST="$COPY/Contents/Info.plist"
     elif [ "$PLATFORM_NAME" == "appletvsimulator" ]; then
      BUNDLE=${1:-tvOSInjection}
+    elif [ "$PLATFORM_NAME" == "appletvos" ]; then
+     BUNDLE=${1:-tvdevOSInjection}
     elif [ "$PLATFORM_NAME" == "xrsimulator" ]; then
      BUNDLE=${1:-xrOSInjection}
+    elif [ "$PLATFORM_NAME" == "xros" ]; then
+     BUNDLE=${1:-xrdevOSInjection}
     elif [ "$PLATFORM_NAME" == "iphoneos" ]; then
      BUNDLE=${1:-maciOSInjection}
      rsync -a "$PLATFORM_DEVELOPER_LIBRARY_DIR"/{Frameworks,PrivateFrameworks}/XC* "$PLATFORM_DEVELOPER_USR_DIR/lib"/*.dylib "$COPY/Frameworks/" &&
      codesign -f --sign "$EXPANDED_CODE_SIGN_IDENTITY" --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der "$COPY/Frameworks"/{XC*,*.dylib};
-    elif [ "$PLATFORM_NAME" == "xros" ]; then
-     BUNDLE=${1:-xrdevOSInjection}
     else
      BUNDLE=${1:-iOSInjection}
     fi

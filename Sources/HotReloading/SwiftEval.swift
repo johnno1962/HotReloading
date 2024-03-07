@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#270 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#272 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -243,6 +243,8 @@ public class SwiftEval: NSObject {
 
     var compileByClass = [String: (String, String)]()
 
+    static let simulatorCacheFile = "/tmp/iOS_Simulator_builds.plist"
+
     #if os(macOS) || targetEnvironment(macCatalyst)
     var buildCacheFile = "/tmp/macOS_builds.plist"
     #elseif os(tvOS)
@@ -250,7 +252,7 @@ public class SwiftEval: NSObject {
     #elseif os(xrOS)
     var buildCacheFile = "/tmp/xrOS_builds.plist"
     #elseif targetEnvironment(simulator)
-    var buildCacheFile = "/tmp/iOS_Simulator_builds.plist"
+    var buildCacheFile = SwiftEval.simulatorCacheFile
     #else
     var buildCacheFile = "/tmp/iOS_builds.plist"
     #endif
@@ -585,7 +587,7 @@ public class SwiftEval: NSObject {
 
         if signer != nil {
             guard dylib.hasSuffix(Self.quickDylib) ||
-                buildCacheFile == "/tmp/iOS_Simulator_builds.plist" ||
+                buildCacheFile == Self.simulatorCacheFile ||
                 signer!("\(injectionNumber).dylib") else {
                 #if SWIFT_PACKAGE
                 throw evalError("Codesign failed. Consult /tmp/hot_reloading.log or Console.app")

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#272 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#274 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -497,11 +497,11 @@ public class SwiftEval: NSObject {
     }
 
     func updateLongTermCache(remove: String? = nil) {
-        if let _ = remove {
-//            compileByClass.removeValue(forKey: source)
-//            longTermCache.removeObject(forKey: source)
-            longTermCache.removeAllObjects()
-            compileByClass.removeAll()
+        if let source = remove {
+            compileByClass.removeValue(forKey: source)
+            longTermCache.removeObject(forKey: source)
+//            longTermCache.removeAllObjects()
+//            compileByClass.removeAll()
         }
         longTermCache.write(toFile: buildCacheFile,
                             atomically: false)

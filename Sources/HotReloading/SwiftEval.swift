@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#274 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#276 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -894,9 +894,10 @@ public class SwiftEval: NSObject {
                             or die "Could not open filemap '$filemap'";
                         my $json_text = join'', $file_handle->getlines();
                         my $json_map = decode_json( $json_text, { utf8  => 1 } );
-                        mkdir("/tmp/filelists");
-                        my $filelist = '/tmp/filelists/\#(sourceName)';
                         my $swift_sources = join "\n", map { actualPath($_) } keys %$json_map;
+                        mkdir "/tmp/filelists";
+                        my $filelist = '/tmp/filelists/\#(sourceName)';
+                        unlink $filelist;
                         my $listfile = IO::File->new( "> $filelist" )
                             or die "Could not open list file '$filelist'";
                         binmode $listfile, ':utf8';
@@ -975,7 +976,7 @@ public class SwiftEval: NSObject {
             for log in `ls -t *.xcactivitylog`; do
                 #echo "Scanning $log"
                 /usr/bin/env perl "\(tmpfile).pl" "$log" \
-                >"\(tmpfile).sh" 2>"\(tmpfile).err" && exit 0
+                >"\(tmpfile).sh" 2>>"\(tmpfile).err" && exit 0
             done
             exit 1;
             """) else {
@@ -991,8 +992,8 @@ public class SwiftEval: NSObject {
             }
             #endif
             if let log = try? String(contentsOfFile: "\(tmpfile).err"),
-               log.contains("error") {
-                throw evalError(log)
+               !log.isEmpty {
+                _ = evalError("stderr contains: "+log)
             }
             return nil
         }

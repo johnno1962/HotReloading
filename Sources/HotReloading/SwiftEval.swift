@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#276 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#277 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -540,7 +540,7 @@ public class SwiftEval: NSObject {
             extract(group: 1, into: &sdk)
             extract(group: 2, into: &xcodeDev)
             extract(group: 4, into: &platform)
-        } else if compileCommand.contains(" -o ") {
+        } else if compileCommand.contains(".swift ") {
             _ = evalError("Unable to parse SDK from: \(compileCommand)")
         }
 
@@ -915,7 +915,7 @@ public class SwiftEval: NSObject {
                         elsif ($line =~ m@\#(regexp.escaping("\"$")
                                     .escaping("@", with: #"\E\$0\Q"#)
                             )@oi and $line !~ /-watchos/
-                                 and $line =~ " \#(arch)"\#(swiftpm)) {
+                                 and $line =~ "\#(arch)"\#(swiftpm)) {
                             # found compile command..
                             # may need to recover file list
                             my ($flarg) = $line =~ / -filelist (\#(

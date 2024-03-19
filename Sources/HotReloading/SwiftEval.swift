@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#277 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#278 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -526,7 +526,8 @@ public class SwiftEval: NSObject {
 
     func link(dylib: String, compileCommand: String, contents: String,
               cd: String = "") throws {
-        var platform = "iPhoneSimulator"
+        var platform = buildCacheFile == Self.simulatorCacheFile ?
+                                    "iPhoneSimulator" : "iPhoneOS"
         var sdk = "\(xcodeDev)/Platforms/\(platform).platform/Developer/SDKs/\(platform).sdk"
         if let match = Self.parsePlatform.firstMatch(in: compileCommand,
             options: [], range: NSMakeRange(0, compileCommand.utf16.count)) {

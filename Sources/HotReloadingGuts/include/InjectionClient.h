@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#54 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#56 $
 //
 //  Shared definitions between server and client.
 //
@@ -144,6 +144,8 @@ extern int unhide_framework(const char *framework, FILE *log);
 extern void unhide_reset(void);
 
 extern void reverse_symbolics(const void *image);
+extern void INRetain(const void *ptr);
+extern void hookKeyPaths(void);
 
 // objc4-internal.h
 struct objc_image_info;

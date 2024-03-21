@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#105 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#106 $
 //
 //  Initiate connection to server side of InjectionIII/HotReloading.
 //
@@ -45,7 +45,13 @@ static dispatch_once_t onlyOneClient;
 @end
 @implementation BundleInjection
 
+void INRetain(const void *ptr) {
+    CFRetain(ptr);
+}
+
 + (void)load {
+    if (getenv("INJECTION_KEYPATHS"))
+        hookKeyPaths();
     if (Class clientClass = objc_getClass("InjectionClient"))
         [self performSelectorInBackground:@selector(tryConnect:)
                                withObject:clientClass];

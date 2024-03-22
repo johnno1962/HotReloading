@@ -5,7 +5,7 @@
 //
 //  Interpose processing (-Xlinker -interposable).
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInterpose.swift#6 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInterpose.swift#8 $
 //
 
 #if DEBUG || !SWIFT_PACKAGE
@@ -16,6 +16,8 @@ import SwiftTraceGuts
 #endif
 
 extension SwiftInjection {
+
+    static var initialRebindings = [rebinding]()
 
     /// "Interpose" all function definitions in a dylib onto the main executable
     public class func interpose(functionsIn dylib: String) -> [UnsafePointer<Int8>] {
@@ -98,7 +100,7 @@ extension SwiftInjection {
             var info = Dl_info()
             // Need to apply previous interposes
             // to the newly loaded dylib as well.
-            var previous = Array<rebinding>()
+            var previous = initialRebindings
             var already = Set<UnsafeRawPointer>()
             let interposed = NSObject.swiftTraceInterposed.bindMemory(to:
                 [UnsafeRawPointer : UnsafeRawPointer].self, capacity: 1)

@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 20/03/2024.
 //  Copyright © 2024 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftKeyPath.swift#15 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftKeyPath.swift#18 $
 //
 
 import Foundation
@@ -35,9 +35,10 @@ public func hookKeyPaths() {
         return
     }
     save_getKeyPath = autoBitCast(original)
-    var reb = [rebinding(name: strdup(keyPathFuncName),
-                         replacement :replacer, replaced: nil)]
-    _ = SwiftTrace.apply(rebindings: &reb)
+    var keyPathRebinding = [rebinding(name: strdup(keyPathFuncName),
+                                      replacement: replacer, replaced: nil)]
+    SwiftInjection.initialRebindings += keyPathRebinding
+    _ = SwiftTrace.apply(rebindings: &keyPathRebinding)
 }
 
 @_cdecl("injection_getKeyPath")
@@ -60,7 +61,7 @@ public func injection_getKeyPath(pattern: UnsafeMutableRawPointer,
             with: "", options: .regularExpression)+".keyPath#\(callIndex)"
         let keyPath: UnsafeRawPointer
         if let prev = keyPaths[callkey] {
-            print("Recylcing", callkey)
+            SwiftInjection.log("Recycling", callkey)
             keyPath = prev
         } else {
             keyPath = save_getKeyPath(pattern, arguments)

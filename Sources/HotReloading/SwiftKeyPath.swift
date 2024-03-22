@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 20/03/2024.
 //  Copyright © 2024 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftKeyPath.swift#14 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftKeyPath.swift#15 $
 //
 
 import Foundation
@@ -37,7 +37,7 @@ public func hookKeyPaths() {
     save_getKeyPath = autoBitCast(original)
     var reb = [rebinding(name: strdup(keyPathFuncName),
                          replacement :replacer, replaced: nil)]
-    rebind_symbols(&reb, reb.count)
+    _ = SwiftTrace.apply(rebindings: &reb)
 }
 
 @_cdecl("injection_getKeyPath")
@@ -66,7 +66,7 @@ public func injection_getKeyPath(pattern: UnsafeMutableRawPointer,
             keyPath = save_getKeyPath(pattern, arguments)
             keyPaths[callkey] = keyPath
         }
-        INRetain(keyPath)
+        _ = Unmanaged<AnyKeyPath>.fromOpaque(keyPath).retain()
         return keyPath
     }
     return save_getKeyPath(pattern, arguments)

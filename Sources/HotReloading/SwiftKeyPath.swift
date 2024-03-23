@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 20/03/2024.
 //  Copyright © 2024 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftKeyPath.swift#18 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftKeyPath.swift#20 $
 //
 
 import Foundation
@@ -61,7 +61,7 @@ public func injection_getKeyPath(pattern: UnsafeMutableRawPointer,
             with: "", options: .regularExpression)+".keyPath#\(callIndex)"
         let keyPath: UnsafeRawPointer
         if let prev = keyPaths[callkey] {
-            SwiftInjection.log("Recycling", callkey)
+            SwiftInjection.detail("Recycling "+callkey)
             keyPath = prev
         } else {
             keyPath = save_getKeyPath(pattern, arguments)

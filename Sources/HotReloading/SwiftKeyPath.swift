@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 20/03/2024.
 //  Copyright © 2024 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftKeyPath.swift#20 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftKeyPath.swift#21 $
 //
 
 import Foundation
@@ -14,7 +14,8 @@ import SwiftTraceGuts
 import HotReloadingGuts
 #endif
 
-var keyPaths = [String: UnsafeRawPointer]()
+var keyPaths = [String: (offset: Int, keyPath: UnsafeRawPointer)]()
+var callOffsets = [String: Int]()
 var callIndexes = [String: Int]()
 var lastInjectionNumber = 0
 
@@ -44,30 +45,49 @@ public func hookKeyPaths() {
 @_cdecl("injection_getKeyPath")
 public func injection_getKeyPath(pattern: UnsafeMutableRawPointer,
                                  arguments: UnsafeRawPointer) -> UnsafeRawPointer {
-    if lastInjectionNumber != SwiftEval.instance.injectionNumber {
-        lastInjectionNumber = SwiftEval.instance.injectionNumber
-        callIndexes.removeAll()
-    }
     var info = Dl_info()
-    for caller in Thread.callStackReturnAddresses {
-        guard dladdr(caller.pointerValue, &info) != 0,
-            let callsym = SwiftMeta.demangle(symbol: info.dli_sname),
-            callsym.contains("body.getter") else {
+    for caller in Thread.callStackReturnAddresses.dropFirst() {
+        guard let caller = caller.pointerValue,
+              dladdr(caller, &info) != 0, let symbol = info.dli_sname,
+              let callsym = SwiftMeta.demangle(symbol: symbol) else {
             continue
         }
+//        print(callsym)
+        if !callsym.hasSuffix(".body.getter : some") {
+            break
+        }
+        let offset = caller-info.dli_saddr
+        if let last = callOffsets[callsym] {
+            if offset <= last {
+                callIndexes[callsym] = 0
+            }
+        } else {
+            callIndexes[callsym] = 0
+        }
+        callOffsets[callsym] = offset
         let callIndex = callIndexes[callsym, default: 0]
-        callIndexes[callsym] = callIndex+1
-        let callkey = callsym.replacingOccurrences(of: "<.*?>",
-            with: "", options: .regularExpression)+".keyPath#\(callIndex)"
+//        print(offset, callIndex)
+        let callBase = callsym.replacingOccurrences(of: "<.*?>",
+            with: "<>", options: .regularExpression) + ".keyPath#"
+        func callKey(shift: Int = 0) -> String {
+            return callBase+"\(callIndex+shift)"
+        }
         let keyPath: UnsafeRawPointer
-        if let prev = keyPaths[callkey] {
-            SwiftInjection.detail("Recycling "+callkey)
+        if let (_, prev) = keyPaths[callKey()] {
+//            if let (nextset, next) = keyPaths[callKey(shift: 1)],
+//               offset == nextset {
+//                print("Skipping")
+//                callIndex += 1
+//                prev = next
+//            }
+            SwiftInjection.detail("Recycling \(callKey())")
             keyPath = prev
         } else {
             keyPath = save_getKeyPath(pattern, arguments)
-            keyPaths[callkey] = keyPath
+            keyPaths[callKey()] = (offset, keyPath)
         }
         _ = Unmanaged<AnyKeyPath>.fromOpaque(keyPath).retain()
+        callIndexes[callsym] = callIndex+1
         return keyPath
     }
     return save_getKeyPath(pattern, arguments)

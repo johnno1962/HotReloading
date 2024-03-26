@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 20/03/2024.
 //  Copyright © 2024 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftKeyPath.swift#21 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftKeyPath.swift#22 $
 //
 
 import Foundation
@@ -14,16 +14,11 @@ import SwiftTraceGuts
 import HotReloadingGuts
 #endif
 
-var keyPaths = [String: (offset: Int, keyPath: UnsafeRawPointer)]()
-var callOffsets = [String: Int]()
-var callIndexes = [String: Int]()
-var lastInjectionNumber = 0
+private typealias KeyPathFunc = @convention(c) (UnsafeMutableRawPointer,
+                                                UnsafeRawPointer) -> UnsafeRawPointer
 
-typealias KeyPathFunc = @convention(c) (UnsafeMutableRawPointer,
-                                        UnsafeRawPointer) -> UnsafeRawPointer
-
-let keyPathFuncName = "swift_getKeyPath"
-var save_getKeyPath: KeyPathFunc!
+private let keyPathFuncName = "swift_getKeyPath"
+private var save_getKeyPath: KeyPathFunc!
 
 @_cdecl("hookKeyPaths")
 public func hookKeyPaths() {
@@ -41,6 +36,11 @@ public func hookKeyPaths() {
     SwiftInjection.initialRebindings += keyPathRebinding
     _ = SwiftTrace.apply(rebindings: &keyPathRebinding)
 }
+
+private var keyPaths = [String: (offset: Int, keyPath: UnsafeRawPointer)]()
+private var callOffsets = [String: Int]()
+private var callIndexes = [String: Int]()
+private var recycled = false
 
 @_cdecl("injection_getKeyPath")
 public func injection_getKeyPath(pattern: UnsafeMutableRawPointer,
@@ -60,6 +60,7 @@ public func injection_getKeyPath(pattern: UnsafeMutableRawPointer,
         if let last = callOffsets[callsym] {
             if offset <= last {
                 callIndexes[callsym] = 0
+                recycled = false
             }
         } else {
             callIndexes[callsym] = 0
@@ -81,10 +82,18 @@ public func injection_getKeyPath(pattern: UnsafeMutableRawPointer,
 //                prev = next
 //            }
             SwiftInjection.detail("Recycling \(callKey())")
+            recycled = true
             keyPath = prev
         } else {
             keyPath = save_getKeyPath(pattern, arguments)
             keyPaths[callKey()] = (offset, keyPath)
+            if recycled {
+                SwiftInjection.log("""
+                    ⚠️ New key path expression introduced over injection. \
+                    This will likely fail and you'll have to restart your \
+                    application.
+                    """)
+            }
         }
         _ = Unmanaged<AnyKeyPath>.fromOpaque(keyPath).retain()
         callIndexes[callsym] = callIndex+1

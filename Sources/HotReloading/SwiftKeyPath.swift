@@ -4,9 +4,15 @@
 //  Created by John Holdsworth on 20/03/2024.
 //  Copyright © 2024 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftKeyPath.swift#24 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftKeyPath.swift#26 $
+//
+//  Key paths weren't made to be injected as their underlying types can change.
+//  This is particularly evident in code that uses "The Composable Architecture".
+//  This code maintains a cache of previously allocated key paths using a unique
+//  identifier of the calling site so they remain invariant over an injection.
 //
 
+#if DEBUG || !SWIFT_PACKAGE
 import Foundation
 import SwiftTrace
 #if SWIFT_PACKAGE
@@ -22,6 +28,9 @@ private struct ViewBodyKeyPaths {
     static var save_getKeyPath: KeyPathFunc!
 
     static var cache = [String: ViewBodyKeyPaths]()
+    static var lastInjectionNumber = SwiftEval().injectionNumber
+    static var hasInjected = false
+
     var lastOffset = 0
     var keyPathNumber = 0
     var recycled = false
@@ -48,32 +57,51 @@ public func hookKeyPaths() {
 @_cdecl("injection_getKeyPath")
 public func injection_getKeyPath(pattern: UnsafeMutableRawPointer,
                                  arguments: UnsafeRawPointer) -> UnsafeRawPointer {
+    if ViewBodyKeyPaths.lastInjectionNumber != SwiftEval.instance.injectionNumber {
+        ViewBodyKeyPaths.lastInjectionNumber = SwiftEval.instance.injectionNumber
+        for key in ViewBodyKeyPaths.cache.keys {
+            ViewBodyKeyPaths.cache[key]?.keyPathNumber = 0
+            ViewBodyKeyPaths.cache[key]?.recycled = false
+        }
+        ViewBodyKeyPaths.hasInjected = true
+    }
     var info = Dl_info()
     for caller in Thread.callStackReturnAddresses.dropFirst() {
         guard let caller = caller.pointerValue,
               dladdr(caller, &info) != 0, let symbol = info.dli_sname,
-              let callsym = SwiftMeta.demangle(symbol: symbol) else {
+              let callerDecl = SwiftMeta.demangle(symbol: symbol) else {
             continue
         }
-//        print(callsym)
-        if !callsym.hasSuffix(".body.getter : some") {
+        if !callerDecl.hasSuffix(".body.getter : some") {
             break
         }
-        let callBase = callsym.replacingOccurrences(of: "<.*?>",
-            with: "<>", options: .regularExpression) + ".keyPath#"
-        var body = ViewBodyKeyPaths.cache[callBase] ?? ViewBodyKeyPaths()
+        // identify caller site
+        var relevant: [String] = callerDecl[#"(closure #\d+ |in \S+ : some)"#]
+        if relevant.isEmpty {
+            relevant = [callerDecl]
+        }
+        let callerKey = relevant.joined() + ".keyPath#"
+//        print(callerSym, ins)
+        var body = ViewBodyKeyPaths.cache[callerKey] ?? ViewBodyKeyPaths()
+        // reset keyPath counter ?
         let offset = caller-info.dli_saddr
         if offset <= body.lastOffset {
             body.keyPathNumber = 0
             body.recycled = false
         }
         body.lastOffset = offset
-//        print(offset, callIndex)
-        if body.keyPathNumber < body.keyPaths.count {
-            SwiftInjection.detail("Recycling \(callBase)\(body.keyPathNumber)")
+//        print(">>", offset, body.keyPathNumber)
+        // extract cached keyPath or create
+        let keyPath: UnsafeRawPointer
+        if body.keyPathNumber < body.keyPaths.count && ViewBodyKeyPaths.hasInjected {
+            SwiftInjection.detail("Recycling \(callerKey)\(body.keyPathNumber)")
+            keyPath = body.keyPaths[body.keyPathNumber]
             body.recycled = true
         } else {
-            body.keyPaths.append(ViewBodyKeyPaths.save_getKeyPath(pattern, arguments))
+            keyPath = ViewBodyKeyPaths.save_getKeyPath(pattern, arguments)
+            if body.keyPaths.count == body.keyPathNumber {
+                body.keyPaths.append(keyPath)
+            }
             if body.recycled {
                 SwiftInjection.log("""
                     ⚠️ New key path expression introduced over injection. \
@@ -82,11 +110,11 @@ public func injection_getKeyPath(pattern: UnsafeMutableRawPointer,
                     """)
             }
         }
-        let keyPath = body.keyPaths[body.keyPathNumber]
         body.keyPathNumber += 1
-        ViewBodyKeyPaths.cache[callBase] = body
+        ViewBodyKeyPaths.cache[callerKey] = body
         _ = Unmanaged<AnyKeyPath>.fromOpaque(keyPath).retain()
         return keyPath
     }
     return ViewBodyKeyPaths.save_getKeyPath(pattern, arguments)
 }
+#endif

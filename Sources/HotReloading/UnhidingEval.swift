@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#24 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#25 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -34,7 +34,6 @@
 #if DEBUG || !SWIFT_PACKAGE
 import Foundation
 #if SWIFT_PACKAGE
-import HotReloadingGuts
 import SwiftRegex
 #endif
 

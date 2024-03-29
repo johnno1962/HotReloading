@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 08/03/2015.
 //  Copyright (c) 2015 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#47 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#48 $
 //
 //  Started out as an abstraction to watch files under a directory.
 //  "Enhanced" to extract the last modified build log directory by
@@ -15,9 +15,6 @@
 #if DEBUG || !SWIFT_PACKAGE
 #if targetEnvironment(simulator) && !APP_SANDBOXED || os(macOS)
 import Foundation
-#if SWIFT_PACKAGE
-import HotReloadingGuts
-#endif
 
 public class FileWatcher: NSObject {
     public typealias InjectionCallback = (_ filesChanged: NSArray, _ ideProcPath: String) -> Void

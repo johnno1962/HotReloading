@@ -5,15 +5,12 @@
 //
 //  Interpose processing (-Xlinker -interposable).
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInterpose.swift#9 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInterpose.swift#10 $
 //
 
 #if DEBUG || !SWIFT_PACKAGE
 import Foundation
 import SwiftTrace
-#if SWIFT_PACKAGE
-import SwiftTraceGuts
-#endif
 
 extension SwiftInjection {
 

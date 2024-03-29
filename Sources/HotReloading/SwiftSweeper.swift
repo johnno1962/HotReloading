@@ -7,14 +7,11 @@
 //  instance of classes that have been injected in order
 //  to be able to send them the @objc injected message.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#18 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#19 $
 //
 
 #if DEBUG || !SWIFT_PACKAGE
 import Foundation
-#if SWIFT_PACKAGE
-import HotReloadingGuts
-#endif
 
 #if os(macOS)
 import Cocoa

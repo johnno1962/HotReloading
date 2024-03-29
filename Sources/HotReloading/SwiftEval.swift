@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#278 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#279 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -17,16 +17,14 @@
 #if arch(x86_64) || arch(i386) || arch(arm64) // simulator/macOS only
 import Foundation
 #if SWIFT_PACKAGE
-import HotReloadingGuts
+@_exported import HotReloadingGuts
 private let APP_PREFIX = "🔥 "
 #else
 private let APP_PREFIX = "💉 "
 #endif
 
 #if !INJECTION_III_APP
-#if canImport(SwiftTraceGuts)
-import SwiftTraceGuts
-#elseif canImport(SwiftTrace)
+#if canImport(SwiftTrace)
 import SwiftTrace
 #endif
 

@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#41 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#42 $
 //
 //  Code specific to injecting on an actual device.
 //
@@ -14,7 +14,6 @@
 import SwiftTrace
 #if SWIFT_PACKAGE
 import SwiftRegex
-import SwiftTraceGuts
 import HotReloadingGuts
 #endif
 

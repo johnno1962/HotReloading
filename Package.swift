@@ -29,7 +29,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/johnno1962/SwiftTrace",
-                 .upToNextMinor(from: "8.5.0")),
+                 .upToNextMinor(from: "8.5.1")),
         .package(name: "SwiftRegex",
                  url: "https://github.com/johnno1962/SwiftRegex5",
                  .upToNextMinor(from: "6.0.1")),

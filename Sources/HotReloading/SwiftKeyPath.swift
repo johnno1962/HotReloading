@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 20/03/2024.
 //  Copyright © 2024 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftKeyPath.swift#26 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftKeyPath.swift#27 $
 //
 //  Key paths weren't made to be injected as their underlying types can change.
 //  This is particularly evident in code that uses "The Composable Architecture".
@@ -50,7 +50,7 @@ public func hookKeyPaths() {
     ViewBodyKeyPaths.save_getKeyPath = autoBitCast(original)
     var keyPathRebinding = [rebinding(name: strdup(ViewBodyKeyPaths.keyPathFuncName),
                                       replacement: replacer, replaced: nil)]
-    SwiftInjection.initialRebindings += keyPathRebinding
+    SwiftTrace.initialRebindings += keyPathRebinding
     _ = SwiftTrace.apply(rebindings: &keyPathRebinding)
 }
 

@@ -4,17 +4,16 @@
 //  Created by John Holdsworth on 17/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#42 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/DeviceInjection.swift#43 $
 //
 //  Code specific to injecting on an actual device.
 //
 
 #if DEBUG || !SWIFT_PACKAGE
-#if !targetEnvironment(simulator) && SWIFT_PACKAGE
+#if !targetEnvironment(simulator) && SWIFT_PACKAGE && canImport(InjectionScratch)
 import SwiftTrace
 #if SWIFT_PACKAGE
 import SwiftRegex
-import HotReloadingGuts
 #endif
 
 extension SwiftInjection {

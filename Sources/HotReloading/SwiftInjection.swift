@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#210 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#212 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -212,7 +212,7 @@ public class SwiftInjection: NSObject {
             }
         }
 
-        #if !targetEnvironment(simulator) && SWIFT_PACKAGE
+        #if !targetEnvironment(simulator) && SWIFT_PACKAGE && canImport(InjectionScratch)
         if let pseudoImage = lastPseudoImage() {
             fillinObjcClassMetadata(in: pseudoImage)
         }
@@ -297,7 +297,7 @@ public class SwiftInjection: NSObject {
                                          from: object_getClass(newClass)) +
                                injection(swizzle: oldClass, from: newClass)
                 } else {
-                    #if !targetEnvironment(simulator) && SWIFT_PACKAGE
+                    #if !targetEnvironment(simulator) && SWIFT_PACKAGE && canImport(InjectionScratch)
                     swizzled = onDevice(swizzle: oldClass, from: newClass)
                     #else
                     swizzled = injection(swizzle: object_getClass(oldClass)!,
@@ -396,7 +396,7 @@ public class SwiftInjection: NSObject {
             log("Interposed \(interposed.count) function references.")
         }
 
-        #if !targetEnvironment(simulator) && SWIFT_PACKAGE
+        #if !targetEnvironment(simulator) && SWIFT_PACKAGE && canImport(InjectionScratch)
         if let pseudoImage = lastPseudoImage() {
             onDeviceSpecificProcessing(for: pseudoImage, sweepClasses)
         }

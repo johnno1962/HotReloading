@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#50 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#51 $
 //
 
 #if DEBUG || !SWIFT_PACKAGE
@@ -229,6 +229,7 @@ int unhide_object(const char *object_file, const char *framework, FILE *log,
             return exported;
 }
 
+#if 0 && TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR // never used
 int unhide_framework(const char *framework, FILE *log) {
     int totalExported = 0;
 #if 0 // Not implemented
@@ -381,7 +382,6 @@ extern "C" {
  @param image Pointer to pseudo image
  */
 void reverse_symbolics(const void *image) {
-    #if TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
     BOOL debug = FALSE;
     #define RSPREFIX "reverse_symbolics: ⚠️ "
     #define rsprintf if (debug) printf
@@ -485,6 +485,6 @@ void reverse_symbolics(const void *image) {
                  PAGE_ROUND(typeref_size), PROT_EXEC|PROT_READ) != KERN_SUCCESS)
         printf(RSPREFIX"Unable to make %d bytes executable %s\n",
                (int)typeref_size, strerror(errno));
-    #endif
 }
+#endif
 #endif

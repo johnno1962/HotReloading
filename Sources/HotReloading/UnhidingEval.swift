@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#25 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#26 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -96,6 +96,7 @@ public class UnhidingEval: SwiftEval {
                         }
                     }
 
+                    #if false // never implemented
                     for framework in frameworks {
                         let fileURL = buildDir
                             .appendingPathComponent(framework)
@@ -108,6 +109,7 @@ public class UnhidingEval: SwiftEval {
                             print("\(APP_PREFIX)Exported \(exported) symbol\(s) in framework \(frameworkName)")
                         }
                     }
+                    #endif
 
                     Self.lastProcessed[buildDir] = time(nil)
                     unhide_reset()

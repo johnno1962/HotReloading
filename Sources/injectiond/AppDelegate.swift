@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#70 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#72 $
 //
 
 import Cocoa
@@ -477,6 +477,10 @@ class AppDelegate : NSObject, NSApplicationDelegate {
     @IBAction func traceSwiftUI(_ sender: NSMenuItem) {
         toggleState(sender)
         lastConnection?.sendCommand(.traceSwiftUI, with: nil)
+    }
+
+    @IBAction func profileSwiftUI(_ sender: NSMenuItem) {
+        lastConnection?.sendCommand(.profileUI, with: nil)
     }
 
     @IBAction func traceStats(_ sender: NSMenuItem) {

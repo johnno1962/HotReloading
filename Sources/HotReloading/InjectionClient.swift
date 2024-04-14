@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#73 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#75 $
 //
 //  Client app side of HotReloading started by +load
 //  method in HotReloadingGuts/ClientBoot.mm
@@ -19,6 +19,7 @@ import SwiftTrace
 import InjectionScratch
 #endif
 import Xprobe
+import ProfileSwiftUI
 
 public struct HotReloading {
     public static var stack: Void {
@@ -356,6 +357,8 @@ public class InjectionClient: SimpleSocket, InjectionReader {
         injectionQueue.async {
             var err: String?
             switch command {
+            case .profileUI:
+                ProfileSwiftUI.profile()
             case .load:
                 do {
                     builder.injectionNumber += 1

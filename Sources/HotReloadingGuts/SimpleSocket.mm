@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#62 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/SimpleSocket.mm#63 $
 //
 //  Server and client primitives for networking through sockets
 //  more esailly written in Objective-C than Swift. Subclass to
@@ -416,7 +416,8 @@ struct multicast_socket_packet {
         int idx = if_nametoindex(ifa->ifa_name);
         setsockopt(multicastSocket, IPPROTO_IP, IP_BOUND_IF, &idx, sizeof idx);
         addr.sin_addr.s_addr = laddr | ~nmask;
-        printf("Broadcasting to %s to locate InjectionIII host...\n", inet_ntoa(addr.sin_addr));
+        printf("Broadcasting to %s.%d:%s to locate InjectionIII host...\n",
+               ifa->ifa_name, idx, inet_ntoa(addr.sin_addr));
         if (sendto(multicastSocket, &msgbuf, sizeof msgbuf, 0,
                    (struct sockaddr *)&addr, sizeof addr) < 0)
             [self error:@"Could not send broadcast ping: %s"];

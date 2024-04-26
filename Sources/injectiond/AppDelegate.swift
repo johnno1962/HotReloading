@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#73 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#74 $
 //
 
 import Cocoa
@@ -498,11 +498,13 @@ class AppDelegate : NSObject, NSApplicationDelegate {
     }
 
     @IBAction func updateTraceInclude(_ sender: NSButton?) {
+        guard traceInclude.stringValue != "" || sender != nil else { return }
         update(filter: sender == nil ? .quietInclude : .include,
                textField: traceInclude)
     }
 
     @IBAction func updateTraceExclude(_ sender: NSButton?) {
+        guard traceExclude.stringValue != "" || sender != nil else { return }
         update(filter: .exclude, textField: traceExclude)
     }
 

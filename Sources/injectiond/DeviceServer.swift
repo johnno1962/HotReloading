@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 13/01/2022.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#30 $
+//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#31 $
 //
 
 import Foundation
@@ -19,18 +19,16 @@ class DeviceServer: InjectionServer {
     var lastSource: String?
     var loadFailed = false
 
-    #if !SWIFT_PACKAGE
     override func validateConnection() -> Bool {
         switch readInt() {
-        case INJECTION_SALT:
-            return readString() == INJECTION_KEY
         case HOTRELOADING_SALT:
             return readString()?.hasPrefix(NSHomeDirectory()) == true
+        case INJECTION_SALT:
+            return readString() == INJECTION_KEY
         default:
             return false
         }
     }
-    #endif
 
     override func process(response: InjectionResponse, executable: String) {
         switch response {

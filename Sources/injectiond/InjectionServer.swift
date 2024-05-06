@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#64 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#65 $
 //
 
 import Cocoa
@@ -298,7 +298,8 @@ public class InjectionServer: SimpleSocket {
                 }
             case .sign:
                 guard let signer = builder.signer,
-                    appDelegate.isSandboxed || xprobePlugin != nil else {
+                    appDelegate.isSandboxed //|| xprobePlugin != nil
+                    else {
                     sendCommand(.signed, with: "0")
                     break
                 }

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#74 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#76 $
 //
 
 import Cocoa
@@ -132,10 +132,12 @@ class AppDelegate : NSObject, NSApplicationDelegate {
             menuItem.state = defaults.bool(forKey: defaultsKey) ? .on : .off
         }
 
+        #if SWIFT_PACKAGE
         if remoteItem.state == .on {
             remoteItem.state = .off
             startRemote(remoteItem)
         }
+        #endif
 
         setMenuIcon(.idle)
         versionSpecific()
@@ -447,15 +449,19 @@ class AppDelegate : NSObject, NSApplicationDelegate {
     }
 
     @IBAction func startRemote(_ sender: NSMenuItem) {
+        #if SWIFT_PACKAGE
         remoteItem.state = .off
         toggleState(remoteItem)
         RMWindowController.startServer(sender)
+        #endif
     }
 
     @IBAction func stopRemote(_ sender: NSMenuItem) {
+        #if SWIFT_PACKAGE
         remoteItem.state = .on
         toggleState(remoteItem)
         RMWindowController.stopServer()
+        #endif
     }
 
     @IBAction func traceApp(_ sender: NSMenuItem) {

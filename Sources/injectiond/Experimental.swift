@@ -5,7 +5,7 @@
 //  Created by User on 20/10/2020.
 //  Copyright © 2020 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#33 $
+//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#35 $
 //
 
 import Cocoa
@@ -19,6 +19,7 @@ import XprobeUI
 extension AppDelegate {
 
     @IBAction func runXprobe(_ sender: NSMenuItem) {
+        #if SWIFT_PACKAGE
         if xprobePlugin == nil {
             xprobePlugin = XprobePluginMenuController()
             xprobePlugin.applicationDidFinishLaunching(
@@ -27,6 +28,7 @@ extension AppDelegate {
         }
         lastConnection?.sendCommand(.xprobe, with: "")
         windowItem.isHidden = false
+        #endif
     }
 
     @objc func evalCode(_ swift: String) {

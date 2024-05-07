@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 08/03/2015.
 //  Copyright (c) 2015 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#48 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/FileWatcher.swift#49 $
 //
 //  Started out as an abstraction to watch files under a directory.
 //  "Enhanced" to extract the last modified build log directory by
@@ -111,7 +111,7 @@ public class FileWatcher: NSObject {
         #endif
 
         for path in changes {
-            guard let path = path as? String else { continue }
+            guard var path = path as? String else { continue }
             #if !INJECTION_III_APP
             if path.hasSuffix(".xcactivitylog") &&
                 path.contains("/Logs/Build/") {
@@ -124,6 +124,11 @@ public class FileWatcher: NSObject {
                 range: NSMakeRange(0, path.utf16.count)) != nil &&
                 path.range(of: "DerivedData/|InjectionProject/|.DocumentRevisions-|@__swiftmacro_|main.mm?$",
                             options: .regularExpression) == nil {
+                if let absolute = try? URL(fileURLWithPath: path)
+                    .resourceValues(forKeys: [.canonicalPathKey])
+                    .canonicalPath {
+                    path = absolute
+                }
                 changed.insert(path)
             }
         }

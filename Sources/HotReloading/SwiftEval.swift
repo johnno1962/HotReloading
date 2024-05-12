@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#279 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#280 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -180,11 +180,11 @@ public class SwiftEval: NSObject {
     var objectUnhider: ((String) -> Void)?
     var linkerOptions = ""
 
+    let bazelWorkspace = "IGNORE_WORKSPACE"
     let skipBazelLinking = "--skip_linking"
     var bazelLight = getenv("INJECTION_BAZEL") != nil ||
             UserDefaults.standard.bool(forKey: "bazelLight")
     var moduleLibraries = Set<String>()
-    let bazelWorkspace = "WORKSPACE"
 
     /// Additional logging to /tmp/hot\_reloading.log for "HotReloading" version of injection.
     var debug = { (what: Any...) in

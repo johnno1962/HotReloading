@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#65 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#66 $
 //
 
 import Cocoa
@@ -327,6 +327,10 @@ public class InjectionServer: SimpleSocket {
             case .buildCache:
                 if let buildCache = readString() {
                     builder.buildCacheFile = buildCache
+                }
+            case .derivedData:
+                if let derived = readString() {
+                    setenv(INJECTION_DERIVED_DATA, derived, 1)
                 }
             default:
                 break

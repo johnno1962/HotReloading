@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#280 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#283 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -18,9 +18,9 @@
 import Foundation
 #if SWIFT_PACKAGE
 @_exported import HotReloadingGuts
-private let APP_PREFIX = "🔥 "
-#else
-private let APP_PREFIX = "💉 "
+#elseif !INJECTION_III_APP
+private let APP_PREFIX = "💉 ",
+    INJECTION_DERIVED_DATA = "INJECTION_DERIVED_DATA"
 #endif
 
 #if !INJECTION_III_APP
@@ -263,13 +263,21 @@ public class SwiftEval: NSObject {
         let sourceURL = URL(fileURLWithPath:
             classNameOrFile.hasPrefix("/") ? classNameOrFile : #file)
         debug("Project file:", projectFile ?? "nil")
-        guard let derivedData = findDerivedData(url: URL(fileURLWithPath:
-                    NSHomeDirectory()), ideProcPath: self.lastIdeProcPath) ??
-            (self.projectFile != nil ?
-                findDerivedData(url: URL(fileURLWithPath:
-                        self.projectFile!), ideProcPath: self.lastIdeProcPath) :
-                findDerivedData(url: sourceURL, ideProcPath: self.lastIdeProcPath)) else {
-                throw evalError("Could not locate derived data. Is the project under your home directory?")
+        guard let derivedData = getenv(INJECTION_DERIVED_DATA).flatMap({
+            let url = URL(fileURLWithPath: String(cString: $0))
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                _ = evalError("Invalid path in \(INJECTION_DERIVED_DATA): "+url.path)
+                return nil }
+            return url }) ??
+            findDerivedData(url: URL(fileURLWithPath: NSHomeDirectory())) ??
+            (projectFile == nil ? findDerivedData(url: sourceURL) :
+                findDerivedData(url: URL(fileURLWithPath: projectFile!))) else {
+            throw evalError("""
+                Could not locate derived data. Is the project under your \
+                home directory? If you are using a custom derived data path, \
+                add it as an environment variable \(INJECTION_DERIVED_DATA) \
+                in your scheme.
+                """)
         }
         debug("DerivedData:", derivedData.path)
         guard let (projectFile, logsDir) =
@@ -887,8 +895,8 @@ public class SwiftEval: NSObject {
                     sub recoverFilelist {
                         my ($filemap) = $_[0] =~ / -output-file-map (\#(
                                                 Self.argumentRegex)) /;
-                        return if !$filemap;
                         $filemap =~ s/\\//g;
+                        return if ! -s $filemap;
                         my $file_handle = IO::File->new( "< $filemap" )
                             or die "Could not open filemap '$filemap'";
                         my $json_text = join'', $file_handle->getlines();
@@ -1077,14 +1085,14 @@ public class SwiftEval: NSObject {
         return derivedDataPath(realYear, pathSelector)
     }
 
-    func findDerivedData(url: URL, ideProcPath: String) -> URL? {
+    func findDerivedData(url: URL) -> URL? {
         if url.path == "/" {
             return nil
         }
 
         var relativeDirs = ["DerivedData", "build/DerivedData"]
-        if ideProcPath.lowercased().contains("appcode") {
-            relativeDirs.append(getAppCodeDerivedData(procPath: ideProcPath))
+        if lastIdeProcPath.lowercased().contains("appcode") {
+            relativeDirs.append(getAppCodeDerivedData(procPath: lastIdeProcPath))
         } else {
             relativeDirs.append("Library/Developer/Xcode/DerivedData")
         }
@@ -1095,7 +1103,7 @@ public class SwiftEval: NSObject {
             }
         }
 
-        return findDerivedData(url: url.deletingLastPathComponent(), ideProcPath: ideProcPath)
+        return findDerivedData(url: url.deletingLastPathComponent())
     }
 
     func findProject(for source: URL, derivedData: URL) -> (projectFile: URL, logsDir: URL)? {

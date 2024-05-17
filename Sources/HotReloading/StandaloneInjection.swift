@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 15/03/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#71 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/StandaloneInjection.swift#72 $
 //
 //  Standalone version of the HotReloading version of the InjectionIII project
 //  https://github.com/johnno1962/InjectionIII. This file allows you to
@@ -106,7 +106,8 @@ class StandaloneInjection: InjectionClient {
                         .deletingLastPathComponent().path
                     self.log("Using logs: \(lastBuilt).")
                 } else {
-                    self.log("⚠️ Project unknown, please build it.")
+                    self.log("⚠️ Build log for project not found. " +
+                             "Please edit a file and build it.")
                     return
                 }
             }

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#284 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#286 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -247,7 +247,7 @@ public class SwiftEval: NSObject {
     var buildCacheFile = "/tmp/macOS_builds.plist"
     #elseif os(tvOS)
     var buildCacheFile = "/tmp/tvOS_builds.plist"
-    #elseif os(xrOS)
+    #elseif os(visionOS)
     var buildCacheFile = "/tmp/xrOS_builds.plist"
     #elseif targetEnvironment(simulator)
     var buildCacheFile = SwiftEval.simulatorCacheFile
@@ -301,7 +301,7 @@ public class SwiftEval: NSObject {
             print(APP_PREFIX+"""
                 ⚠️ Project file \(projectFile.path) does not contain the -interposable \
                 linker flag. In order to be able to inject methods of structs and final \
-                classes, please add \"Other Linker Flags\" -Xlinker -interposable.
+                classes, please add \"Other Linker Flags\" -Xlinker -interposable for Debug builds only.
                 """)
         }
 

@@ -5,7 +5,7 @@
 //  Created by User on 20/10/2020.
 //  Copyright © 2020 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#35 $
+//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#36 $
 //
 
 import Cocoa
@@ -353,7 +353,7 @@ extension AppDelegate {
                             let bundleName = "macOSInjection.bundle"
                             #elseif os(tvOS)
                             let bundleName = "tvOSInjection.bundle"
-                            #elseif os(xrOS)
+                            #elseif os(visionOS)
                             let bundleName = "xrOSInjection.bundle"
                             #elseif targetEnvironment(simulator)
                             let bundleName = "iOSInjection.bundle"

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#80 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#81 $
 //
 //  Client app side of HotReloading started by +load
 //  method in HotReloadingGuts/ClientBoot.mm
@@ -208,7 +208,7 @@ public class InjectionClient: SimpleSocket, InjectionReader {
             }
         case .trace:
             if SwiftTrace.traceMainBundleMethods() == 0 {
-                log("⚠️ Tracing Swift methods can only work if you have -Xlinker -interposable to your project's \"Other Linker Flags\"")
+                log("⚠️ Tracing Swift methods can only work if you have -Xlinker -interposable to your project's Debug \"Other Linker Flags\"")
             } else {
                 log("Added trace to methods in main bundle")
             }
@@ -217,7 +217,7 @@ public class InjectionClient: SimpleSocket, InjectionReader {
             SwiftTrace.removeAllTraces()
         case .traceUI:
             if SwiftTrace.traceMainBundleMethods() == 0 {
-                log("⚠️ Tracing Swift methods can only work if you have -Xlinker -interposable to your project's \"Other Linker Flags\"")
+                log("⚠️ Tracing Swift methods can only work if you have -Xlinker -interposable to your project's Debug \"Other Linker Flags\"")
             }
             SwiftTrace.traceMainBundle()
             log("Added trace to methods in main bundle")

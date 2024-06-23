@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 20/03/2024.
 //  Copyright © 2024 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftKeyPath.swift#28 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftKeyPath.swift#29 $
 //
 //  Key paths weren't made to be injected as their underlying types can change.
 //  This is particularly evident in code that uses "The Composable Architecture".
@@ -14,7 +14,6 @@
 
 #if DEBUG || !SWIFT_PACKAGE
 import Foundation
-import SwiftTrace
 
 private struct ViewBodyKeyPaths {
     typealias KeyPathFunc = @convention(c) (UnsafeMutableRawPointer,

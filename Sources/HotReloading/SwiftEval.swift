@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#286 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#289 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -24,8 +24,8 @@ private let APP_PREFIX = "💉 ",
 #endif
 
 #if !INJECTION_III_APP
-#if canImport(SwiftTrace)
-import SwiftTrace
+#if canImport(SwiftTraceD)
+import SwiftTraceD
 #endif
 
 @objc protocol SwiftEvalImpl {
@@ -750,7 +750,7 @@ public class SwiftEval: NSObject {
                 _ = loadXCTest
                 _ = loadTestsBundle
             }
-            #if canImport(SwiftTrace)
+            #if canImport(SwiftTrace) || canImport(SwiftTraceD)
             dl = fast_dlopen(dylib, RTLD_NOW)
             #else
             dl = dlopen(dylib, RTLD_NOW)

@@ -2,7 +2,7 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
 //  Repo: https://github.com/johnno1962/HotReloading
-//  $Id: //depot/HotReloading/Package.swift#197 $
+//  $Id: //depot/HotReloading/Package.swift#198 $
 //
 
 import PackageDescription
@@ -29,7 +29,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/johnno1962/SwiftTrace",
-                 .upToNextMinor(from: "8.5.7")),
+                 .upToNextMinor(from: "8.6.0")),
         .package(name: "SwiftRegex",
                  url: "https://github.com/johnno1962/SwiftRegex5",
                  .upToNextMinor(from: "6.1.0")),
@@ -39,7 +39,7 @@ let package = Package(
                  url: "https://github.com/johnno1962/Remote",
                  .upToNextMinor(from: "2.3.5")),
         .package(url: "https://github.com/johnno1962/ProfileSwiftUI",
-                 .upToNextMinor(from: "1.0.6")),
+                 .upToNextMinor(from: "1.1.0")),
 //        .package(url: "https://github.com/johnno1962/DLKit",
 //                 .upToNextMinor(from: "1.2.1")),
 //        .package(url: "https://github.com/johnno1962/InjectionScratch",
@@ -47,7 +47,8 @@ let package = Package(
     ],
     targets: [
         .target(name: "HotReloading", dependencies: ["HotReloadingGuts",
-             "SwiftTrace", .product(name: "Xprobe", package: "XprobePlugin"),
+                 .product(name: "SwiftTraceD", package: "SwiftTrace"),
+                 .product(name: "Xprobe", package: "XprobePlugin"),
                  .product(name: "SwiftRegex", package: "SwiftRegex"),
                     "ProfileSwiftUI" /*, "DLKit",
                  "InjectionScratch"*/]/*, linkerSettings: [.unsafeFlags([

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#213 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#214 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -42,7 +42,11 @@
 #if DEBUG || !SWIFT_PACKAGE
 #if arch(x86_64) || arch(i386) || arch(arm64) // simulator/macOS only
 import Foundation
-import SwiftTrace
+#if SWIFT_PACKAGE
+@_exported import SwiftTraceD
+#else
+@_exported import SwiftTrace
+#endif
 
 #if os(iOS) || os(tvOS)
 import UIKit

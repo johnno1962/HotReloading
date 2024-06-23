@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 09/06/2022.
 //  Copyright © 2022 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/ReducerInjection.swift#11 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/ReducerInjection.swift#12 $
 //
 //  Support for injecting "The Composble Architecture" Reducers using TCA fork:
 //  https://github.com/thebrowsercompany/swift-composable-architecture/tree/develop
@@ -14,7 +14,6 @@
 
 #if DEBUG || !SWIFT_PACKAGE
 import Foundation
-import SwiftTrace
 
 extension NSObject {
 

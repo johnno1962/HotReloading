@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 17/09/2020.
 //  Copyright © 2020 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/UpdateCheck.swift#2 $
+//  $Id: //depot/HotReloading/Sources/injectiond/UpdateCheck.swift#3 $
 //
 
 import Cocoa
@@ -16,6 +16,7 @@ import HotReloadingGuts
 extension AppDelegate {
 
     @IBAction func updateCheck(_ sender: NSMenuItem?) {
+        let userInitiated = sender != nil
 
         URLSession(configuration: .default).dataTask(with:
             URL(string:
@@ -37,7 +38,7 @@ extension AppDelegate {
                                 as? String,
                             available.compare(current, options: .numeric)
                                 == .orderedDescending else {
-                            if sender != nil {
+                            if userInitiated {
                                 let alert = NSAlert()
                                 alert.addButton(withTitle: "OK")
                                 alert.addButton(withTitle: "Check Monthly")

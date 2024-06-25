@@ -3,7 +3,7 @@
 //
 //  Created by John Holdsworth on 13/04/2021.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#26 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/UnhidingEval.swift#27 $
 //
 //  Retro-fit Unhide into InjectionIII
 //
@@ -66,10 +66,10 @@ public class UnhidingEval: SwiftEval {
     override func startUnhide() {
         if !unhidden, let buildDir = buildDir {
             unhidden = true
-            if let enumerator = FileManager.default
+            Self.unhideQueue.async {
+                if let enumerator = FileManager.default
                     .enumerator(atPath: buildDir.path),
                 let log = fopen("/tmp/unhide.log", "w") {
-                Self.unhideQueue.async {
                     // linkFileLists contain the list of object files.
                     var linkFileLists = [String](), frameworks = [String]()
                     for path in enumerator.compactMap({ $0 as? String }) {

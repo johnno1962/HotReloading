@@ -2,7 +2,7 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
 //  Repo: https://github.com/johnno1962/HotReloading
-//  $Id: //depot/HotReloading/Package.swift#200 $
+//  $Id: //depot/HotReloading/Package.swift#201 $
 //
 
 import PackageDescription
@@ -39,7 +39,7 @@ let package = Package(
                  url: "https://github.com/johnno1962/Remote",
                  .upToNextMinor(from: "2.3.5")),
         .package(url: "https://github.com/johnno1962/ProfileSwiftUI",
-                 .upToNextMinor(from: "1.1.1")),
+                 .upToNextMinor(from: "1.1.2")),
 //        .package(url: "https://github.com/johnno1962/DLKit",
 //                 .upToNextMinor(from: "1.2.1")),
 //        .package(url: "https://github.com/johnno1962/InjectionScratch",

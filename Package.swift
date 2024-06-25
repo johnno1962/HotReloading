@@ -2,7 +2,7 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
 //  Repo: https://github.com/johnno1962/HotReloading
-//  $Id: //depot/HotReloading/Package.swift#198 $
+//  $Id: //depot/HotReloading/Package.swift#200 $
 //
 
 import PackageDescription
@@ -29,17 +29,17 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/johnno1962/SwiftTrace",
-                 .upToNextMinor(from: "8.6.0")),
+                 .upToNextMinor(from: "8.6.1")),
         .package(name: "SwiftRegex",
                  url: "https://github.com/johnno1962/SwiftRegex5",
-                 .upToNextMinor(from: "6.1.0")),
+                 .upToNextMinor(from: "6.1.2")),
         .package(url: "https://github.com/johnno1962/XprobePlugin",
-                 .upToNextMinor(from: "2.9.8")),
+                 .upToNextMinor(from: "2.9.9")),
         .package(name: "RemotePlugin",
                  url: "https://github.com/johnno1962/Remote",
                  .upToNextMinor(from: "2.3.5")),
         .package(url: "https://github.com/johnno1962/ProfileSwiftUI",
-                 .upToNextMinor(from: "1.1.0")),
+                 .upToNextMinor(from: "1.1.1")),
 //        .package(url: "https://github.com/johnno1962/DLKit",
 //                 .upToNextMinor(from: "1.2.1")),
 //        .package(url: "https://github.com/johnno1962/InjectionScratch",

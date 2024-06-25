@@ -6,7 +6,7 @@
 #  Copies injection bundle for on-device injection.
 #  Thanks @oryonatan
 #
-#  $Id: //depot/HotReloading/copy_bundle.sh#13 $
+#  $Id: //depot/HotReloading/copy_bundle.sh#14 $
 #
 
 if [ "$CONFIGURATION" == "Debug" ]; then

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#289 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#290 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -366,9 +366,11 @@ public class SwiftEval: NSObject {
                 3. File paths in the simulator are case sensitive.
                 4. The modified source file is not in the current project.
                 5. The source file is an XCTest that has not been run yet.
-                6. Xcode has removed the build logs. Edit a file and re-run.
-                Try a build clean then rebuild to make logs available or
-                consult: "\(cmdfile)".
+                6. Xcode has removed the build logs. Edit a file and re-run
+                or try a build clean then rebuild to make logs available or
+                consult: "\(cmdfile)". Whatever the problem, if you see
+                this error it may be worth trying the new implementation
+                https://github.com/johnno1962/InjectionNext.
                 """)
         }
         sourceFile += "" // remove warning

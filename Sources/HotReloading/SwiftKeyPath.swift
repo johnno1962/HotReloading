@@ -4,7 +4,7 @@
 //  Created by John Holdsworth on 20/03/2024.
 //  Copyright © 2024 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftKeyPath.swift#30 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftKeyPath.swift#34 $
 //
 //  Key paths weren't made to be injected as their underlying types can change.
 //  This is particularly evident in code that uses "The Composable Architecture".
@@ -35,6 +35,8 @@ private struct ViewBodyKeyPaths {
 @_cdecl("hookKeyPaths")
 public func hookKeyPaths(original: UnsafeMutableRawPointer,
                          replacer: UnsafeMutableRawPointer) {
+    print(APP_PREFIX+"ℹ️ Intercepting keypaths for when their types are injected." +
+        " Set an env var INJECTION_NOKEYPATHS in your scheme to prevent this.")
     ViewBodyKeyPaths.save_getKeyPath = autoBitCast(original)
     var keyPathRebinding = [rebinding(name: strdup(ViewBodyKeyPaths.keyPathFuncName),
                                       replacement: replacer, replaced: nil)]

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#121 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#122 $
 //
 //  Initiate connection to server side of InjectionIII/HotReloading.
 //
@@ -52,7 +52,8 @@ extern "C" {
 }
 
 + (void)load {
-    if ([NSTemporaryDirectory() containsString:@"/UserData/Previews/"])
+    if ([NSTemporaryDirectory() containsString:@"/UserData/Previews/"] ||
+        strstr(getenv("PACKAGE_RESOURCE_BUNDLE_PATH")?:"", "/Previews/"))
         return;
     #if !(SWIFT_PACKAGE && TARGET_OS_OSX)
     if (!getenv("INJECTION_NOKEYPATHS") && (getenv("INJECTION_KEYPATHS")

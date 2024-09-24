@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#123 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#124 $
 //
 //  Initiate connection to server side of InjectionIII/HotReloading.
 //
@@ -200,7 +200,7 @@ extern "C" {
 @end
 #endif
 
-#ifdef __IPHONE_OS_VERSION_MIN_REQUIRED
+#if __IPHONE_OS_VERSION_MIN_REQUIRED && !TARGET_OS_WATCH
 @interface UIViewController (StoryboardInjection)
 - (void)_loadViewFromNibNamed:(NSString *)a0 bundle:(NSBundle *)a1;
 @end

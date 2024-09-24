@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#290 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#291 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -576,6 +576,10 @@ public class SwiftEval: NSObject {
             osSpecific = "-mmacosx-version-min=10.11"+target
         case "XRSimulator": fallthrough case "XROS":
             osSpecific = ""
+        #if os(watchOS)
+        case "WatchSimulator":
+            osSpecific = ""
+        #endif
         default:
             _ = evalError("Invalid platform \(platform)")
             // -Xlinker -bundle_loader -Xlinker \"\(Bundle.main.executablePath!)\""
@@ -884,6 +888,12 @@ public class SwiftEval: NSObject {
             """#
         #endif
 
+        #if os(watchOS)
+        let filterWatchOS = "=~ /-watchos/"
+        #else
+        let filterWatchOS = "!~ /-watchos/"
+        #endif
+
         // messy but fast
         try #"""
                     use JSON::PP;
@@ -929,7 +939,7 @@ public class SwiftEval: NSObject {
                         }
                         elsif ($line =~ m@\#(regexp.escaping("\"$")
                                     .escaping("@", with: #"\E\$0\Q"#)
-                            )@oi and $line !~ /-watchos/
+                            )@oi and $line \#(filterWatchOS)
                                  and $line =~ "\#(arch)"\#(swiftpm)) {
                             # found compile command..
                             # may need to recover file list

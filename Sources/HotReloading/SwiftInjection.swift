@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#214 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#215 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -628,8 +628,10 @@ public class SwiftInjection: NSObject {
 
     @objc(vaccine:)
     open class func performVaccineInjection(_ object: AnyObject) {
+        #if !os(watchOS)
         let vaccine = Vaccine()
         vaccine.performInjection(on: object)
+        #endif
     }
 
     #if os(iOS) || os(tvOS)

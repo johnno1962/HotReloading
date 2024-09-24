@@ -25,6 +25,8 @@ if [ "$CONFIGURATION" == "Debug" ]; then
      BUNDLE=${1:-tvdevOSInjection}
     elif [ "$PLATFORM_NAME" == "xrsimulator" ]; then
      BUNDLE=${1:-xrOSInjection}
+    elif [ "$PLATFORM_NAME" == "watchsimulator" ]; then
+     BUNDLE=${1:-watchOSInjection}
     elif [ "$PLATFORM_NAME" == "xros" ]; then
      BUNDLE=${1:-xrdevOSInjection}
     elif [ "$PLATFORM_NAME" == "iphoneos" ]; then

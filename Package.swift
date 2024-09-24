@@ -2,7 +2,7 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
 //  Repo: https://github.com/johnno1962/HotReloading
-//  $Id: //depot/HotReloading/Package.swift#202 $
+//  $Id: //depot/HotReloading/Package.swift#203 $
 //
 
 import PackageDescription
@@ -34,7 +34,7 @@ let package = Package(
                  url: "https://github.com/johnno1962/SwiftRegex5",
                  .upToNextMinor(from: "6.1.2")),
         .package(url: "https://github.com/johnno1962/XprobePlugin",
-                 .upToNextMinor(from: "2.9.9")),
+                 .upToNextMinor(from: "2.9.10")),
         .package(name: "RemotePlugin",
                  url: "https://github.com/johnno1962/Remote",
                  .upToNextMinor(from: "2.3.5")),

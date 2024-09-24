@@ -1,4 +1,4 @@
-#if DEBUG || !SWIFT_PACKAGE
+#if (DEBUG || !SWIFT_PACKAGE) && !os(watchOS)
 #if os(macOS)
 import Cocoa
 typealias View = NSView

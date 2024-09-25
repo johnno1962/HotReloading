@@ -52,11 +52,19 @@ extern "C" {
 }
 
 + (void)load {
-    if ([NSTemporaryDirectory() containsString:@"/UserData/Previews/"] ||
-        strstr(getenv("PACKAGE_RESOURCE_BUNDLE_PATH")?:"", "/Previews/") ||
-        getenv("XCTestBundlePath") || getenv("XCTestSessionIdentifier") ||
-        getenv("XCTestConfigurationFilePath"))
-        return; // inhibit in previews or when running tests
+    // If the custom TEST_HOST used to load XCTestBundle, and this custom TEST_HOST is a normal iOS/macOS/tvOS app,
+    // then XCTestCase can instantiate NSWindow / UIWindow, make it key and visible, pause and wait for
+    // standard expectation – XCTestExpectation. This untypical flow used for per-screen UI development without need
+    // to launch full app. To support this flow we are allowing injection by respecting dedicated environment variable.
+    bool shouldUseInTests = getenv("INJECTION_USEINTESTS") != nullptr;
+
+    bool isPreviewsDetected = [NSTemporaryDirectory() containsString:@"/UserData/Previews/"] ||
+                              strstr(getenv("PACKAGE_RESOURCE_BUNDLE_PATH")?:"", "/Previews/");
+    bool isTestsDetected = getenv("XCTestBundlePath") ||
+                           getenv("XCTestSessionIdentifier") ||
+                           getenv("XCTestConfigurationFilePath");
+    if (isPreviewsDetected || (isTestsDetected && !shouldUseInTests))
+        return; // inhibit in previews or when running tests, unless explicitly enabled in tests.
     #if !(SWIFT_PACKAGE && TARGET_OS_OSX)
     if (!getenv("INJECTION_NOKEYPATHS") && (getenv("INJECTION_KEYPATHS")
         #if !SWIFT_PACKAGE

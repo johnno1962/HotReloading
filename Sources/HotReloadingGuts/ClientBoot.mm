@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#125 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#126 $
 //
 //  Initiate connection to server side of InjectionIII/HotReloading.
 //
@@ -58,8 +58,9 @@ extern "C" {
     // to launch full app. To support this flow we are allowing injection by respecting dedicated environment variable.
     bool shouldUseInTests = getenv("INJECTION_USEINTESTS") != nullptr;
 
-    bool isPreviewsDetected = [NSTemporaryDirectory() containsString:@"/UserData/Previews/"] ||
-                              strstr(getenv("PACKAGE_RESOURCE_BUNDLE_PATH")?:"", "/Previews/");
+    // See: https://forums.developer.apple.com/forums/thread/761439
+    bool isPreviewsDetected = getenv("XCODE_RUNNING_FOR_PREVIEWS") != nullptr;
+    // See: https://github.com/pointfreeco/swift-issue-reporting/blob/main/Sources/IssueReporting/IsTesting.swift#L29
     bool isTestsDetected = getenv("XCTestBundlePath") ||
                            getenv("XCTestSessionIdentifier") ||
                            getenv("XCTestConfigurationFilePath");

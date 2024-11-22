@@ -5,7 +5,7 @@
 //  Created by User on 20/10/2020.
 //  Copyright © 2020 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#36 $
+//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#38 $
 //
 
 import Cocoa
@@ -400,6 +400,7 @@ extension AppDelegate {
                             var cancellable: AnyCancellable? = nil
                             let publisher = PassthroughSubject<Void, Never>()
                             init() {
+                                _ = loadInjectionOnce // .enableInjection() optional Xcode 16+
                                 cancellable = NotificationCenter.default.publisher(for:
                                     Notification.Name("INJECTION_BUNDLE_NOTIFICATION"))
                                     .sink { [weak self] change in

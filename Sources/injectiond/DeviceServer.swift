@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 13/01/2022.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#33 $
+//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#34 $
 //
 
 import Foundation
@@ -74,6 +74,7 @@ class DeviceServer: InjectionServer {
             }
             compileQueue.async {
                 self.builder.linkerOptions =
+                    " -fuse-ld=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld-classic" +
                     " -Xlinker -image_base -Xlinker 0x" +
                     String(Int(bitPattern: slide), radix: 16)
                 do {

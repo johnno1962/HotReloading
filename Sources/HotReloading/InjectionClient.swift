@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#82 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#83 $
 //
 //  Client app side of HotReloading started by +load
 //  method in HotReloadingGuts/ClientBoot.mm
@@ -43,6 +43,12 @@ public class InjectionClient: SimpleSocket, InjectionReader {
         print(APP_PREFIX+msg)
     }
 
+    #if canImport(InjectionScratch)
+    func next(scratch: UnsafeMutableRawPointer) -> UnsafeMutableRawPointer {
+        return scratch
+    }
+    #endif
+
     public override func runInBackground() {
         let builder = SwiftInjectionEval.sharedInstance()
         builder.tmpDir = NSTemporaryDirectory()
@@ -65,7 +71,7 @@ public class InjectionClient: SimpleSocket, InjectionReader {
             log("⚠️ You are using device injection which is very much a work in progress. Expect the unexpected.")
             writeCommand(InjectionResponse
                             .scratchPointer.rawValue, with: nil)
-            writePointer(scratch)
+            writePointer(next(scratch: scratch))
         }
         #endif
 
@@ -356,7 +362,7 @@ public class InjectionClient: SimpleSocket, InjectionReader {
                     print(String(format: "\(APP_PREFIX)You have used %.1f%% of InjectionScratch space.", percent))
                 }
                 self.writeCommand(InjectionResponse.scratchPointer.rawValue, with: nil)
-                self.writePointer(imageEnd)
+                self.writePointer(self.next(scratch: imageEnd))
             }
             return
         }

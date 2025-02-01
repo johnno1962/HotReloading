@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#61 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#62 $
 //
 //  Shared definitions between server and client.
 //
@@ -145,6 +145,10 @@ extern int unhide_object(const char *object_file, const char *framework, FILE *l
                          NSMutableArray<NSString *> *class_references,
                          NSMutableArray<NSString *> *descriptor_refs);
 extern void unhide_reset(void);
+
+#if !TARGET_IPHONE_SIMULATOR
+extern void reverse_symbolics(const void *image);
+#endif
 
 // objc4-internal.h
 struct objc_image_info;

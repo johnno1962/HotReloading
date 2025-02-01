@@ -2,7 +2,7 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 //
 //  Repo: https://github.com/johnno1962/HotReloading
-//  $Id: //depot/HotReloading/Package.swift#203 $
+//  $Id: //depot/HotReloading/Package.swift#205 $
 //
 
 import PackageDescription
@@ -17,6 +17,8 @@ import Foundation
 // take precedence over the configured version.
 var hostname = Host.current().name ?? "localhost"
 // hostname = "192.168.0.243" // for example
+
+let simulateDlopenOnDevice = false
 
 let package = Package(
     name: "HotReloading",
@@ -42,16 +44,17 @@ let package = Package(
                  .upToNextMinor(from: "1.1.3")),
 //        .package(url: "https://github.com/johnno1962/DLKit",
 //                 .upToNextMinor(from: "1.2.1")),
-//        .package(url: "https://github.com/johnno1962/InjectionScratch",
-//                 .upToNextMinor(from: "1.2.12")),
-    ],
+    ] + (simulateDlopenOnDevice ? [
+        .package(url: "https://github.com/johnno1962/InjectionScratch",
+                 .upToNextMinor(from: "1.2.13"))] : []),
     targets: [
         .target(name: "HotReloading", dependencies: ["HotReloadingGuts",
                  .product(name: "SwiftTraceD", package: "SwiftTrace"),
                  .product(name: "Xprobe", package: "XprobePlugin"),
                  .product(name: "SwiftRegex", package: "SwiftRegex"),
                     "ProfileSwiftUI" /*, "DLKit",
-                 "InjectionScratch"*/]/*, linkerSettings: [.unsafeFlags([
+                    */] + (simulateDlopenOnDevice ? ["InjectionScratch"] : [])
+                    /*, linkerSettings: [.unsafeFlags([
                     "-Xlinker", "-interposable", "-undefined", "dynamic_lookup"])]*/),
         .target(name: "HotReloadingGuts",
                 cSettings: [.define("DEVELOPER_HOST", to: "\"\(hostname)\"")]),

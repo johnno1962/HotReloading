@@ -7,7 +7,7 @@
 //  (default argument generators) so they can be referenced
 //  in a file being dynamically loaded.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#51 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/Unhide.mm#52 $
 //
 
 #if DEBUG || !SWIFT_PACKAGE
@@ -337,7 +337,9 @@ int unhide_framework(const char *framework, FILE *log) {
 #endif
     return totalExported;
 }
+#endif
 
+#if !TARGET_IPHONE_SIMULATOR
 #import <mach-o/getsect.h>
 #import <mach/vm_param.h>
 #import <sys/mman.h>

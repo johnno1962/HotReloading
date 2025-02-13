@@ -6,10 +6,16 @@
 #  Copies injection bundle for on-device injection.
 #  Thanks @oryonatan
 #
-#  $Id: //depot/HotReloading/copy_bundle.sh#15 $
+#  $Id: //depot/HotReloading/copy_bundle.sh#17 $
 #
 
 if [ "$CONFIGURATION" == "Debug" ]; then
+    if [ ! -w "$CODESIGNING_FOLDER_PATH" ]; then
+        echo '*** copy_bundle.sh unable to write to file system. ***'
+            'Change build setting "User Script Sandboxing" to NO'
+        exit 1;
+    fi
+
     RESOURCES=${RESOURCES:-"$(dirname "$0")"}
     COPY="$CODESIGNING_FOLDER_PATH/iOSInjection.bundle"
     STRACE="$COPY/Frameworks/SwiftTrace.framework/SwiftTrace"

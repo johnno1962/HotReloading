@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#294 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#295 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -922,9 +922,8 @@ public class SwiftEval: NSObject {
                         my $file_handle = IO::File->new( "< $filemap" )
                             or die "Could not open filemap '$filemap'";
                         my $json_text = join'', $file_handle->getlines();
+                        return unless index($json_text, '\#(sourceName)') > 0;
                         my $json_map = decode_json( $json_text, { utf8  => 1 } );
-                        return unless grep {
-                            $_ =~ /\#(sourceName)/ } keys %$json_map;
                         my $swift_sources = join "\n", map { actualPath($_) } keys %$json_map;
                         mkdir "/tmp/filelists";
                         my $filelist = '/tmp/filelists/\#(sourceName)';
@@ -981,7 +980,8 @@ public class SwiftEval: NSObject {
                             system (qw(/usr/bin/env defaults write com.johnholdsworth.InjectionIII),
                                     '\#(projectFile?.escaping("'") ?? "current project")', $identity);
                         }
-                        elsif (index($line, " -output-file-map ") > 0 and
+                        elsif (!$filelist &&
+                                index($line, " -output-file-map ") > 0 and
                                my ($fl) = recoverFilelist($line)) {
                             $filelist = $fl;
                         }

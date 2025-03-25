@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#62 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#63 $
 //
 //  Shared definitions between server and client.
 //
@@ -25,7 +25,7 @@
 
 #ifdef INJECTION_III_APP
 #define INJECTION_ADDRESS ":8898"
-#import "/tmp/InjectionIIISalt.h"
+#import "../../../../InjectionIII/InjectionIIISalt.h"
 #define INJECTION_KEY @"bvijkijyhbtrbrebzjbbzcfbbvvq"
 #define APP_NAME "InjectionIII"
 #define APP_PREFIX "💉 "
@@ -43,6 +43,9 @@ extern NSString *INJECTION_KEY;
 #endif
 #endif
 
+#define COMMANDS_VERSION 5001
+#define COMMANDS_PORT ":8896"
+#define DYLIB_PREFIX "/eval_injection_" // Was expected by DLKit
 #define VAPOR_SYMBOL "$s10RoutingKit10ParametersVN"
 #define FRAMEWORK_DELIMITER @","
 #define CALLORDER_DELIMITER @"---"
@@ -130,6 +133,7 @@ typedef NS_ENUM(int, InjectionResponse) {
     InjectionGetXcodeDev,
     InjectionBuildCache,
     InjectionDerivedData,
+    InjectionPlatform,
 
     InjectionExit = ~0
 };

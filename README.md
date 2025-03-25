@@ -5,7 +5,9 @@ for live code updates available as a Swift Package. i.e.:
 
 ![Icon](http://johnholdsworth.com/HotAdding.png)
 
-Note: you should only add the HotReloading product to your target.
+Note: you should only add the HotReloading product to your main target.
+This repo has been largely superseded by the newer and simpler 
+[InjectionNext](https://github.com/johnno1962/InjectionNext).
 
 Then, you can inject function implementations without having to rebuild your app...
 ![Icon](http://johnholdsworth.com/HotReloading.png)
@@ -128,4 +130,4 @@ store edge paths so they can be coloured (line 66 and 303) in "canviz-0.1/canviz
 It also includes [CodeMirror](http://codemirror.net/) JavaScript editor for
 the code to be evaluated in the Xprobe browser under an MIT license.
 
-$Date: 2023/09/18 $
+$Date: 2025/03/25 $

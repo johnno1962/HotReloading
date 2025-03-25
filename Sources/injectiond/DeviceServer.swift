@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 13/01/2022.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#34 $
+//  $Id: //depot/HotReloading/Sources/injectiond/DeviceServer.swift#35 $
 //
 
 import Foundation
@@ -78,8 +78,7 @@ class DeviceServer: InjectionServer {
                     " -Xlinker -image_base -Xlinker 0x" +
                     String(Int(bitPattern: slide), radix: 16)
                 do {
-                    let dylib = try self.builder.rebuildClass(oldClass: nil,
-                                          classNameOrFile: source, extra: nil)
+                    let dylib = try self.prepare(source: source)
                     if source[#"\.mm?$"#], // class references in Objective-C
                        var sourceText = try? String(contentsOfFile: source) {
                         sourceText[#"//.*|/\*[^*]+\*/"#] = "" // zap comments

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#83 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#84 $
 //
 //  Client app side of HotReloading started by +load
 //  method in HotReloadingGuts/ClientBoot.mm
@@ -139,6 +139,29 @@ public class InjectionClient: SimpleSocket, InjectionReader {
             writeCommand(InjectionResponse.derivedData.rawValue,
                          with: String(cString: derivedData))
         }
+
+        // Find client platform
+        #if os(macOS) || targetEnvironment(macCatalyst)
+        var platform = "Mac"
+        #elseif os(tvOS)
+        var platform = "AppleTV"
+        #elseif os(visionOS)
+        var platform = "XR"
+        #elseif os(watchOS)
+        var platform = "Watch"
+        #else
+        var platform = "iPhone"
+        #endif
+
+        #if targetEnvironment(simulator)
+        platform += "Simulator"
+        #else
+        platform += "OS"
+        #endif
+        #if os(macOS)
+        platform += "X"
+        #endif
+        writeCommand(InjectionResponse.platform.rawValue, with: platform)
 
         commandLoop:
         while true {

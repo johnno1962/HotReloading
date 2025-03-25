@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#77 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#79 $
 //
 
 import Cocoa
@@ -27,6 +27,7 @@ enum InjectionState: String {
     case idle = "Idle"
     case busy = "Busy"
     case error = "Error"
+    case ready = "Ready"
 }
 
 @objc(AppDelegate)
@@ -69,6 +70,36 @@ class AppDelegate : NSObject, NSApplicationDelegate {
             withBundleIdentifier: XcodeBundleID).first?
             .bundleURL?.appendingPathComponent("Contents/Developer")
     var derivedLogs: String?
+
+    /// Bringing in InjectionNext  patching
+    static var ui: AppDelegate { return appDelegate }
+    static func alreadyWatching(_ projectRoot: String) -> String? {
+        return appDelegate.watchedDirectories.first { projectRoot.hasPrefix($0) }
+    }
+    @IBOutlet weak var deviceTesting: NSMenuItem?
+    @IBOutlet weak var selectXcodeItem: NSMenuItem?
+    @IBOutlet weak var patchCompilerItem: NSMenuItem?
+    @IBOutlet weak var librariesField: NSTextField!
+    var codeSigningID: String { selectedProject.flatMap {
+        defaults.string(forKey: $0) } ?? "-" }
+    func watch(path: String) {
+        watchedDirectories.insert(path)
+        lastConnection?.watchDirectory(path)
+    }
+    #if !SWIFT_PACKAGE
+    @IBAction func prepareXcode(_ sender: NSMenuItem) {
+        let open = NSOpenPanel()
+        open.prompt = "Select Xcode to Patch"
+        open.directoryURL = URL(fileURLWithPath: Defaults.xcodePath)
+        open.canChooseDirectories = false
+        open.canChooseFiles = true
+        if open.runModal() == .OK, let path = open.url?.path {
+            selectXcodeItem?.toolTip = path
+            Defaults.xcodeDefault = path
+            patchCompiler(sender)
+        }
+    }
+    #endif
 
     @objc func applicationDidFinishLaunching(_ aNotification: Notification) {
         // Insert code here to initialize your application
@@ -136,6 +167,14 @@ class AppDelegate : NSObject, NSApplicationDelegate {
         if remoteItem.state == .on {
             remoteItem.state = .off
             startRemote(remoteItem)
+        }
+        #else
+        if !isSandboxed {
+            selectXcodeItem?.isHidden = false
+            selectXcodeItem?.toolTip = Defaults.xcodePath
+            selectXcodeItem?.state =
+                updatePatchUnpatch() == .patched ? .on : .off
+            FrontendServer.startServer(COMMANDS_PORT)
         }
         #endif
 
@@ -401,8 +440,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
         open.canChooseFiles = false
         if open.runModal() == .OK {
             for url in open.urls {
-                appDelegate.watchedDirectories.insert(url.path)
-                self.lastConnection?.watchDirectory(url.path)
+                watch(path: url.path)
                 persist(url: url)
             }
         }

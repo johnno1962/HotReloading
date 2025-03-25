@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiondGuts/SignerService.m#17 $
+//  $Id: //depot/HotReloading/Sources/injectiondGuts/SignerService.m#18 $
 //
 
 #import "SignerService.h"
@@ -26,7 +26,7 @@
                          "(export CODESIGN_ALLOCATE=\"%s/usr/bin/codesign_allocate\"; "
                          "if /usr/bin/file \"%@\" | /usr/bin/grep ' shared library ' >/dev/null;"
                          "then /usr/bin/codesign --force -s %@ \"%@\";"
-                         "else exit 1; fi) 2>&1",
+                         "else echo BAD-FILE; exit 1; fi) 2>&1",
                          toolchainDir, dylib, identity ?: adhocSign, dylib];
     FILE *fp = popen(command.UTF8String, "r");
     if (!fp)

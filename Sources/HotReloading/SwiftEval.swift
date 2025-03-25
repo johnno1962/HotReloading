@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#297 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#298 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -1300,7 +1300,7 @@ public class SwiftEval: NSObject {
 
     #if DEBUG
     deinit {
-        NSLog("\(self).deinit()")
+        print("\(self).deinit()")
     }
     #endif
 }

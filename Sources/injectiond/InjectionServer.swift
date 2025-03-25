@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#67 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#68 $
 //
 
 import Cocoa
@@ -22,6 +22,17 @@ var projectInjected = [String: [String: TimeInterval]]()
 let MIN_INJECTION_INTERVAL = 1.0
 
 public class InjectionServer: SimpleSocket {
+    // InjectionNext integration
+    static var clientQueue: DispatchQueue { commandQueue }
+    static var currentClient: InjectionServer? {
+        appDelegate.lastConnection
+    }
+    var injectionNumber = 100
+    var exports = [String: [String]]()
+    var platform = "iPhoneSimulator"
+    var tmpPath: String { builder.tmpDir }
+    var arch: String { builder.arch }
+
     var fileChangeHandler: ((_ changed: NSArray, _ ideProcPath:String) -> Void)!
     var fileWatchers = [FileWatcher]()
     var pause: TimeInterval = 0.0
@@ -35,6 +46,7 @@ public class InjectionServer: SimpleSocket {
         NSLog("\(APP_PREFIX)\(APP_NAME) \(msg)")
     }
 
+    @discardableResult
     override public class func error(_ message: String) -> Int32 {
         let saveno = errno
         let msg = String(format:message, strerror(saveno))
@@ -43,7 +55,7 @@ public class InjectionServer: SimpleSocket {
             let alert: NSAlert = NSAlert()
             alert.messageText = "\(self)"
             alert.informativeText = msg
-            alert.alertStyle = NSAlert.Style.warning
+            alert.alertStyle = .warning
             alert.addButton(withTitle: "OK")
             _ = alert.runModal()
         }
@@ -332,6 +344,10 @@ public class InjectionServer: SimpleSocket {
                 if let derived = readString() {
                     setenv(INJECTION_DERIVED_DATA, derived, 1)
                 }
+            case .platform:
+                if let clientPlatform = readString() {
+                    platform = clientPlatform
+                }
             default:
                 break
             }
@@ -350,8 +366,7 @@ public class InjectionServer: SimpleSocket {
         } else {
             compileQueue.async {
                 do {
-                    let dylib = try self.builder.rebuildClass(oldClass: nil,
-                                        classNameOrFile: source, extra: nil)
+                    let dylib = try self.prepare(source: source)
                     self.sendCommand(.setXcodeDev, with: self.builder.xcodeDev)
                     self.inject(dylib: dylib)
                     return
@@ -362,6 +377,21 @@ public class InjectionServer: SimpleSocket {
                 self.builder.updateLongTermCache(remove: source)
             }
         }
+    }
+
+    public func prepare(source: String) throws -> String {
+        #if !SWIFT_PACKAGE
+        if FrontendServer.loggedFrontend != nil && !appDelegate.isSandboxed,
+           let prepared = NextCompiler.compileQueue.sync(execute: {
+               FrontendServer.frontendRecompiler()
+               .prepare(source: source) }),
+           builder.signer?(prepared.dylibName["/eval", ""]) == true {
+            FrontendServer.writeCache(platform: prepared.platform)
+            return prepared.dylib[".dylib$", ""]
+        }
+        #endif
+        return try builder.rebuildClass(oldClass: nil,
+                  classNameOrFile: source, extra: nil)
     }
 
     public func inject(dylib: String) {

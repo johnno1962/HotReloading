@@ -6,10 +6,10 @@
 #  Copies injection bundle for on-device injection.
 #  Thanks @oryonatan
 #
-#  $Id: //depot/HotReloading/copy_bundle.sh#17 $
+#  $Id: //depot/HotReloading/copy_bundle.sh#18 $
 #
 
-if [ "$CONFIGURATION" == "Debug" ]; then
+if [[ "$CONFIGURATION" =~ Debug ]]; then
     if [ ! -w "$CODESIGNING_FOLDER_PATH" ]; then
         echo '*** copy_bundle.sh unable to write to file system. ***'
             'Change build setting "User Script Sandboxing" to NO'

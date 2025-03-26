@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#68 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#70 $
 //
 
 import Cocoa
@@ -381,7 +381,8 @@ public class InjectionServer: SimpleSocket {
 
     public func prepare(source: String) throws -> String {
         #if !SWIFT_PACKAGE
-        if FrontendServer.loggedFrontend != nil && !appDelegate.isSandboxed,
+        if source.hasSuffix(".swift") && !appDelegate.isSandboxed &&
+            appDelegate.updatePatchUnpatch() == .patched,
            let prepared = NextCompiler.compileQueue.sync(execute: {
                FrontendServer.frontendRecompiler()
                .prepare(source: source) }),

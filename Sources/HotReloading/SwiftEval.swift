@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#299 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#301 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -369,8 +369,10 @@ public class SwiftEval: NSObject {
                 6. Xcode has removed the build logs. Edit a file and re-run \
                 or try a build clean then rebuild to make logs available or \
                 consult: "\(cmdfile)".
-                7. You're using Xcode 16.3+ and Swift compilations are no \
-                longer logged correctly. See the note in the project README.
+                7. If you're using Xcode 16.3+, Swift compilation details are no \
+                longer logged by default. See the note in the project README. \
+                You'll need to add a EMIT_FRONTEND_COMMAND_LINES custom \
+                build setting to your project to continue using InjectionIII.
                 Whatever the problem, if you see this error it may be worth \
                 trying the start-over implementation https://github.com/johnno1962/InjectionNext.
                 """)
@@ -1055,6 +1057,9 @@ public class SwiftEval: NSObject {
             .replacingOccurrences(of:
                 #" -(pch-output-dir|supplementary-output-file-map|index-store-path|Xcc -ivfsstatcache -Xcc) \#(Self.argumentRegex) "#,
                                   with: " ", options: .regularExpression)
+            // Strip junk with Xcode 16.3 and EMIT_FRONTEND_COMMAND_LINES
+            .replacingOccurrences(of: #"^(.*?"; )?\S*?"(?=/)"#,
+                                  with: "", options: .regularExpression)
         debug("Replaced command:", compileCommand)
 
         if isFile {

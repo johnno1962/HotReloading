@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#79 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#80 $
 //
 
 import Cocoa
@@ -169,7 +169,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
             startRemote(remoteItem)
         }
         #else
-        if !isSandboxed {
+        if !isSandboxed && defaults.value(forKey: UserDefaultsFeed) != nil {
             selectXcodeItem?.isHidden = false
             selectXcodeItem?.toolTip = Defaults.xcodePath
             selectXcodeItem?.state =

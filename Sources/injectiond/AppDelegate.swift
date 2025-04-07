@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#80 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#81 $
 //
 
 import Cocoa
@@ -174,7 +174,6 @@ class AppDelegate : NSObject, NSApplicationDelegate {
             selectXcodeItem?.toolTip = Defaults.xcodePath
             selectXcodeItem?.state =
                 updatePatchUnpatch() == .patched ? .on : .off
-            FrontendServer.startServer(COMMANDS_PORT)
         }
         #endif
 

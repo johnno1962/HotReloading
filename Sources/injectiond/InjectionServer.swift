@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#70 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#72 $
 //
 
 import Cocoa
@@ -24,9 +24,8 @@ let MIN_INJECTION_INTERVAL = 1.0
 public class InjectionServer: SimpleSocket {
     // InjectionNext integration
     static var clientQueue: DispatchQueue { commandQueue }
-    static var currentClient: InjectionServer? {
-        appDelegate.lastConnection
-    }
+    static var currentClient: InjectionServer? { appDelegate.lastConnection }
+    static var currentClients: [InjectionServer?] { [currentClient] }
     var injectionNumber = 100
     var exports = [String: [String]]()
     var platform = "iPhoneSimulator"
@@ -385,7 +384,8 @@ public class InjectionServer: SimpleSocket {
             appDelegate.updatePatchUnpatch() == .patched,
            let prepared = NextCompiler.compileQueue.sync(execute: {
                FrontendServer.frontendRecompiler()
-               .prepare(source: source) }),
+               .prepare(source: source, connected:
+                            InjectionServer.currentClient) }),
            builder.signer?(prepared.dylibName["/eval", ""]) == true {
             FrontendServer.writeCache(platform: prepared.platform)
             return prepared.dylib[".dylib$", ""]

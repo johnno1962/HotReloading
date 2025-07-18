@@ -26,7 +26,7 @@ public enum BazelError: Error, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .workspaceNotFound:
-            return "Bazel workspace not found. Looking for WORKSPACE or WORKSPACE.bazel file."
+            return "Bazel workspace not found. Looking for MODULE or MODULE.bazel file."
         case .bazelNotFound:
             return "Bazel executable not found. Make sure Bazel is installed and in PATH."
         case .queryFailed(let message):
@@ -61,17 +61,17 @@ public class BazelInterface {
         self.debug = debug
     }
     
-    /// Find the Bazel workspace root by looking for WORKSPACE files
+    /// Find the Bazel workspace root by looking for MODULE files (Bazel 6.0+ with bzlmod)
     public static func findWorkspaceRoot(from path: URL) -> URL? {
         var currentDir = path
         
-        // Walk up directory tree looking for WORKSPACE or WORKSPACE.bazel
+        // Walk up directory tree looking for MODULE or MODULE.bazel (modern Bazel with bzlmod)
         while currentDir.path != "/" {
-            let workspace = currentDir.appendingPathComponent("WORKSPACE")
-            let workspaceBazel = currentDir.appendingPathComponent("WORKSPACE.bazel")
+            let module = currentDir.appendingPathComponent("MODULE")
+            let moduleBazel = currentDir.appendingPathComponent("MODULE.bazel")
             
-            if FileManager.default.fileExists(atPath: workspace.path) ||
-               FileManager.default.fileExists(atPath: workspaceBazel.path) {
+            if FileManager.default.fileExists(atPath: module.path) ||
+               FileManager.default.fileExists(atPath: moduleBazel.path) {
                 return currentDir
             }
             
@@ -346,11 +346,11 @@ public class BazelInterface {
     
     /// Validate that the workspace is a valid Bazel workspace
     public func validateWorkspace() throws {
-        let workspaceFile = workspaceRoot.appendingPathComponent("WORKSPACE")
-        let workspaceBazelFile = workspaceRoot.appendingPathComponent("WORKSPACE.bazel")
+        let moduleFile = workspaceRoot.appendingPathComponent("MODULE")
+        let moduleBazelFile = workspaceRoot.appendingPathComponent("MODULE.bazel")
         
-        guard FileManager.default.fileExists(atPath: workspaceFile.path) ||
-              FileManager.default.fileExists(atPath: workspaceBazelFile.path) else {
+        guard FileManager.default.fileExists(atPath: moduleFile.path) ||
+              FileManager.default.fileExists(atPath: moduleBazelFile.path) else {
             throw BazelError.workspaceNotFound
         }
         

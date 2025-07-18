@@ -185,6 +185,18 @@ public class SwiftEval: NSObject {
     var bazelLight = getenv("INJECTION_BAZEL") != nil ||
             UserDefaults.standard.bool(forKey: "bazelLight")
     var moduleLibraries = Set<String>()
+    
+    // MARK: - Bazel Integration Properties
+    
+    /// Build system detection
+    enum BuildSystem {
+        case xcode
+        case bazel(workspaceRoot: URL)
+    }
+    
+    private var buildSystem: BuildSystem = .xcode
+    private var bazelInterface: BazelInterface?
+    private lazy var bepParser = BazelBuildEventParser(debug: debug)
 
     /// Additional logging to /tmp/hot\_reloading.log for "HotReloading" version of injection.
     var debug = { (what: Any...) in
@@ -256,6 +268,162 @@ public class SwiftEval: NSObject {
     #endif
     lazy var longTermCache =
         NSMutableDictionary(contentsOfFile: buildCacheFile) ?? NSMutableDictionary()
+
+    // MARK: - Bazel Integration Methods
+    
+    /// Configure SwiftEval to use Bazel build system
+    public func configureBazel(workspaceRoot: URL) {
+        debug("Configuring SwiftEval for Bazel workspace:", workspaceRoot.path)
+        
+        self.buildSystem = .bazel(workspaceRoot: workspaceRoot)
+        self.bazelInterface = BazelInterface(workspaceRoot: workspaceRoot, debug: debug)
+        
+        // Validate the workspace
+        do {
+            try bazelInterface?.validateWorkspace()
+            debug("Bazel workspace validated successfully")
+        } catch {
+            debug("Bazel workspace validation failed:", error.localizedDescription)
+            // Fall back to Xcode mode if validation fails
+            self.buildSystem = .xcode
+            self.bazelInterface = nil
+        }
+    }
+    
+    /// Auto-detect build system based on project structure
+    public func autoDetectBuildSystem(for sourceFile: String) {
+        let sourceURL = URL(fileURLWithPath: sourceFile)
+        
+        // Check if we're in a Bazel workspace
+        if let workspaceRoot = BazelInterface.findWorkspaceRoot(from: sourceURL) {
+            debug("Auto-detected Bazel workspace:", workspaceRoot.path)
+            configureBazel(workspaceRoot: workspaceRoot)
+        } else {
+            debug("No Bazel workspace found, using Xcode build system")
+            self.buildSystem = .xcode
+            self.bazelInterface = nil
+        }
+    }
+    
+    /// Check if currently configured for Bazel
+    public var isBazelMode: Bool {
+        switch buildSystem {
+        case .bazel:
+            return true
+        case .xcode:
+            return false
+        }
+    }
+    
+    /// Process Bazel build for hot reload
+    private func processBazelBuild(
+        sourceFile: String,
+        workspaceRoot: URL,
+        extra: String?,
+        oldClass: AnyClass?
+    ) async throws -> String {
+        guard let bazelInterface = bazelInterface else {
+            throw evalError("Bazel interface not configured")
+        }
+        
+        debug("Processing Bazel build for:", sourceFile)
+        
+        // Find the target for the source file
+        guard let target = try await bazelInterface.findTarget(for: sourceFile) else {
+            throw evalError("Could not find Bazel target for source file: \(sourceFile)")
+        }
+        
+        debug("Found target for \(sourceFile):", target)
+        
+        // Handle source file patching if needed
+        let filemgr = FileManager.default
+        let backup = sourceFile + ".tmp"
+        var needsRestoration = false
+        
+        defer {
+            if needsRestoration {
+                try? filemgr.removeItem(atPath: sourceFile)
+                try? filemgr.moveItem(atPath: backup, toPath: sourceFile)
+            }
+        }
+        
+        if let extra = extra {
+            // Patch the source file for eval
+            guard var classSource = try? String(contentsOfFile: sourceFile) else {
+                throw evalError("Could not load source file \(sourceFile)")
+            }
+            
+            let changesTag = "// extension added to implement eval"
+            classSource = classSource.components(separatedBy: "\n\(changesTag)\n")[0] + """
+
+                \(changesTag)
+                \(extra)
+
+                """
+            
+            debug("Patching source file with eval extension")
+            
+            if !filemgr.fileExists(atPath: backup) {
+                try filemgr.moveItem(atPath: sourceFile, toPath: backup)
+            }
+            try classSource.write(toFile: sourceFile, atomically: true, encoding: .utf8)
+            needsRestoration = true
+        }
+        
+        // Generate BEP output file
+        let bepOutput = URL(fileURLWithPath: "/tmp/injection_bep_\(injectionNumber).json")
+        
+        // Build the target with BEP output
+        try await bazelInterface.buildForHotReload(target: target, bepOutput: bepOutput)
+        
+        // Parse BEP to get compilation commands and outputs
+        let commands = try bepParser.parseBEPStream(from: bepOutput)
+        
+        // Find the compilation command for our source file
+        guard let compilationCommand = commands.first(where: { command in
+            command.sourceFile == sourceFile
+        }) else {
+            throw evalError("Could not find compilation command for \(sourceFile) in BEP output")
+        }
+        
+        debug("Found compilation command:", compilationCommand.fullCommand.prefix(200))
+        
+        // Look for generated dylib files
+        let dylibFiles = compilationCommand.outputFiles.filter { $0.hasSuffix(".dylib") }
+        
+        if !dylibFiles.isEmpty {
+            // Use the first dylib found
+            let dylibPath = bazelInterface.resolveBazelPath(dylibFiles[0])
+            debug("Found generated dylib:", dylibPath)
+            
+            // Copy dylib to our tmp location
+            let targetDylib = "\(tmpfile).dylib"
+            try filemgr.copyItem(atPath: dylibPath, toPath: targetDylib)
+            
+            return tmpfile
+        }
+        
+        // If no dylib was generated, we might need to link manually
+        // Extract object file from outputs
+        let objectFiles = compilationCommand.outputFiles.filter { $0.hasSuffix(".o") }
+        
+        if !objectFiles.isEmpty {
+            let objectPath = bazelInterface.resolveBazelPath(objectFiles[0])
+            debug("Found object file:", objectPath)
+            
+            // Link the object file to create a dylib
+            try link(dylib: "\(tmpfile).dylib", 
+                    compileCommand: compilationCommand.fullCommand,
+                    contents: "\"\(objectPath)\"")
+            
+            return tmpfile
+        }
+        
+        // Clean up BEP file
+        try? filemgr.removeItem(at: bepOutput)
+        
+        throw evalError("No suitable output files found from Bazel build")
+    }
 
     public func determineEnvironment(classNameOrFile: String) throws -> (URL, URL) {
         // Largely obsolete section used find Xcode paths from source file being injected.
@@ -346,6 +514,42 @@ public class SwiftEval: NSObject {
 
         injectionNumber += 1
 
+        // Auto-detect build system if not already configured
+        if case .xcode = buildSystem {
+            autoDetectBuildSystem(for: classNameOrFile)
+        }
+
+        // Handle Bazel builds
+        if case .bazel(let workspaceRoot) = buildSystem {
+            // Run async Bazel build synchronously
+            var result: String?
+            var error: Error?
+            
+            let semaphore = DispatchSemaphore(value: 0)
+            Task {
+                do {
+                    result = try await processBazelBuild(
+                        sourceFile: classNameOrFile,
+                        workspaceRoot: workspaceRoot,
+                        extra: extra,
+                        oldClass: oldClass
+                    )
+                } catch let e {
+                    error = e
+                }
+                semaphore.signal()
+            }
+            
+            semaphore.wait()
+            
+            if let error = error {
+                throw error
+            }
+            
+            return result ?? tmpfile
+        }
+
+        // Legacy Bazel support fallback
         if projectFile.lastPathComponent == bazelWorkspace,
             let dylib = try bazelLight(projectRoot: projectRoot,
                                        recompile: classNameOrFile) {

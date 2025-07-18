@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#301 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftEval.swift#302 $
 //
 //  Basic implementation of a Swift "eval()" including the
 //  mechanics of recompiling a class and loading the new
@@ -673,7 +673,7 @@ public class SwiftEval: NSObject {
             // return path to workspace instead of object file
             return compileCommand[#"^cd "([^"]+)""#] ?? "dir?"
         }
-        let objectFile = "/tmp/injection.o"
+        let objectFile = "/tmp/injection_\(injectionNumber).o"
         compileCommand += " -o "+objectFile
         unlink(objectFile)
         return objectFile

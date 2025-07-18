@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#126 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#127 $
 //
 //  Initiate connection to server side of InjectionIII/HotReloading.
 //
@@ -49,6 +49,9 @@ extern "C" {
     extern void hookKeyPaths(void *original, void *replacement);
     extern const void *swift_getKeyPath(void *, const void *);
     extern const void *injection_getKeyPath(void *, const void *);
+    extern void injection_hookGenerics(void *original, void *replacement);
+    extern Class swift_allocateGenericClassMetadata(void *, void *, void *);
+    extern Class injection_allocateGenericClassMetadata(void *, void *, void *);
 }
 
 + (void)load {
@@ -73,6 +76,13 @@ extern "C" {
         #endif
         ))
         hookKeyPaths((void *)swift_getKeyPath, (void *)injection_getKeyPath);
+    #endif
+    #if !SWIFT_PACKAGE
+    if (!getenv("INJECTION_NOGENERICS"))
+        injection_hookGenerics((void *)swift_allocateGenericClassMetadata,
+                               (void *)injection_allocateGenericClassMetadata);
+    #else
+    printf(APP_PREFIX"⚠️ HotReloading package cannot inject generic classes.\n");
     #endif
     if (Class clientClass = objc_getClass("InjectionClient"))
         [self performSelectorInBackground:@selector(tryConnect:)

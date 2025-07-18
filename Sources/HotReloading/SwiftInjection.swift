@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#215 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#217 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -97,6 +97,7 @@ public class SwiftInjection: NSObject {
     static let INJECTION_SWEEP_DETAIL = "INJECTION_SWEEP_DETAIL"
     static let INJECTION_SWEEP_EXCLUDE = "INJECTION_SWEEP_EXCLUDE"
     static let INJECTION_OF_GENERICS = "INJECTION_OF_GENERICS"
+    static let INJECTION_NOGENERICS = "INJECTION_NOGENERICS"
     static let INJECTION_UNHIDE = "INJECTION_UNHIDE"
     static let INJECTION_QUICK_FILES = "INJECTION_QUICK_FILES"
     static let INJECTION_DIRECTORIES = "INJECTION_DIRECTORIES"
@@ -321,6 +322,12 @@ public class SwiftInjection: NSObject {
 
             injectedClasses.append(newClass)
         }
+
+        #if !SWIFT_PACKAGE
+        let patchedGenerics = hookedPatch(of: injectedGenerics, tmpfile: tmpfile)
+        totalPatched += patchedGenerics.count
+        sweepClasses += patchedGenerics
+        #endif
 
         // (Reverse) interposing, reducers, operation on a device etc.
         let totalInterposed = newerProcessing(tmpfile: tmpfile, sweepClasses)

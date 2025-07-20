@@ -16,6 +16,10 @@
 #import <objc/runtime.h>
 #import "SimpleSocket.h"
 #import <dlfcn.h>
+#import <sys/socket.h>
+#import <netinet/in.h>
+#import <arpa/inet.h>
+#import <unistd.h>
 
 #ifndef INJECTION_III_APP
 NSString *INJECTION_KEY = @__FILE__;
@@ -69,6 +73,9 @@ extern "C" {
                            getenv("XCTestConfigurationFilePath");
     if (isPreviewsDetected || (isTestsDetected && !shouldUseInTests))
         return; // inhibit in previews or when running tests, unless explicitly enabled in tests.
+    
+    // Check if we're in a Bazel workspace
+    [self detectBazelWorkspace];
     #if !(SWIFT_PACKAGE && TARGET_OS_OSX)
     if (!getenv("INJECTION_NOKEYPATHS") && (getenv("INJECTION_KEYPATHS")
         #if !SWIFT_PACKAGE
@@ -89,7 +96,82 @@ extern "C" {
                                withObject:clientClass];
 }
 
++ (void)detectBazelWorkspace {
+    // Get the current working directory
+    char *cwd = getcwd(NULL, 0);
+    if (!cwd) return;
+    
+    NSString *currentPath = [NSString stringWithUTF8String:cwd];
+    free(cwd);
+    
+    // Walk up the directory tree looking for MODULE or MODULE.bazel
+    NSString *searchPath = currentPath;
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    
+    while (![searchPath isEqualToString:@"/"]) {
+        NSString *moduleFile = [searchPath stringByAppendingPathComponent:@"MODULE"];
+        NSString *moduleBazelFile = [searchPath stringByAppendingPathComponent:@"MODULE.bazel"];
+        
+        if ([fileManager fileExistsAtPath:moduleFile] || 
+            [fileManager fileExistsAtPath:moduleBazelFile]) {
+            
+            printf(APP_PREFIX"📦 Detected Bazel module at: %s\n", [searchPath UTF8String]);
+            
+            // Set environment variable for Bazel workspace
+            setenv("INJECTION_BAZEL_WORKSPACE", [searchPath UTF8String], 1);
+            
+            // Check if BazelInjection.app is running (on a different port)
+            if ([self checkBazelInjectionApp]) {
+                printf(APP_PREFIX"🔥 BazelInjection.app detected, using Bazel hot reload\n");
+                setenv("INJECTION_BAZEL_MODE", "1", 1);
+            } else {
+                printf(APP_PREFIX"💡 Consider using BazelInjection.app for enhanced Bazel hot reload\n");
+            }
+            
+            return;
+        }
+        
+        searchPath = [searchPath stringByDeletingLastPathComponent];
+    }
+}
+
++ (BOOL)checkBazelInjectionApp {
+    // Try to connect to BazelInjection.app on port 8900
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock == -1) return NO;
+    
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(8900);  // BazelInjection.app port
+    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    
+    // Set a short timeout for the connection test
+    struct timeval timeout;
+    timeout.tv_sec = 1;
+    timeout.tv_usec = 0;
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+    
+    BOOL isAvailable = (connect(sock, (struct sockaddr*)&addr, sizeof(addr)) == 0);
+    close(sock);
+    
+    return isAvailable;
+}
+
 + (void)tryConnect:(Class)clientClass {
+    // Check if we're in Bazel mode
+    if (getenv("INJECTION_BAZEL_MODE")) {
+        // Use BazelInjection.app port
+        NSString *socketAddr = @"127.0.0.1:8900";
+        if (SimpleSocket *client = [clientClass connectTo:socketAddr]) {
+            dispatch_once(&onlyOneClient, ^{
+                printf(APP_PREFIX"🔥 Connected to BazelInjection.app\n");
+                [injectionClient = client run];
+            });
+            return;
+        }
+    }
+    
     NSString *socketAddr = @INJECTION_ADDRESS;
     __unused const char *buildPhase = APP_PREFIX"You'll need to be running "
         "a recent copy of the InjectionIII.app downloaded from "

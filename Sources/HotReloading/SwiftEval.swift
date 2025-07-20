@@ -185,6 +185,18 @@ public class SwiftEval: NSObject {
     var bazelLight = getenv("INJECTION_BAZEL") != nil ||
             UserDefaults.standard.bool(forKey: "bazelLight")
     var moduleLibraries = Set<String>()
+    
+    // MARK: - Bazel Integration Properties
+    
+    /// Build system detection
+    enum BuildSystem {
+        case xcode
+        case bazel(workspaceRoot: URL)
+    }
+    
+    private var buildSystem: BuildSystem = .xcode
+    private var bazelInterface: BazelInterface?
+    private lazy var bepParser = BazelBuildEventParser(debug: debug)
 
     /// Additional logging to /tmp/hot\_reloading.log for "HotReloading" version of injection.
     var debug = { (what: Any...) in
@@ -256,6 +268,184 @@ public class SwiftEval: NSObject {
     #endif
     lazy var longTermCache =
         NSMutableDictionary(contentsOfFile: buildCacheFile) ?? NSMutableDictionary()
+
+    // MARK: - Bazel Integration Methods
+    
+    /// Configure SwiftEval to use Bazel build system
+    public func configureBazel(workspaceRoot: URL) {
+        debug("Configuring SwiftEval for Bazel workspace:", workspaceRoot.path)
+        
+        self.buildSystem = .bazel(workspaceRoot: workspaceRoot)
+        self.bazelInterface = BazelInterface(workspaceRoot: workspaceRoot, debug: debug)
+        
+        // Validate the workspace
+        do {
+            try bazelInterface?.validateWorkspace()
+            debug("Bazel workspace validated successfully")
+        } catch {
+            debug("Bazel workspace validation failed:", error.localizedDescription)
+            // Fall back to Xcode mode if validation fails
+            self.buildSystem = .xcode
+            self.bazelInterface = nil
+        }
+    }
+    
+    /// Auto-detect build system based on project structure
+    public func autoDetectBuildSystem(for sourceFile: String) {
+        let sourceURL = URL(fileURLWithPath: sourceFile)
+        
+        // Check if we're in a Bazel workspace
+        if let workspaceRoot = BazelInterface.findWorkspaceRoot(from: sourceURL) {
+            debug("Auto-detected Bazel workspace:", workspaceRoot.path)
+            configureBazel(workspaceRoot: workspaceRoot)
+        } else {
+            debug("No Bazel workspace found, using Xcode build system")
+            self.buildSystem = .xcode
+            self.bazelInterface = nil
+        }
+    }
+    
+    /// Check if currently configured for Bazel
+    public var isBazelMode: Bool {
+        switch buildSystem {
+        case .bazel:
+            return true
+        case .xcode:
+            return false
+        }
+    }
+    
+    /// Process Bazel build for hot reload using aquery
+    private func processBazelBuild(
+        sourceFile: String,
+        workspaceRoot: URL,
+        extra: String?,
+        oldClass: AnyClass?
+    ) async throws -> String {
+        guard let bazelInterface = bazelInterface else {
+            throw evalError("Bazel interface not configured")
+        }
+        
+        debug("Processing Bazel build for:", sourceFile)
+        
+        // Create aquery handler
+        let pathResolver = BazelPathResolver(workspaceRoot: workspaceRoot, debug: debug)
+        let actionQueryHandler = BazelActionQueryHandler(
+            workspaceRoot: workspaceRoot,
+            pathResolver: pathResolver,
+            debug: debug
+        )
+        
+        // Handle source file patching if needed
+        let filemgr = FileManager.default
+        let backup = sourceFile + ".tmp"
+        var needsRestoration = false
+        
+        defer {
+            if needsRestoration {
+                try? filemgr.removeItem(atPath: sourceFile)
+                try? filemgr.moveItem(atPath: backup, toPath: sourceFile)
+            }
+        }
+        
+        if let extra = extra {
+            // Patch the source file for eval
+            guard var classSource = try? String(contentsOfFile: sourceFile) else {
+                throw evalError("Could not load source file \(sourceFile)")
+            }
+            
+            let changesTag = "// extension added to implement eval"
+            classSource = classSource.components(separatedBy: "\n\(changesTag)\n")[0] + """
+
+                \(changesTag)
+                \(extra)
+
+                """
+            
+            debug("Patching source file with eval extension")
+            
+            if !filemgr.fileExists(atPath: backup) {
+                try filemgr.moveItem(atPath: sourceFile, toPath: backup)
+            }
+            try classSource.write(toFile: sourceFile, atomically: true, encoding: .utf8)
+            needsRestoration = true
+        }
+        
+        // Get compilation command directly via aquery (no build required)
+        let compilationCommand = try await actionQueryHandler.getSwiftCompilationCommand(for: sourceFile)
+        
+        debug("Found compilation command:", compilationCommand.fullCommand.prefix(200))
+        
+        // Modify the compilation command for hot reload
+        let swiftCommandBuilder = SwiftCommandBuilder(workspaceRoot: workspaceRoot, debug: debug)
+        let hotReloadCommand = swiftCommandBuilder.modifyForHotReload(
+            compilationCommand,
+            outputPath: "\(tmpfile).dylib"
+        )
+        
+        debug("Modified command for hot reload:", hotReloadCommand.fullCommand.prefix(200))
+        
+        // Execute the modified compilation command to generate hot reload dylib
+        try await executeSwiftCompilation(hotReloadCommand)
+        
+        // Verify the dylib was created
+        let dylibPath = "\(tmpfile).dylib"
+        guard filemgr.fileExists(atPath: dylibPath) else {
+            throw evalError("Hot reload dylib was not created at: \(dylibPath)")
+        }
+        
+        debug("Successfully created hot reload dylib:", dylibPath)
+        return tmpfile
+    }
+    
+    /// Execute a Swift compilation command
+    private func executeSwiftCompilation(_ command: CompilationCommand) async throws {
+        debug("Executing Swift compilation:", command.compiler)
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let process = Process()
+                process.launchPath = command.compiler
+                process.arguments = command.arguments
+                
+                // Set environment variables
+                var environment = ProcessInfo.processInfo.environment
+                for (key, value) in command.environmentVariables {
+                    environment[key] = value
+                }
+                process.environment = environment
+                
+                // Set working directory if specified
+                if let workingDirectory = command.workingDirectory {
+                    process.currentDirectoryPath = workingDirectory
+                }
+                
+                let outputPipe = Pipe()
+                let errorPipe = Pipe()
+                process.standardOutput = outputPipe
+                process.standardError = errorPipe
+                
+                do {
+                    process.launch()
+                    process.waitUntilExit()
+                    
+                    if process.terminationStatus != 0 {
+                        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+                        let errorMessage = String(data: errorData, encoding: .utf8) ?? "Unknown compilation error"
+                        
+                        self.debug("Swift compilation failed with exit code \(process.terminationStatus):", errorMessage)
+                        continuation.resume(throwing: self.evalError("Swift compilation failed: \(errorMessage)"))
+                        return
+                    }
+                    
+                    self.debug("Swift compilation completed successfully")
+                    continuation.resume()
+                } catch {
+                    continuation.resume(throwing: self.evalError("Failed to execute Swift compilation: \(error)"))
+                }
+            }
+        }
+    }
 
     public func determineEnvironment(classNameOrFile: String) throws -> (URL, URL) {
         // Largely obsolete section used find Xcode paths from source file being injected.
@@ -346,6 +536,42 @@ public class SwiftEval: NSObject {
 
         injectionNumber += 1
 
+        // Auto-detect build system if not already configured
+        if case .xcode = buildSystem {
+            autoDetectBuildSystem(for: classNameOrFile)
+        }
+
+        // Handle Bazel builds
+        if case .bazel(let workspaceRoot) = buildSystem {
+            // Run async Bazel build synchronously
+            var result: String?
+            var error: Error?
+            
+            let semaphore = DispatchSemaphore(value: 0)
+            Task {
+                do {
+                    result = try await processBazelBuild(
+                        sourceFile: classNameOrFile,
+                        workspaceRoot: workspaceRoot,
+                        extra: extra,
+                        oldClass: oldClass
+                    )
+                } catch let e {
+                    error = e
+                }
+                semaphore.signal()
+            }
+            
+            semaphore.wait()
+            
+            if let error = error {
+                throw error
+            }
+            
+            return result ?? tmpfile
+        }
+
+        // Legacy Bazel support fallback
         if projectFile.lastPathComponent == bazelWorkspace,
             let dylib = try bazelLight(projectRoot: projectRoot,
                                        recompile: classNameOrFile) {

@@ -40,6 +40,11 @@ public class InjectionServer: SimpleSocket {
     var lastIdeProcPath = ""
     let objcClassRefs = NSMutableArray()
     let descriptorRefs = NSMutableArray()
+    
+    // MARK: - Bazel Integration Properties
+    private var bazelInterface: BazelInterface?
+    private var bazelFileWatcher: BazelFileWatcher?
+    private var workspaceRoot: URL?
 
     open func log(_ msg: String) {
         NSLog("\(APP_PREFIX)\(APP_NAME) \(msg)")
@@ -352,6 +357,123 @@ public class InjectionServer: SimpleSocket {
             }
     }
 
+    // MARK: - Bazel Integration Methods
+    
+    /// Configure the injection server for Bazel builds
+    public func configureBazel(workspaceRoot: URL) {
+        log("Configuring injection server for Bazel workspace: \(workspaceRoot.path)")
+        
+        self.workspaceRoot = workspaceRoot
+        self.bazelInterface = BazelInterface(workspaceRoot: workspaceRoot) { [weak self] in
+            self?.log("Bazel: \($0.map { "\($0)" }.joined(separator: " "))")
+        }
+        
+        // Configure SwiftEval for Bazel
+        builder.configureBazel(workspaceRoot: workspaceRoot)
+        
+        // Replace default file watcher with Bazel-aware one
+        if let bazelInterface = bazelInterface {
+            self.bazelFileWatcher = BazelFileWatcher(bazelInterface: bazelInterface) { [weak self] in
+                self?.log("BazelFileWatcher: \($0.map { "\($0)" }.joined(separator: " "))")
+            }
+        }
+    }
+    
+    /// Auto-detect and configure Bazel if workspace is found
+    public func autoDetectBazel(for projectFile: String) {
+        let projectURL = URL(fileURLWithPath: projectFile)
+        
+        if let workspaceRoot = BazelInterface.findWorkspaceRoot(from: projectURL) {
+            log("Auto-detected Bazel workspace: \(workspaceRoot.path)")
+            configureBazel(workspaceRoot: workspaceRoot)
+        } else {
+            log("No Bazel workspace found, using standard file watchers")
+        }
+    }
+    
+    /// Handle Bazel file changes
+    func handleBazelFileChange(path: String, target: String) {
+        log("Bazel file change detected: \(path) in target: \(target)")
+        
+        Task {
+            await processBazelInjection(sourcePath: path, target: target)
+        }
+    }
+    
+    /// Process Bazel injection asynchronously
+    private func processBazelInjection(sourcePath: String, target: String) async {
+        guard let bazelInterface = bazelInterface else {
+            log("Bazel interface not configured")
+            return
+        }
+        
+        // Build with Bazel
+        let bepOutput = URL(fileURLWithPath: "/tmp/injection_\(UUID().uuidString).json")
+        
+        do {
+            appDelegate.setMenuIcon(.busy)
+            
+            // Build the target with BEP output
+            try await bazelInterface.buildForHotReload(target: target, bepOutput: bepOutput)
+            
+            // Parse BEP to get output artifacts
+            let parser = BazelBuildEventParser { [weak self] in
+                self?.log("BEP Parser: \($0.map { "\($0)" }.joined(separator: " "))")
+            }
+            let commands = try parser.parseBEPStream(from: bepOutput)
+            
+            // Find the dylib output
+            if let dylib = findDylibOutput(from: commands, for: sourcePath) {
+                log("Found dylib for injection: \(dylib)")
+                
+                // Send to connected clients
+                sendCommand(.load, with: dylib)
+                appDelegate.setMenuIcon(.ok)
+            } else {
+                log("No dylib found in Bazel outputs")
+                appDelegate.setMenuIcon(.error)
+            }
+            
+            // Clean up BEP file
+            try? FileManager.default.removeItem(at: bepOutput)
+            
+        } catch {
+            log("Bazel injection failed: \(error)")
+            appDelegate.setMenuIcon(.error)
+        }
+    }
+    
+    /// Find dylib output from compilation commands
+    private func findDylibOutput(from commands: [CompilationCommand], for sourceFile: String) -> String? {
+        for command in commands {
+            if command.sourceFile == sourceFile {
+                // Look for dylib outputs
+                for outputFile in command.outputFiles {
+                    if outputFile.hasSuffix(".dylib") {
+                        return bazelInterface?.resolveBazelPath(outputFile)
+                    }
+                }
+            }
+        }
+        return nil
+    }
+    
+    /// Update file watchers to use Bazel-aware monitoring
+    private func updateFileWatchersForBazel() {
+        guard let bazelFileWatcher = bazelFileWatcher else { return }
+        
+        // Set up the callback for Bazel file changes
+        bazelFileWatcher.bazelFileChangeCallback = { [weak self] path, target in
+            self?.handleBazelFileChange(path: path, target: target)
+        }
+        
+        // Replace existing file watchers
+        fileWatchers.removeAll()
+        
+        // Note: In a full implementation, you would integrate this with the existing
+        // file watching system more thoroughly
+    }
+
     func recompileAndInject(source: String) {
         sendCommand(.ideProcPath, with: lastIdeProcPath)
         appDelegate.setMenuIcon(.busy)
@@ -400,8 +522,16 @@ public class InjectionServer: SimpleSocket {
     }
 
     public func watchDirectory(_ directory: String) {
-        fileWatchers.append(FileWatcher(roots: [directory],
-                                        callback: fileChangeHandler))
+        // Use Bazel-aware file watching if configured
+        if let bazelFileWatcher = bazelFileWatcher {
+            bazelFileWatcher.startWatching(roots: [directory]) { [weak self] changes, ideProcPath in
+                self?.fileChangeHandler(changes as NSArray, ideProcPath)
+            }
+        } else {
+            // Fall back to standard file watching
+            fileWatchers.append(FileWatcher(roots: [directory],
+                                            callback: fileChangeHandler))
+        }
         sendCommand(.watching, with: directory)
     }
 
@@ -414,6 +544,9 @@ public class InjectionServer: SimpleSocket {
 
     @objc public func setProject(_ projectFile: String) {
         guard fileChangeHandler != nil else { return }
+
+        // Auto-detect Bazel workspace
+        autoDetectBazel(for: projectFile)
 
         builder.projectFile = projectFile
         #if !SWIFT_PACKAGE

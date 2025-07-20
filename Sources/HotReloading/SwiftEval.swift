@@ -315,7 +315,7 @@ public class SwiftEval: NSObject {
         }
     }
     
-    /// Process Bazel build for hot reload
+    /// Process Bazel build for hot reload using aquery
     private func processBazelBuild(
         sourceFile: String,
         workspaceRoot: URL,
@@ -328,12 +328,13 @@ public class SwiftEval: NSObject {
         
         debug("Processing Bazel build for:", sourceFile)
         
-        // Find the target for the source file
-        guard let target = try await bazelInterface.findTarget(for: sourceFile) else {
-            throw evalError("Could not find Bazel target for source file: \(sourceFile)")
-        }
-        
-        debug("Found target for \(sourceFile):", target)
+        // Create aquery handler
+        let pathResolver = BazelPathResolver(workspaceRoot: workspaceRoot, debug: debug)
+        let actionQueryHandler = BazelActionQueryHandler(
+            workspaceRoot: workspaceRoot,
+            pathResolver: pathResolver,
+            debug: debug
+        )
         
         // Handle source file patching if needed
         let filemgr = FileManager.default
@@ -370,59 +371,80 @@ public class SwiftEval: NSObject {
             needsRestoration = true
         }
         
-        // Generate BEP output file
-        let bepOutput = URL(fileURLWithPath: "/tmp/injection_bep_\(injectionNumber).json")
-        
-        // Build the target with BEP output
-        try await bazelInterface.buildForHotReload(target: target, bepOutput: bepOutput)
-        
-        // Parse BEP to get compilation commands and outputs
-        let commands = try bepParser.parseBEPStream(from: bepOutput)
-        
-        // Find the compilation command for our source file
-        guard let compilationCommand = commands.first(where: { command in
-            command.sourceFile == sourceFile
-        }) else {
-            throw evalError("Could not find compilation command for \(sourceFile) in BEP output")
-        }
+        // Get compilation command directly via aquery (no build required)
+        let compilationCommand = try await actionQueryHandler.getSwiftCompilationCommand(for: sourceFile)
         
         debug("Found compilation command:", compilationCommand.fullCommand.prefix(200))
         
-        // Look for generated dylib files
-        let dylibFiles = compilationCommand.outputFiles.filter { $0.hasSuffix(".dylib") }
+        // Modify the compilation command for hot reload
+        let swiftCommandBuilder = SwiftCommandBuilder(workspaceRoot: workspaceRoot, debug: debug)
+        let hotReloadCommand = swiftCommandBuilder.modifyForHotReload(
+            compilationCommand,
+            outputPath: "\(tmpfile).dylib"
+        )
         
-        if !dylibFiles.isEmpty {
-            // Use the first dylib found
-            let dylibPath = bazelInterface.resolveBazelPath(dylibFiles[0])
-            debug("Found generated dylib:", dylibPath)
-            
-            // Copy dylib to our tmp location
-            let targetDylib = "\(tmpfile).dylib"
-            try filemgr.copyItem(atPath: dylibPath, toPath: targetDylib)
-            
-            return tmpfile
+        debug("Modified command for hot reload:", hotReloadCommand.fullCommand.prefix(200))
+        
+        // Execute the modified compilation command to generate hot reload dylib
+        try await executeSwiftCompilation(hotReloadCommand)
+        
+        // Verify the dylib was created
+        let dylibPath = "\(tmpfile).dylib"
+        guard filemgr.fileExists(atPath: dylibPath) else {
+            throw evalError("Hot reload dylib was not created at: \(dylibPath)")
         }
         
-        // If no dylib was generated, we might need to link manually
-        // Extract object file from outputs
-        let objectFiles = compilationCommand.outputFiles.filter { $0.hasSuffix(".o") }
+        debug("Successfully created hot reload dylib:", dylibPath)
+        return tmpfile
+    }
+    
+    /// Execute a Swift compilation command
+    private func executeSwiftCompilation(_ command: CompilationCommand) async throws {
+        debug("Executing Swift compilation:", command.compiler)
         
-        if !objectFiles.isEmpty {
-            let objectPath = bazelInterface.resolveBazelPath(objectFiles[0])
-            debug("Found object file:", objectPath)
-            
-            // Link the object file to create a dylib
-            try link(dylib: "\(tmpfile).dylib", 
-                    compileCommand: compilationCommand.fullCommand,
-                    contents: "\"\(objectPath)\"")
-            
-            return tmpfile
+        return try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let process = Process()
+                process.launchPath = command.compiler
+                process.arguments = command.arguments
+                
+                // Set environment variables
+                var environment = ProcessInfo.processInfo.environment
+                for (key, value) in command.environmentVariables {
+                    environment[key] = value
+                }
+                process.environment = environment
+                
+                // Set working directory if specified
+                if let workingDirectory = command.workingDirectory {
+                    process.currentDirectoryPath = workingDirectory
+                }
+                
+                let outputPipe = Pipe()
+                let errorPipe = Pipe()
+                process.standardOutput = outputPipe
+                process.standardError = errorPipe
+                
+                do {
+                    process.launch()
+                    process.waitUntilExit()
+                    
+                    if process.terminationStatus != 0 {
+                        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+                        let errorMessage = String(data: errorData, encoding: .utf8) ?? "Unknown compilation error"
+                        
+                        self.debug("Swift compilation failed with exit code \(process.terminationStatus):", errorMessage)
+                        continuation.resume(throwing: self.evalError("Swift compilation failed: \(errorMessage)"))
+                        return
+                    }
+                    
+                    self.debug("Swift compilation completed successfully")
+                    continuation.resume()
+                } catch {
+                    continuation.resume(throwing: self.evalError("Failed to execute Swift compilation: \(error)"))
+                }
+            }
         }
-        
-        // Clean up BEP file
-        try? filemgr.removeItem(at: bepOutput)
-        
-        throw evalError("No suitable output files found from Bazel build")
     }
 
     public func determineEnvironment(classNameOrFile: String) throws -> (URL, URL) {

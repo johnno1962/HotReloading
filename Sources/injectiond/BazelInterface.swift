@@ -12,6 +12,7 @@
 //
 
 import Foundation
+import os
 
 /// Errors that can occur during Bazel operations
 public enum BazelError: Error, LocalizedError {
@@ -50,7 +51,7 @@ public class BazelInterface {
     
     /// Cache for source file to target mappings
     private var sourceToTargetCache: [String: String] = [:]
-    private let cacheQueue = DispatchQueue(label: "bazel.cache.queue")
+    private let cacheLock = OSAllocatedUnfairLock()
     
     /// Debug logging function
     private let debug: (Any...) -> Void
@@ -94,7 +95,7 @@ public class BazelInterface {
     /// Maps a source file to its Bazel target
     public func findTarget(for sourceFile: String) async throws -> String? {
         // Check cache first
-        if let cachedTarget = cacheQueue.sync(execute: { sourceToTargetCache[sourceFile] }) {
+        if let cachedTarget = cacheLock.withLock({ sourceToTargetCache[sourceFile] }) {
             debug("Found cached target for \(sourceFile): \(cachedTarget)")
             return cachedTarget
         }
@@ -113,7 +114,7 @@ public class BazelInterface {
                 debug("Found target for \(sourceFile): \(target)")
                 
                 // Cache the result
-                cacheQueue.sync {
+                cacheLock.withLock {
                     sourceToTargetCache[sourceFile] = target
                 }
                 
@@ -286,7 +287,7 @@ public class BazelInterface {
     
     /// Clear the source-to-target cache
     public func clearCache() {
-        cacheQueue.sync {
+        cacheLock.withLock {
             sourceToTargetCache.removeAll()
         }
         debug("Cleared Bazel interface cache")

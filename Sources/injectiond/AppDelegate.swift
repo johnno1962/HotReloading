@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#81 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#82 $
 //
 
 import Cocoa
@@ -346,6 +346,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
         lastConnection?.setProject(projectFile)
 //            AppDelegate.ensureInterposable(project: selectedProject!)
         NSDocumentController.shared.noteNewRecentDocumentURL(url)
+        statusItem.menu?.item(withTitle: "Open Recent")?.toolTip = url.path
 //            let projectName = URL(fileURLWithPath: projectFile)
 //                .deletingPathExtension().lastPathComponent
 //            traceInclude.stringValue = projectName

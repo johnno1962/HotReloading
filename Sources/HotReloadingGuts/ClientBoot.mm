@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#127 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#128 $
 //
 //  Initiate connection to server side of InjectionIII/HotReloading.
 //
@@ -59,7 +59,7 @@ extern "C" {
     // then XCTestCase can instantiate NSWindow / UIWindow, make it key and visible, pause and wait for
     // standard expectation – XCTestExpectation. This untypical flow used for per-screen UI development without need
     // to launch full app. To support this flow we are allowing injection by respecting dedicated environment variable.
-    bool shouldUseInTests = getenv("INJECTION_USEINTESTS") != nullptr;
+    bool shouldUseInTests = getenv(INJECTION_USEINTESTS) != nullptr;
 
     // See: https://forums.developer.apple.com/forums/thread/761439
     bool isPreviewsDetected = getenv("XCODE_RUNNING_FOR_PREVIEWS") != nullptr;
@@ -70,7 +70,7 @@ extern "C" {
     if (isPreviewsDetected || (isTestsDetected && !shouldUseInTests))
         return; // inhibit in previews or when running tests, unless explicitly enabled in tests.
     #if !(SWIFT_PACKAGE && TARGET_OS_OSX)
-    if (!getenv("INJECTION_NOKEYPATHS") && (getenv("INJECTION_KEYPATHS")
+    if (!getenv(INJECTION_NOKEYPATHS) && (getenv(INJECTION_KEYPATHS)
         #if !SWIFT_PACKAGE
         || dlsym(RTLD_DEFAULT, "$s22ComposableArchitecture6LoggerCN")
         #endif
@@ -78,11 +78,12 @@ extern "C" {
         hookKeyPaths((void *)swift_getKeyPath, (void *)injection_getKeyPath);
     #endif
     #if !SWIFT_PACKAGE
-    if (!getenv("INJECTION_NOGENERICS"))
+    if (!getenv(INJECTION_NOGENERICS))
         injection_hookGenerics((void *)swift_allocateGenericClassMetadata,
                                (void *)injection_allocateGenericClassMetadata);
     #else
-    printf(APP_PREFIX"⚠️ HotReloading package cannot inject generic classes.\n");
+    printf(APP_PREFIX"⚠️ Define env var " INJECTION_OF_GENERICS
+           " in your scheme to inject generic classes.\n");
     #endif
     if (Class clientClass = objc_getClass("InjectionClient"))
         [self performSelectorInBackground:@selector(tryConnect:)
@@ -102,14 +103,14 @@ extern "C" {
     if (@available(iOS 14.0, *)) {
         isiOSAppOnMac = [NSProcessInfo processInfo].isiOSAppOnMac;
     }
-    if (!isiOSAppOnMac && !isVapor && !getenv("INJECTION_DAEMON"))
+    if (!isiOSAppOnMac && !isVapor && !getenv(INJECTION_DAEMON))
         if (Class standalone = objc_getClass("StandaloneInjection")) {
             [[standalone new] run];
             return;
         }
 #endif
 #elif TARGET_OS_IPHONE
-    const char *envHost = getenv("INJECTION_HOST");
+    const char *envHost = getenv(INJECTION_HOST);
     if (envHost)
         [clientClass backgroundConnect:envHost];
     #ifdef DEVELOPER_HOST
@@ -117,7 +118,8 @@ extern "C" {
     if (!isdigit(DEVELOPER_HOST[0]) && !envHost)
         printf(APP_PREFIX"Sending broadcast packet to connect to your development host %s.\n"
                APP_PREFIX"If this fails, hardcode your Mac's IP address in HotReloading/Package.swift\n"
-               "   or add an environment variable INJECTION_HOST with this value.\n%s", DEVELOPER_HOST, buildPhase);
+               "   or add an environment variable " INJECTION_HOST
+               " with this value.\n%s", DEVELOPER_HOST, buildPhase);
     #endif
     if (!(@available(iOS 14.0, *) && [NSProcessInfo processInfo].isiOSAppOnMac))
         injectionHost = [clientClass
@@ -140,8 +142,8 @@ extern "C" {
 
 #if TARGET_IPHONE_SIMULATOR || TARGET_OS_OSX
     BOOL usingInjectPackage = dlsym(RTLD_DEFAULT, "$s6Inject17InjectionObserverCN") != nullptr;
-    if ((usingInjectPackage || getenv("INJECTION_DAEMON")) &&
-        !getenv("INJECTION_STANDALONE")) {
+    if ((usingInjectPackage || getenv(INJECTION_DAEMON)) &&
+        !getenv(INJECTION_STANDALONE)) {
         if (usingInjectPackage)
         printf(APP_PREFIX"Not falling back to standalone HotReloading as you are using the ‘Inject’ package. "
                "Use MenuBar app to control Injection status or opt in by using INJECTION_STANDALONE env var.\n");

@@ -7,7 +7,7 @@
 //  instance of classes that have been injected in order
 //  to be able to send them the @objc injected message.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#22 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftSweeper.swift#23 $
 //
 
 #if DEBUG || !SWIFT_PACKAGE
@@ -56,7 +56,7 @@ extension SwiftInjection {
                         method, \(APP_NAME) will perform a "sweep" of live \
                         instances to determine which objects to message. \
                         If this fails, subscribe to the notification \
-                        "INJECTION_BUNDLE_NOTIFICATION" instead.
+                        "\(INJECTION_BUNDLE_NOTIFICATION)" instead.
                         \(APP_PREFIX)(note: notification may not arrive on the main thread)
                         """)
                     sweepWarned = true

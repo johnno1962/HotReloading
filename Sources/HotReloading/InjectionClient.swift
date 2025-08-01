@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#84 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#85 $
 //
 //  Client app side of HotReloading started by +load
 //  method in HotReloadingGuts/ClientBoot.mm
@@ -84,7 +84,7 @@ public class InjectionClient: SimpleSocket, InjectionReader {
                               SwiftInjection.objcClassRefs,
                               SwiftInjection.descriptorRefs)
 
-        if getenv(SwiftInjection.INJECTION_UNHIDE) != nil {
+        if getenv(INJECTION_UNHIDE) != nil {
             builder.legacyUnhide = true
             writeCommand(InjectionResponse.legacyUnhide.rawValue, with: "1")
         }
@@ -131,7 +131,7 @@ public class InjectionClient: SimpleSocket, InjectionReader {
 
         SwiftTrace.swizzleFactory = SwiftTrace.LifetimeTracker.self
 
-        if let projectRoot = getenv(SwiftInjection.INJECTION_PROJECT_ROOT) {
+        if let projectRoot = getenv(INJECTION_PROJECT_ROOT) {
             writeCommand(InjectionResponse.projectRoot.rawValue,
                          with: String(cString: projectRoot))
         }

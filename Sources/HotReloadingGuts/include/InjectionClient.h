@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#65 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#66 $
 //
 //  Shared definitions between server and client.
 //
@@ -51,6 +51,7 @@ extern NSString *INJECTION_KEY;
 #define CALLORDER_DELIMITER @"---"
 
 // The various environment variables
+#define INJECTION_HOST "INJECTION_HOST"
 #define INJECTION_DETAIL "INJECTION_DETAIL"
 #define INJECTION_PROJECT_ROOT "INJECTION_PROJECT_ROOT"
 #define INJECTION_DERIVED_DATA "INJECTION_DERIVED_DATA"

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#66 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#67 $
 //
 //  Shared definitions between server and client.
 //
@@ -75,6 +75,7 @@ extern NSString *INJECTION_KEY;
 #define INJECTION_BAZEL "INJECTION_BAZEL"
 #define INJECTION_DEBUG "INJECTION_DEBUG"
 #define INJECTION_BUNDLE_NOTIFICATION "INJECTION_BUNDLE_NOTIFICATION"
+#define INJECTION_METRICS_NOTIFICATION "INJECTION_METRICS_NOTIFICATION"
 
 @protocol InjectionReader <NSObject>
 - (BOOL)readBytes:(void *)buffer length:(size_t)length cmd:(SEL)cmd;

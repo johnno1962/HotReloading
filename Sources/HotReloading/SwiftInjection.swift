@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 05/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#218 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/SwiftInjection.swift#220 $
 //
 //  Cut-down version of code injection in Swift. Uses code
 //  from SwiftEval.swift to recompile and reload class.
@@ -345,6 +345,17 @@ public class SwiftInjection: NSObject {
                 getenv(INJECTION_OF_GENERICS) != nil ? injectedGenerics : [])
 
             NotificationCenter.default.post(name: notification, object: sweepClasses)
+
+            let countKey = "__injectionsPerformed", howOften = 50
+            let count = UserDefaults.standard.integer(forKey: countKey)+1
+            UserDefaults.standard.set(count, forKey: countKey)
+            if count % howOften == 0 && getenv("INJECTION_SKINT") == nil {
+                log("Seems like you're using injection quite a bit. " +
+                    "Have you considered sponsoring the project at " +
+                    "https://github.com/johnno1962/\(APP_NAME) or " +
+                    "asking your boss if they should? (This messsage " +
+                    "prints every \(howOften) injections.)")
+            }
         }
         }
     }

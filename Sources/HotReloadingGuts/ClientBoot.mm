@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#128 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/ClientBoot.mm#131 $
 //
 //  Initiate connection to server side of InjectionIII/HotReloading.
 //
@@ -78,7 +78,7 @@ extern "C" {
         hookKeyPaths((void *)swift_getKeyPath, (void *)injection_getKeyPath);
     #endif
     #if !SWIFT_PACKAGE
-    if (!getenv(INJECTION_NOGENERICS))
+    if (!getenv(INJECTION_NOGENERICS) && !getenv(INJECTION_OF_GENERICS))
         injection_hookGenerics((void *)swift_allocateGenericClassMetadata,
                                (void *)injection_allocateGenericClassMetadata);
     #else

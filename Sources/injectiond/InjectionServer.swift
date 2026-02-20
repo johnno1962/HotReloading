@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#72 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#73 $
 //
 
 import Cocoa
@@ -379,15 +379,15 @@ public class InjectionServer: SimpleSocket {
     }
 
     public func prepare(source: String) throws -> String {
-        #if !SWIFT_PACKAGE
+        #if INJECTION_III_APP
         if source.hasSuffix(".swift") && !appDelegate.isSandboxed &&
             appDelegate.updatePatchUnpatch() == .patched,
            let prepared = NextCompiler.compileQueue.sync(execute: {
-               FrontendServer.frontendRecompiler()
+               try? FrontendServer.frontendRecompiler()
                .prepare(source: source, connected:
                             InjectionServer.currentClient) }),
            builder.signer?(prepared.dylibName["/eval", ""]) == true {
-            FrontendServer.writeCache(platform: prepared.platform)
+            FrontendServer.writeCache(for: prepared.platform)
             return prepared.dylib[".dylib$", ""]
         }
         #endif

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#67 $
+//  $Id: //depot/HotReloading/Sources/HotReloadingGuts/include/InjectionClient.h#68 $
 //
 //  Shared definitions between server and client.
 //
@@ -43,7 +43,6 @@ extern NSString *INJECTION_KEY;
 #endif
 #endif
 
-#define COMMANDS_VERSION 5001
 #define COMMANDS_PORT ":8896"
 #define DYLIB_PREFIX "/eval_injection_" // Was expected by DLKit
 #define VAPOR_SYMBOL "$s10RoutingKit10ParametersVN"

@@ -2,7 +2,7 @@
 #
 # Start up daemon process to rebuild changed sources
 #
-# $Id: //depot/HotReloading/start_daemon.sh#42 $
+# $Id: //depot/HotReloading/start_daemon.sh#43 $
 #
 
 echo "*** You no longer need to run start_daemon.sh" 1>&2
@@ -43,7 +43,7 @@ kill -9 `ps auxww | grep .build/debug/injectiond | grep -v grep | awk '{ print $
 # mkdir -p .build; ln -s "$DERIVED_DATA"/SourcePackages/repositories .build
 
 # rebuild daemon
-/usr/bin/env -i PATH="$PATH" "$TOOLCHAIN_DIR"/usr/bin/swift build --product injectiond &&
+/usr/bin/env -i PATH="$PATH" "$DT_TOOLCHAIN_DIR"/usr/bin/swift build --product injectiond &&
 
 # clone Contents directory for Cocoa
 rsync -at Contents .build/debug &&

@@ -5,7 +5,7 @@
 //  Created by User on 20/10/2020.
 //  Copyright © 2020 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#39 $
+//  $Id: //depot/HotReloading/Sources/injectiond/Experimental.swift#40 $
 //
 
 import Cocoa
@@ -226,61 +226,6 @@ extension AppDelegate {
         }
     }
 
-    static func ensureInterposable(project: String) {
-        var projectEncoding: String.Encoding = .utf8
-        let projectURL = URL(fileURLWithPath: project)
-        let pbxprojURL = projectURL.appendingPathComponent("project.pbxproj")
-        if let projectSource = try? String(contentsOf: pbxprojURL,
-                                           usedEncoding: &projectEncoding),
-           !projectSource.contains("-interposable") {
-            var newProjectSource = projectSource
-            // For each PBXSourcesBuildPhase in project file...
-            // Make sure "Other linker Flags" includes -interposable
-            newProjectSource[#"""
-                /\* Debug \*/ = \{
-                \s+isa = XCBuildConfiguration;
-                (?:.*\n)*?(\s+)buildSettings = \{
-                ((?:.*\n)*?\1\};)
-                """#, group: 2] = """
-                                    OTHER_LDFLAGS = (
-                                        "-Xlinker",
-                                        "-interposable",
-                                    );
-                                    ENABLE_BITCODE = NO;
-                    $2
-                    """
-
-            if newProjectSource != projectSource {
-                let backup = pbxprojURL.path+".prepatch"
-                if !FileManager.default.fileExists(atPath: backup) {
-                    try? projectSource.write(toFile: backup, atomically: true,
-                                            encoding: projectEncoding)
-                }
-                do {
-                    let alert = NSAlert()
-                    alert.messageText = "injectiond"
-                    alert.informativeText = """
-                        \(APP_NAME) can patch your project slightly to add the \
-                        required -Xlinker -interposable \"Other Linker Flags\". \
-                        Restart the app to have these changes take effect. \
-                        A backup has been saved at: \(backup)
-                        """
-                    alert.addButton(withTitle: "Go ahead")
-                    alert.addButton(withTitle: "Cancel")
-                    if alert.runModal() == .alertFirstButtonReturn {
-                        try newProjectSource.write(to: pbxprojURL, atomically: true,
-                                                   encoding: projectEncoding)
-                    }
-                } catch {
-                    NSLog("Could not patch project \(pbxprojURL): \(error)")
-                    let alert = NSAlert()
-                    alert.messageText = "Could not process project file \(projectURL): \(error)"
-                    _ = alert.runModal()
-                }
-            }
-        }
-    }
-
     @IBAction func prepareProject(_ sender: NSMenuItem) {
         guard let selectedProject = selectedProject else {
             let alert = NSAlert()
@@ -289,7 +234,9 @@ extension AppDelegate {
             return
         }
 
-        Self.ensureInterposable(project: selectedProject)
+        #if !SWIFT_PACKAGE
+        ensureInterposable(project: selectedProject)
+        #endif
 
         for directory in watchedDirectories {
             prepareSwiftUI(projectRoot: URL(fileURLWithPath: directory))
@@ -313,166 +260,19 @@ extension AppDelegate {
                 break
             }
 
+            var changes = 0, edited = 0
             for file in enumerator {
                 guard let file = file as? String, file.hasSuffix(".swift"),
                       !file.hasPrefix("Packages") else {
                     continue
                 }
-                let fileURL = projectRoot.appendingPathComponent(file)
-                guard let original = try? String(contentsOf: fileURL) else {
-                    continue
-                }
-
-                var patched = original
-                patched[#"""
-                    ^((\s+)(public )?(var body:|func body\([^)]*\) -\>) some View \{\n\#
-                    (\2(?!    (if|switch|ForEach) )\s+(?!\.enableInjection)\S.*\n|\s*\n)+)(?<!#endif\n)\2\}\n
-                    """#.anchorsMatchLines] = """
-                    $1$2    .enableInjection()
-                    $2}
-
-                    $2#if DEBUG
-                    $2@ObserveInjection var forceRedraw
-                    $2#endif
-
-                    """
-
-                if (patched.contains("class AppDelegate") ||
-                    patched.contains("@main")) &&
-                    !patched.contains("InjectionObserver") {
-                    #if SWIFT_PACKAGE
-                    let loadInjection = """
-                            // HotReloading loads itself.
-                        """
-                    #else
-                    let loadInjection = #"""
-                            guard objc_getClass("InjectionClient") == nil else {
-                                return
-                            }
-                            #if os(macOS) || targetEnvironment(macCatalyst)
-                            let bundleName = "macOSInjection.bundle"
-                            #elseif os(tvOS)
-                            let bundleName = "tvOSInjection.bundle"
-                            #elseif os(visionOS)
-                            let bundleName = "xrOSInjection.bundle"
-                            #elseif targetEnvironment(simulator)
-                            let bundleName = "iOSInjection.bundle"
-                            #else
-                            let bundleName = "maciOSInjection.bundle"
-                            #endif
-                            let bundlePath = "/Applications/InjectionIII.app/Contents/Resources/"+bundleName
-                            guard let bundle = Bundle(path: bundlePath), bundle.load() else {
-                                return print("""
-                                    ⚠️ Could not load injection bundle from \(bundlePath). \
-                                    Have you downloaded the InjectionIII.app from either \
-                                    https://github.com/johnno1962/InjectionIII/releases \
-                                    or the Mac App Store?
-                                    """)
-                            }
-                    """#
-                    #endif
-
-                    if !patched.contains("import SwiftUI") {
-                        patched += "\nimport SwiftUI\n"
-                    }
-
-                    patched += """
-
-                        #if canImport(HotSwiftUI)
-                        @_exported import HotSwiftUI
-                        #elseif canImport(Inject)
-                        @_exported import Inject
-                        #else
-                        // This code can be found in the Swift package:
-                        // https://github.com/johnno1962/HotSwiftUI
-
-                        #if DEBUG
-                        import Combine
-
-                        private var loadInjectionOnce: () = {
-                        \(loadInjection)
-                        }()
-
-                        public let injectionObserver = InjectionObserver()
-
-                        public class InjectionObserver: ObservableObject {
-                            @Published var injectionNumber = 0
-                            var cancellable: AnyCancellable? = nil
-                            let publisher = PassthroughSubject<Void, Never>()
-                            init() {
-                                _ = loadInjectionOnce // .enableInjection() optional Xcode 16+
-                                cancellable = NotificationCenter.default.publisher(for:
-                                    Notification.Name("\(INJECTION_BUNDLE_NOTIFICATION)"))
-                                    .sink { [weak self] change in
-                                    self?.injectionNumber += 1
-                                    self?.publisher.send()
-                                }
-                            }
-                        }
-
-                        extension SwiftUI.View {
-                            public func eraseToAnyView() -> some SwiftUI.View {
-                                _ = loadInjectionOnce
-                                return AnyView(self)
-                            }
-                            public func enableInjection() -> some SwiftUI.View {
-                                return eraseToAnyView()
-                            }
-                            public func loadInjection() -> some SwiftUI.View {
-                                return eraseToAnyView()
-                            }
-                            public func onInjection(bumpState: @escaping () -> ()) -> some SwiftUI.View {
-                                return self
-                                    .onReceive(injectionObserver.publisher, perform: bumpState)
-                                    .eraseToAnyView()
-                            }
-                        }
-
-                        @available(iOS 13.0, *)
-                        @propertyWrapper
-                        public struct ObserveInjection: DynamicProperty {
-                            @ObservedObject private var iO = injectionObserver
-                            public init() {}
-                            public private(set) var wrappedValue: Int {
-                                get {0} set {}
-                            }
-                        }
-                        #else
-                        extension SwiftUI.View {
-                            @inline(__always)
-                            public func eraseToAnyView() -> some SwiftUI.View { return self }
-                            @inline(__always)
-                            public func enableInjection() -> some SwiftUI.View { return self }
-                            @inline(__always)
-                            public func loadInjection() -> some SwiftUI.View { return self }
-                            @inline(__always)
-                            public func onInjection(bumpState: @escaping () -> ()) -> some SwiftUI.View {
-                                return self
-                            }
-                        }
-
-                        @available(iOS 13.0, *)
-                        @propertyWrapper
-                        public struct ObserveInjection {
-                            public init() {}
-                            public private(set) var wrappedValue: Int {
-                                get {0} set {}
-                            }
-                        }
-                        #endif
-                        #endif
-
-                        """
-                }
-
-                if patched != original {
-                    try patched.write(to: fileURL,
-                                      atomically: false, encoding: .utf8)
-                }
+                #if !SWIFT_PACKAGE
+                prepareSwiftUI(source: file, changes: &changes)
+                #endif
+                edited += 1
             }
-        }
-        catch {
-            print(error)
+            let s = changes == 1 ? "" : "s"
+            InjectionServer.error("\(changes) automatic edit\(s) made to \(edited) files")
         }
     }
 }

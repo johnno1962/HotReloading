@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#82 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#84 $
 //
 
 import Cocoa
@@ -82,7 +82,7 @@ class AppDelegate : NSObject, NSApplicationDelegate {
     @IBOutlet weak var librariesField: NSTextField!
     var codeSigningID: String { selectedProject.flatMap {
         defaults.string(forKey: $0) } ?? "-" }
-    func watch(path: String) {
+    func watch(path: String, patchProjects: Bool = false) {
         watchedDirectories.insert(path)
         lastConnection?.watchDirectory(path)
     }
@@ -188,7 +188,9 @@ class AppDelegate : NSObject, NSApplicationDelegate {
         var arguments = CommandLine.arguments.dropFirst()
         let projectURL = URL(fileURLWithPath: arguments.removeFirst())
         let projectRoot = projectURL.deletingLastPathComponent()
-        AppDelegate.ensureInterposable(project: projectURL.path)
+        #if !SWIFT_PACKAGE
+        ensureInterposable(project: projectURL.path)
+        #endif
         NSDocumentController.shared.noteNewRecentDocumentURL(projectRoot)
         derivedLogs = arguments.removeFirst()
 

@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#73 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#75 $
 //
 
 import Cocoa
@@ -26,6 +26,7 @@ public class InjectionServer: SimpleSocket {
     static var clientQueue: DispatchQueue { commandQueue }
     static var currentClient: InjectionServer? { appDelegate.lastConnection }
     static var currentClients: [InjectionServer?] { [currentClient] }
+    static var lastAlert: NSAlert?
     var injectionNumber = 100
     var exports = [String: [String]]()
     var platform = "iPhoneSimulator"
@@ -46,18 +47,28 @@ public class InjectionServer: SimpleSocket {
     }
 
     @discardableResult
+    class func alert(_ msg: String, cancel: String? = nil) -> Bool {
+        NSLog("\(APP_PREFIX)\(APP_NAME) \(msg)")
+        #if !INJECTION_III_APP
+        LogBuffer.shared.append("\(APP_NAME) \(msg)", level: "alert")
+        #endif
+        lastAlert = NSAlert()
+        lastAlert?.messageText = "\(self)"
+        lastAlert?.informativeText = msg
+        lastAlert?.alertStyle = .warning
+        lastAlert?.addButton(withTitle: "OK")
+        if let alt = cancel {
+            lastAlert?.addButton(withTitle: alt)
+        }
+        return lastAlert?.runModal() == .alertFirstButtonReturn
+    }
+
+    @discardableResult
     override public class func error(_ message: String) -> Int32 {
         let saveno = errno
         let msg = String(format:message, strerror(saveno))
         NSLog("\(APP_PREFIX)\(APP_NAME) \(msg)")
-        DispatchQueue.main.async {
-            let alert: NSAlert = NSAlert()
-            alert.messageText = "\(self)"
-            alert.informativeText = msg
-            alert.alertStyle = .warning
-            alert.addButton(withTitle: "OK")
-            _ = alert.runModal()
-        }
+        DispatchQueue.main.async { alert(msg) }
         return -1
     }
 
@@ -379,7 +390,7 @@ public class InjectionServer: SimpleSocket {
     }
 
     public func prepare(source: String) throws -> String {
-        #if INJECTION_III_APP
+        #if INJECTION_III_APP && !SWIFT_PACKAGE
         if source.hasSuffix(".swift") && !appDelegate.isSandboxed &&
             appDelegate.updatePatchUnpatch() == .patched,
            let prepared = NextCompiler.compileQueue.sync(execute: {

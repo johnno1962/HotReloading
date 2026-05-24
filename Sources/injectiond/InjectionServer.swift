@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#75 $
+//  $Id: //depot/HotReloading/Sources/injectiond/InjectionServer.swift#76 $
 //
 
 import Cocoa
@@ -41,13 +41,65 @@ public class InjectionServer: SimpleSocket {
     var lastIdeProcPath = ""
     let objcClassRefs = NSMutableArray()
     let descriptorRefs = NSMutableArray()
+    private final class PendingScreenshot {
+        let semaphore = DispatchSemaphore(value: 0)
+        var mimeType: String?
+        var data: Data?
+    }
+    private var pendingScreenshot: PendingScreenshot?
+    private var touchEvents = [String]()
+
+    func drainTouchEvents() -> [String] {
+        commandQueue.sync {
+            defer { touchEvents.removeAll() }
+            return touchEvents
+        }
+    }
+
+    func replayTouchEvents(_ json: String) {
+        sendCommand(.replayEvents, with: json)
+    }
+
+    func requestScreenshot(timeout: DispatchTimeInterval = .seconds(10))
+        -> (mimeType: String, data: Data)? {
+        let pending = PendingScreenshot()
+        var requestStarted = false
+        commandQueue.sync {
+            if pendingScreenshot == nil {
+                pendingScreenshot = pending
+                requestStarted = writeCommand(InjectionCommand.screenshot.rawValue, with: nil)
+                if !requestStarted {
+                    pendingScreenshot = nil
+                }
+            }
+        }
+        guard requestStarted else {
+            return nil
+        }
+        guard pending.semaphore.wait(timeout: .now() + timeout) == .success,
+              let mimeType = pending.mimeType, !mimeType.isEmpty,
+              let data = pending.data, !data.isEmpty else {
+            commandQueue.sync {
+                if pendingScreenshot === pending {
+                    pendingScreenshot = nil
+                }
+            }
+            return nil
+        }
+        commandQueue.sync {
+            if pendingScreenshot === pending {
+                pendingScreenshot = nil
+            }
+        }
+        return (mimeType, data)
+    }
 
     open func log(_ msg: String) {
         NSLog("\(APP_PREFIX)\(APP_NAME) \(msg)")
     }
 
     @discardableResult
-    class func alert(_ msg: String, cancel: String? = nil) -> Bool {
+    class func alert(_ msg: String, ok: String = "OK", cancel: String? = nil) -> Bool {
         NSLog("\(APP_PREFIX)\(APP_NAME) \(msg)")
         #if !INJECTION_III_APP
         LogBuffer.shared.append("\(APP_NAME) \(msg)", level: "alert")
@@ -56,7 +108,7 @@ public class InjectionServer: SimpleSocket {
         lastAlert?.messageText = "\(self)"
         lastAlert?.informativeText = msg
         lastAlert?.alertStyle = .warning
-        lastAlert?.addButton(withTitle: "OK")
+        lastAlert?.addButton(withTitle: ok)
         if let alt = cancel {
             lastAlert?.addButton(withTitle: alt)
         }
@@ -262,6 +314,11 @@ public class InjectionServer: SimpleSocket {
             "CFBundleShortVersionString"] as? String {
             sendCommand(.appVersion, with: appVersion)
         }
+        #if INJECTION_III_APP && !SWIFT_PACKAGE
+        if Defaults.mcpServer {
+            sendCommand(.captureEvents, with: nil)
+        }
+        #endif
 
         // read status responses from client app
         while true {
@@ -358,6 +415,24 @@ public class InjectionServer: SimpleSocket {
                 if let clientPlatform = readString() {
                     platform = clientPlatform
                 }
+            case .screenshotData:
+                guard let mimeType = readString(), let data = readData() else {
+                    log("**** Bad screenshot ****")
+                    break
+                }
+                commandQueue.sync {
+                    pendingScreenshot?.mimeType = mimeType
+                    pendingScreenshot?.data = data
+                    pendingScreenshot?.semaphore.signal()
+                }
+            case .touchEvent:
+                if let json = readString() {
+                    commandQueue.sync {
+                        touchEvents.append(json)
+                    }
+                }
+            case .replayComplete:
+                _ = readString()
             default:
                 break
             }

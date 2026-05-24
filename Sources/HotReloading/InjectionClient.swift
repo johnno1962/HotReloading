@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 02/24/2021.
 //  Copyright © 2021 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#91 $
+//  $Id: //depot/HotReloading/Sources/HotReloading/InjectionClient.swift#93 $
 //
 //  Client app side of HotReloading started by +load
 //  method in HotReloadingGuts/ClientBoot.mm
@@ -25,6 +25,10 @@ public struct HotReloading {
         injection_stack()
     }
 }
+#elseif canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
 #endif
 
 #if os(macOS)
@@ -37,10 +41,22 @@ let isVapor = dlsym(SwiftMeta.RTLD_DEFAULT, VAPOR_SYMBOL) != nil
 public class InjectionClient: SimpleSocket, InjectionReader {
 
     let injectionQueue = isVapor ? DispatchQueue(label: "InjectionQueue") : .main
+    private let responseQueue = DispatchQueue(label: "InjectionResponse")
     var appVersion: String?
 
     open func log(_ msg: String) {
         print(APP_PREFIX+msg)
+    }
+
+    private func sendResponse(_ response: InjectionResponse,
+                              with string: String? = nil,
+                              data: Data? = nil) {
+        responseQueue.async {
+            _ = self.writeCommand(response.rawValue, with: string)
+            if let data = data {
+                self.write(data)
+            }
+        }
     }
 
     #if canImport(InjectionScratch)
@@ -161,7 +177,7 @@ public class InjectionClient: SimpleSocket, InjectionReader {
         #if os(macOS)
         platform += "X"
         #endif
-        writeCommand(InjectionResponse.platform.rawValue, with: platform)
+        sendResponse(.platform, with: platform)
 
         commandLoop:
         while true {
@@ -354,6 +370,30 @@ public class InjectionClient: SimpleSocket, InjectionReader {
             DispatchQueue.main.async {
                 ProfileSwiftUI.profile()
             }
+        #if !SWIFT_PACKAGE
+        case .screenshot:
+            if let data = screenshotData() {
+                sendResponse(.screenshotData, with: "image/png", data: data)
+            } else {
+                sendResponse(.screenshotData, with: "", data: Data())
+            }
+        case .captureEvents:
+            #if canImport(UIKit) && !os(watchOS)
+            InjectionInstallTouchEventCapture { [weak self] json in
+                self?.sendResponse(.touchEvent, with: String(cString: json))
+            }
+            #endif
+        case .replayEvents:
+            guard let eventsJSON = readString() else {
+                return log("⚠️ Unable to read touch events JSON")
+            }
+            #if canImport(UIKit) && !os(watchOS)
+            eventsJSON.withCString {
+                InjectionReplayTouchEventsJSON($0)
+            }
+            #endif
+            sendResponse(.replayComplete, with: eventsJSON)
+        #endif
         default:
             processOnMainThread(command: command, builder: builder)
         }
@@ -474,5 +514,40 @@ public class InjectionClient: SimpleSocket, InjectionReader {
             }
         }
     }
+
+    #if !SWIFT_PACKAGE
+    private func screenshotData() -> Data? {
+        var data: Data?
+        let capture = {
+            #if canImport(UIKit) && !os(watchOS)
+            guard let window = UIApplication.shared.windows.first(where: {
+                $0.isKeyWindow
+            }) ?? UIApplication.shared.windows.first(where: {
+                !$0.isHidden && $0.alpha > 0
+            }) else { return }
+            let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
+            data = renderer.image { _ in
+                window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+            }.pngData()
+            #elseif canImport(AppKit)
+            guard let window = NSApplication.shared.keyWindow ??
+                    NSApplication.shared.mainWindow ??
+                    NSApplication.shared.windows.first(where: {
+                        $0.isVisible
+                    }) else { return }
+            window.displayIfNeeded()
+            let bounds = window.contentView?.bounds ?? window.frame
+            guard let view = window.contentView,
+                  let rep = view.bitmapImageRepForCachingDisplay(in: bounds) else {
+                return
+            }
+            view.cacheDisplay(in: bounds, to: rep)
+            data = rep.representation(using: .png, properties: [:])
+            #endif
+        }
+        Thread.isMainThread ? capture() : DispatchQueue.main.sync(execute: capture)
+        return data
+    }
+    #endif
 }
 #endif

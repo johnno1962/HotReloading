@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#84 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#89 $
 //
 
 import Cocoa
@@ -17,6 +17,17 @@ import RemoteUI
 import WebKit
 @objc(WebView)
 class WebView : WKWebView {}
+#else
+// MCP Compatability
+struct Unhider {
+    static var packageFrameworks: String?
+    static func startUnhide() {
+        InjectionServer.currentClient?.builder.startUnhide()
+    }
+}
+struct MonitorXcode {
+    static let runningXcode: MonitorXcode? = nil
+}
 #endif
 
 let XcodeBundleID = "com.apple.dt.Xcode"
@@ -53,6 +64,19 @@ class AppDelegate : NSObject, NSApplicationDelegate {
     @IBOutlet weak var sponsorItem: NSMenuItem!
     @IBOutlet var statusItem: NSStatusItem!
 
+    // MCP Compatability
+    #if !SWIFT_PACKAGE
+    let watchDirectoryItem = NSMenuItem()
+    var enableDevicesItem: NSMenuItem {
+        let item = NSMenuItem()
+        item.isEnabled = defaults.string(forKey: UserDefaultsUnlock) == "any"
+        return item
+    }
+    static var watchers = Dictionary(uniqueKeysWithValues:
+                                     ui.watchedDirectories.map {($0, $0)})
+    static var lastWatched: String? = ui.watchedDirectories.first
+    #endif
+
     var watchedDirectories = Set<String>()
     weak var lastConnection: InjectionServer?
     var selectedProject: String?
@@ -72,13 +96,13 @@ class AppDelegate : NSObject, NSApplicationDelegate {
     var derivedLogs: String?
 
     /// Bringing in InjectionNext  patching
-    static var ui: AppDelegate { return appDelegate }
+    static var ui: AppDelegate! { return appDelegate }
     static func alreadyWatching(_ projectRoot: String) -> String? {
         return appDelegate.watchedDirectories.first { projectRoot.hasPrefix($0) }
     }
     @IBOutlet weak var deviceTesting: NSMenuItem?
     @IBOutlet weak var selectXcodeItem: NSMenuItem?
-    @IBOutlet weak var patchCompilerItem: NSMenuItem?
+    @IBOutlet weak var patchCompilerItem: NSMenuItem!
     @IBOutlet weak var librariesField: NSTextField!
     var codeSigningID: String { selectedProject.flatMap {
         defaults.string(forKey: $0) } ?? "-" }
@@ -148,6 +172,10 @@ class AppDelegate : NSObject, NSApplicationDelegate {
 
         #if !SWIFT_PACKAGE
         InjectionServer.startServer(INJECTION_ADDRESS)
+        if Defaults.mcpServer {
+            LogManager.shared.startCapturing()
+            ControlServer.start()
+        }
         #endif
 
         defaultsMap = [
@@ -179,6 +207,10 @@ class AppDelegate : NSObject, NSApplicationDelegate {
 
         setMenuIcon(.idle)
         versionSpecific()
+    }
+    
+    func deviceEnable(_ item: NSMenuItem) {
+        
     }
 
     func versionSpecific() {

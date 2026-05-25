@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#92 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#94 $
 //
 
 import Cocoa
@@ -111,17 +111,27 @@ class AppDelegate : NSObject, NSApplicationDelegate {
         }
     }
     // MCP Compatability
+    static var lastWatched: String? = ui.watchedDirectories.first
+    static var watchers = Dictionary(uniqueKeysWithValues:
+                                      ui.watchedDirectories.map {($0, $0)}) {
+        didSet {
+            InjectionServer.currentClient?.fileWatchers.removeAll()
+            ui.watchedDirectories = Set(watchers.keys)
+            lastWatched = ui.watchedDirectories.first
+        }
+    }
     let watchDirectoryItem = NSMenuItem()
     var enableDevicesItem: NSMenuItem {
         let item = NSMenuItem()
         item.state = getenv("XPROBE_ANY") != nil ? .on : .off
         return item
     }
-    static var watchers = Dictionary(uniqueKeysWithValues:
-                                      ui.watchedDirectories.map {($0, $0)})
-    static var lastWatched: String? = ui.watchedDirectories.first
-    func deviceEnable(_ item: NSMenuItem) {
-        defaults.set("any", forKey: UserDefaultsUnlock)
+    func deviceEnable(_ item: NSMenuItem) { // Toggle default
+        if enableDevicesItem.state == .off {
+            defaults.set("any", forKey: UserDefaultsUnlock)
+        } else {
+            defaults.setNilValueForKey(UserDefaultsUnlock)
+        }
         InjectionServer.alert("Device preference changed, Retstart \(APP_NAME).app")
     }
     #endif

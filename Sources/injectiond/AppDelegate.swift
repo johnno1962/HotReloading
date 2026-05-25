@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 06/11/2017.
 //  Copyright © 2017 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#89 $
+//  $Id: //depot/HotReloading/Sources/injectiond/AppDelegate.swift#92 $
 //
 
 import Cocoa
@@ -64,19 +64,6 @@ class AppDelegate : NSObject, NSApplicationDelegate {
     @IBOutlet weak var sponsorItem: NSMenuItem!
     @IBOutlet var statusItem: NSStatusItem!
 
-    // MCP Compatability
-    #if !SWIFT_PACKAGE
-    let watchDirectoryItem = NSMenuItem()
-    var enableDevicesItem: NSMenuItem {
-        let item = NSMenuItem()
-        item.isEnabled = defaults.string(forKey: UserDefaultsUnlock) == "any"
-        return item
-    }
-    static var watchers = Dictionary(uniqueKeysWithValues:
-                                     ui.watchedDirectories.map {($0, $0)})
-    static var lastWatched: String? = ui.watchedDirectories.first
-    #endif
-
     var watchedDirectories = Set<String>()
     weak var lastConnection: InjectionServer?
     var selectedProject: String?
@@ -122,6 +109,20 @@ class AppDelegate : NSObject, NSApplicationDelegate {
             Defaults.xcodeDefault = path
             patchCompiler(sender)
         }
+    }
+    // MCP Compatability
+    let watchDirectoryItem = NSMenuItem()
+    var enableDevicesItem: NSMenuItem {
+        let item = NSMenuItem()
+        item.state = getenv("XPROBE_ANY") != nil ? .on : .off
+        return item
+    }
+    static var watchers = Dictionary(uniqueKeysWithValues:
+                                      ui.watchedDirectories.map {($0, $0)})
+    static var lastWatched: String? = ui.watchedDirectories.first
+    func deviceEnable(_ item: NSMenuItem) {
+        defaults.set("any", forKey: UserDefaultsUnlock)
+        InjectionServer.alert("Device preference changed, Retstart \(APP_NAME).app")
     }
     #endif
 
@@ -207,10 +208,6 @@ class AppDelegate : NSObject, NSApplicationDelegate {
 
         setMenuIcon(.idle)
         versionSpecific()
-    }
-    
-    func deviceEnable(_ item: NSMenuItem) {
-        
     }
 
     func versionSpecific() {
